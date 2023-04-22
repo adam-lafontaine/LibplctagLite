@@ -70,10 +70,10 @@ namespace plctag
 
     enum class STATUS : int
     {
-        OK      = 0,
-        PENDING = 1,
-        ERROR   = 2,
-        NOT_SET = 3
+        TAG_OK      = 0,
+        TAG_PENDING = 1,
+        TAG_ERROR   = 2,
+        TAG_NOT_SET = 3
     };
 
 
@@ -81,14 +81,14 @@ namespace plctag
     class Result
     {
     public:
-        STATUS status = STATUS::NOT_SET;
+        STATUS status = STATUS::TAG_NOT_SET;
         const char* error = nullptr;
 
         T data;
 
-        bool is_ok() { return status == STATUS::OK; }
-        bool is_pending() { return status == STATUS::PENDING; }
-        bool is_error() { return status == STATUS::ERROR; }
+        bool is_ok() { return status == STATUS::TAG_OK; }
+        bool is_pending() { return status == STATUS::TAG_PENDING; }
+        bool is_error() { return status == STATUS::TAG_ERROR; }
     };
 
 

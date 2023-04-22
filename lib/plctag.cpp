@@ -18,15 +18,15 @@ namespace plctag
         switch(rc)
         {
         case (int)PLCTAG_STATUS_OK:
-            result.status = STATUS::OK;
+            result.status = STATUS::TAG_OK;
             result.error = ERR_NO_ERROR;
             break;
         case (int)PLCTAG_STATUS_PENDING:
-            result.status = STATUS::PENDING;
+            result.status = STATUS::TAG_PENDING;
             result.error = ERR_NO_ERROR;
             break;
         default:
-            result.status = STATUS::ERROR;
+            result.status = STATUS::TAG_ERROR;
             result.error = plc_tag_decode_error(rc);
         }
     }
@@ -73,7 +73,7 @@ namespace plctag
         auto size = plc_tag_get_size(rc);
         if (size <= 0)
         {
-            result.status = STATUS::ERROR;
+            result.status = STATUS::TAG_ERROR;
             result.error = ERR_TAG_SIZE;
             result.data.tag_handle = -1;
             plc_tag_destroy(rc);
@@ -84,7 +84,7 @@ namespace plctag
 
         if (elem_size <= 0 || elem_count <= 0 || size != elem_size * elem_count)
         {
-            result.status = STATUS::ERROR;
+            result.status = STATUS::TAG_ERROR;
             result.error = ERR_ELEM_SIZE;
             result.data.tag_handle = -1;
             plc_tag_destroy(rc);
