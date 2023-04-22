@@ -12,23 +12,11 @@ namespace plctag
 
 
 
-    template <class RESULT>
-    static void decode_result(RESULT& result, int rc)
+    template <class T>
+    static void decode_result(Result<T>& result, int rc)
     {
-        switch(rc)
-        {
-        case (int)PLCTAG_STATUS_OK:
-            result.status = STATUS::TAG_OK;
-            result.error = ERR_NO_ERROR;
-            break;
-        case (int)PLCTAG_STATUS_PENDING:
-            result.status = STATUS::TAG_PENDING;
-            result.error = ERR_NO_ERROR;
-            break;
-        default:
-            result.status = STATUS::TAG_ERROR;
-            result.error = plc_tag_decode_error(rc);
-        }
+        result.status = static_cast<STATUS>(rc);
+        result.error = plc_tag_decode_error(rc);
     }
 
 
@@ -68,15 +56,15 @@ namespace plctag
             return result;
         }
 
-        result.data.tag_handle = rc;
+        i32 tag_id = rc;
 
         auto size = plc_tag_get_size(rc);
         if (size <= 0)
         {
-            result.status = STATUS::TAG_ERROR;
-            result.error = ERR_TAG_SIZE;
-            result.data.tag_handle = -1;
-            plc_tag_destroy(rc);
+            rc = plc_tag_status(size);
+            decode_result(result, rc);
+            plc_tag_destroy(tag_id);
+            return result;
         }
 
         auto elem_size = plc_tag_get_int_attribute(rc, "elem_size", 0);
@@ -84,12 +72,14 @@ namespace plctag
 
         if (elem_size <= 0 || elem_count <= 0 || size != elem_size * elem_count)
         {
-            result.status = STATUS::TAG_ERROR;
+            result.status = STATUS::PLCTAG_ERR_BAD_SIZE;
             result.error = ERR_ELEM_SIZE;
             result.data.tag_handle = -1;
-            plc_tag_destroy(rc);
+            plc_tag_destroy(tag_id);
+            return result;
         }
 
+        result.data.tag_handle = tag_id;
         result.data.tag_size = (u64)size;
         result.data.elem_size = (u64)elem_size;
         result.data.elem_count = (u64)elem_count;
@@ -212,17 +202,44 @@ namespace plctag
 
         auto rc = plc_tag_read(tag, timeout);
         decode_result(result, rc);
+        result.data = rc;
 
         return result;        
     }
+
+
+    /*
+    
+    The following functions support getting and setting integer and floating point values from or in a tag.
+
+    The getter functions return the value of the size in the function name from the tag at the byte offset in the tag's data.
+    The setter functions do the opposite and put the passed value (using the appropriate number of bytes) at the passed byte offset in the tag's data.
+
+    Unsigned getters return the appropriate UINT_MAX value for the type size on error. I.e. plc_tag_get_uint16() returns 65535 (UINT16_MAX) if there is an error. 
+    You can check for this value and then call plc_tag_status to determine what went wrong. Signed getters return the appropriate INT_MIN value on error.
+
+    Setters return one of the status codes above. If there is no error then PLCTAG_STATUS_OK will be returned.
+
+    NOTE the implementation of the floating point getter and setter may not be totally portable. Please test before use on big-endian machines.
+
+    All getters and setters convert their data into the correct endian type. A setter will convert the host endian data into the target endian data. 
+    A getter will convert the target endian data it retrieves into the host endian format.    
+    
+    */
 
 
     Result<int> get_bit(i32 tag, int offset_bit)
     {
         Result<int> result{};
 
-        auto rc = plc_tag_get_bit(tag, offset_bit);
+        auto value = plc_tag_get_bit(tag, offset_bit);
+        auto rc = plc_tag_status(tag);
         decode_result(result, rc);
+
+        if (result.is_ok())
+        {
+            result.data = value;
+        }
 
         return result;
     }
@@ -233,8 +250,32 @@ namespace plctag
     {
         Result<T> result{};
 
-        auto rc = get(tag, offset_bit);
+        auto value = get(tag, offset);
+        auto rc = plc_tag_status(tag);
         decode_result(result, rc);
+
+        if (result.is_ok())
+        {
+            result.data = value;
+        }
+
+        return result;
+    }
+
+
+    template <typename T, typename API_GET>
+    static Result<T> plctag_api_get_cast(API_GET get, i32 tag, int offset)
+    {
+        Result<T> result{};
+
+        auto value = get(tag, offset);
+        auto rc = plc_tag_status(tag);
+        decode_result(result, rc);
+
+        if (result.is_ok())
+        {
+            result.data = (T)value;
+        }
 
         return result;
     }
@@ -310,15 +351,34 @@ namespace plctag
         return result;
     }
 
-    
-    /*
-    int get_string(i32 tag_id, int string_start_offset, char *buffer, int buffer_length);
-    
-    int get_string_length(i32 tag_id, int string_start_offset);
-    int get_string_capacity(i32 tag_id, int string_start_offset);
-    int get_string_total_length(i32 tag_id, int string_start_offset);
 
-    */
+    Result<u64> get_string_length(i32 tag_id, int string_start_offset)
+    {
+        return plctag_api_get_cast<u64>(plc_tag_get_string_length, tag_id, string_start_offset);
+    }
+
+
+    Result<u64> get_string_capacity(i32 tag_id, int string_start_offset)
+    {
+        return plctag_api_get_cast<u64>(plc_tag_get_string_capacity, tag_id, string_start_offset);
+    }
+
+
+    Result<u64> get_string_total_length(i32 tag_id, int string_start_offset)
+    {
+        return plctag_api_get_cast<u64>(plc_tag_get_string_total_length, tag_id, string_start_offset);
+    }
+
+
+    Result<int> get_string(i32 tag_id, int string_start_offset, char* buffer, int buffer_length)
+    {
+        Result<int> result{};
+
+        auto rc = plc_tag_get_string(tag_id, string_start_offset, buffer, buffer_length);
+        decode_result(result, rc);
+
+        return result;
+    }
 }
 
 

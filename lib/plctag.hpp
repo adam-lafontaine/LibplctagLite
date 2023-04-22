@@ -70,10 +70,52 @@ namespace plctag
 
     enum class STATUS : int
     {
-        TAG_OK      = 0,
-        TAG_PENDING = 1,
-        TAG_ERROR   = 2,
-        TAG_NOT_SET = 3
+        PLCTAG_STATUS_NOT_SET       = (99),
+
+        PLCTAG_STATUS_PENDING       = (1),
+        PLCTAG_STATUS_OK            = (0),
+
+        PLCTAG_ERR_ABORT            = (-1),
+        PLCTAG_ERR_BAD_CONFIG       = (-2),
+        PLCTAG_ERR_BAD_CONNECTION   = (-3),
+        PLCTAG_ERR_BAD_DATA         = (-4),
+        PLCTAG_ERR_BAD_DEVICE       = (-5),
+        PLCTAG_ERR_BAD_GATEWAY      = (-6),
+        PLCTAG_ERR_BAD_PARAM        = (-7),
+        PLCTAG_ERR_BAD_REPLY        = (-8),
+        PLCTAG_ERR_BAD_STATUS       = (-9),
+        PLCTAG_ERR_CLOSE            = (-10),
+        PLCTAG_ERR_CREATE           = (-11),
+        PLCTAG_ERR_DUPLICATE        = (-12),
+        PLCTAG_ERR_ENCODE           = (-13),
+        PLCTAG_ERR_MUTEX_DESTROY    = (-14),
+        PLCTAG_ERR_MUTEX_INIT       = (-15),
+        PLCTAG_ERR_MUTEX_LOCK       = (-16),
+        PLCTAG_ERR_MUTEX_UNLOCK     = (-17),
+        PLCTAG_ERR_NOT_ALLOWED      = (-18),
+        PLCTAG_ERR_NOT_FOUND        = (-19),
+        PLCTAG_ERR_NOT_IMPLEMENTED  = (-20),
+        PLCTAG_ERR_NO_DATA          = (-21),
+        PLCTAG_ERR_NO_MATCH         = (-22),
+        PLCTAG_ERR_NO_MEM           = (-23),
+        PLCTAG_ERR_NO_RESOURCES     = (-24),
+        PLCTAG_ERR_NULL_PTR         = (-25),
+        PLCTAG_ERR_OPEN             = (-26),
+        PLCTAG_ERR_OUT_OF_BOUNDS    = (-27),
+        PLCTAG_ERR_READ             = (-28),
+        PLCTAG_ERR_REMOTE_ERR       = (-29),
+        PLCTAG_ERR_THREAD_CREATE    = (-30),
+        PLCTAG_ERR_THREAD_JOIN      = (-31),
+        PLCTAG_ERR_TIMEOUT          = (-32),
+        PLCTAG_ERR_TOO_LARGE        = (-33),
+        PLCTAG_ERR_TOO_SMALL        = (-34),
+        PLCTAG_ERR_UNSUPPORTED      = (-35),
+        PLCTAG_ERR_WINSOCK          = (-36),
+        PLCTAG_ERR_WRITE            = (-37),
+        PLCTAG_ERR_PARTIAL          = (-38),
+        PLCTAG_ERR_BUSY             = (-39),
+
+        PLCTAG_ERR_BAD_SIZE         = (-99),
     };
 
 
@@ -81,14 +123,14 @@ namespace plctag
     class Result
     {
     public:
-        STATUS status = STATUS::TAG_NOT_SET;
+        STATUS status = STATUS::PLCTAG_STATUS_NOT_SET;
         const char* error = nullptr;
 
         T data;
 
-        bool is_ok() { return status == STATUS::TAG_OK; }
-        bool is_pending() { return status == STATUS::TAG_PENDING; }
-        bool is_error() { return status == STATUS::TAG_ERROR; }
+        bool is_ok() { return status == STATUS::PLCTAG_STATUS_OK; }
+        bool is_pending() { return status == STATUS::PLCTAG_STATUS_PENDING; }
+        bool is_error() { return static_cast<int>(status) < 0; }
     };
 
 
@@ -232,8 +274,6 @@ namespace plctag
     Result<int> receive(i32 tag, int timeout);
 
     inline Result<int> receive(i32 tag) { return receive(tag, TIMEOUT_DEFAULT_MS); }
-    
-
 
 
     Result<int> get_bit(i32 tag, int offset_bit);
@@ -259,6 +299,15 @@ namespace plctag
     Result<f64> get_f64(i32 tag, int offset);
 
     Result<int> get_bytes(i32 id, int offset, u8 *buffer, int buffer_length);
+
+
+    Result<u64> get_string_length(i32 tag_id, int string_start_offset);
+
+    Result<u64> get_string_capacity(i32 tag_id, int string_start_offset);
+
+    Result<u64> get_string_total_length(i32 tag_id, int string_start_offset);
+
+    Result<int> get_string(i32 tag_id, int string_start_offset, char* buffer, int buffer_length);
 }
 
 
