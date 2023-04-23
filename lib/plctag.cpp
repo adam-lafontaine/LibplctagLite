@@ -139,7 +139,7 @@ namespace plctag
     */
 
 
-    bool lock(i32 tag)
+    bool thread_lock(i32 tag)
     {
         return plc_tag_lock(tag) == PLCTAG_STATUS_OK;
     }
@@ -153,7 +153,7 @@ namespace plctag
     * tag.
     */
 
-    bool unlock(i32 tag)
+    bool thread_unlock(i32 tag)
     {
         return plc_tag_unlock(tag) == PLCTAG_STATUS_OK;
     }
