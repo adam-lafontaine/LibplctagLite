@@ -19,10 +19,36 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\lib\libplctag\lib\tag.h" />
+    <ClInclude Include="..\..\lib\libplctag_internal.h" />
     <ClInclude Include="..\..\lib\plctag.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\examples\cpp\list_tags_logix.cpp" />
+    <ClCompile Include="..\..\lib\libplctag\lib\init.c" />
+    <ClCompile Include="..\..\lib\libplctag\lib\lib.c" />
+    <ClCompile Include="..\..\lib\libplctag\platform\windows\platform.c" />
+    <ClCompile Include="..\..\lib\libplctag\protocols\ab\ab_common.c" />
+    <ClCompile Include="..\..\lib\libplctag\protocols\ab\cip.c" />
+    <ClCompile Include="..\..\lib\libplctag\protocols\ab\eip_cip.c" />
+    <ClCompile Include="..\..\lib\libplctag\protocols\ab\eip_cip_special.c" />
+    <ClCompile Include="..\..\lib\libplctag\protocols\ab\eip_lgx_pccc.c" />
+    <ClCompile Include="..\..\lib\libplctag\protocols\ab\eip_plc5_dhp.c" />
+    <ClCompile Include="..\..\lib\libplctag\protocols\ab\eip_plc5_pccc.c" />
+    <ClCompile Include="..\..\lib\libplctag\protocols\ab\eip_slc_dhp.c" />
+    <ClCompile Include="..\..\lib\libplctag\protocols\ab\eip_slc_pccc.c" />
+    <ClCompile Include="..\..\lib\libplctag\protocols\ab\error_codes.c" />
+    <ClCompile Include="..\..\lib\libplctag\protocols\ab\pccc.c" />
+    <ClCompile Include="..\..\lib\libplctag\protocols\ab\session.c" />
+    <ClCompile Include="..\..\lib\libplctag\protocols\mb\modbus.c" />
+    <ClCompile Include="..\..\lib\libplctag\protocols\system\system.c" />
+    <ClCompile Include="..\..\lib\libplctag\util\atomic_int.c" />
+    <ClCompile Include="..\..\lib\libplctag\util\attr.c" />
+    <ClCompile Include="..\..\lib\libplctag\util\debug.c" />
+    <ClCompile Include="..\..\lib\libplctag\util\hash.c" />
+    <ClCompile Include="..\..\lib\libplctag\util\hashtable.c" />
+    <ClCompile Include="..\..\lib\libplctag\util\rc.c" />
+    <ClCompile Include="..\..\lib\libplctag\util\vector.c" />
     <ClCompile Include="..\..\lib\plctag.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -83,6 +109,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -97,6 +125,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -111,6 +141,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -125,6 +157,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

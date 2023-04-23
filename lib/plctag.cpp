@@ -1,7 +1,5 @@
 #include "plctag.hpp"
-//#include "libplctag.h"
-
-#include "libplctag.c"
+#include "libplctag.h"
 
 
 namespace plctag

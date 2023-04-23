@@ -367,7 +367,7 @@ char* setup_tag_string(int argc, char** argv)
     /* FIXME - check size! */
     fprintf(stderr, "Using tag string \"%s\".\n", tag_string);
 
-    return strdup(tag_string);
+    return _strdup(tag_string);
 }
 
 

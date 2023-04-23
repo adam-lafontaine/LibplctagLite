@@ -74,7 +74,7 @@
  *
  * It will return NULL on failure.
  */
-extern void *mem_alloc(int size)
+void *mem_alloc(int size)
 {
     if(size <= 0) {
         pdebug(DEBUG_WARN, "Allocation size must be greater than zero bytes!");
@@ -93,7 +93,7 @@ extern void *mem_alloc(int size)
  *
  * It will return NULL on failure.
  */
-extern void *mem_realloc(void *orig, int size)
+void *mem_realloc(void *orig, int size)
 {
     if(size <= 0) {
         pdebug(DEBUG_WARN, "New allocation size must be greater than zero bytes!");
@@ -113,7 +113,7 @@ extern void *mem_realloc(void *orig, int size)
  * Free the allocated memory passed in.  If the passed pointer is
  * null, do nothing.
  */
-extern void mem_free(const void *mem)
+void mem_free(const void *mem)
 {
     if(mem) {
         free((void *)mem);
@@ -128,7 +128,7 @@ extern void mem_free(const void *mem)
  *
  * set memory to the passed argument.
  */
-extern void mem_set(void *dest, int c, int size)
+void mem_set(void *dest, int c, int size)
 {
     if(!dest) {
         pdebug(DEBUG_WARN, "Destination pointer is NULL!");
@@ -152,7 +152,7 @@ extern void mem_set(void *dest, int c, int size)
  *
  * copy memory from one pointer to another for the passed number of bytes.
  */
-extern void mem_copy(void *dest, void *src, int size)
+void mem_copy(void *dest, void *src, int size)
 {
     if(!dest) {
         pdebug(DEBUG_WARN, "Destination pointer is NULL!");
@@ -186,7 +186,7 @@ extern void mem_copy(void *dest, void *src, int size)
  *
  * move memory from one pointer to another for the passed number of bytes.
  */
-extern void mem_move(void *dest, void *src, int size)
+void mem_move(void *dest, void *src, int size)
 {
     if(!dest) {
         pdebug(DEBUG_WARN, "Destination pointer is NULL!");
@@ -261,7 +261,7 @@ int mem_cmp(void *src1, int src1_size, void *src2, int src2_size)
  * We must handle some edge cases here due to wrappers.   We could get a NULL
  * pointer or a zero-length string for either argument.
  */
-extern int str_cmp(const char *first, const char *second)
+int str_cmp(const char *first, const char *second)
 {
     int first_zero = !str_length(first);
     int second_zero = !str_length(second);
@@ -297,7 +297,7 @@ extern int str_cmp(const char *first, const char *second)
  *
  * Handle the usual edge cases because Microsoft appears not to.
  */
-extern int str_cmp_i(const char *first, const char *second)
+int str_cmp_i(const char *first, const char *second)
 {
     int first_zero = !str_length(first);
     int second_zero = !str_length(second);
@@ -331,7 +331,7 @@ extern int str_cmp_i(const char *first, const char *second)
  *
  * It just passes this through to Windows stricmp.
  */
-extern int str_cmp_i_n(const char *first, const char *second, int count)
+int str_cmp_i_n(const char *first, const char *second, int count)
 {
     int first_zero = !str_length(first);
     int second_zero = !str_length(second);
@@ -465,7 +465,7 @@ char* str_str_cmp_i(const char* haystack, const char* needle)
  *
  * Returns
  */
-extern int str_copy(char *dst, int dst_size, const char *src)
+int str_copy(char *dst, int dst_size, const char *src)
 {
     if (!dst) {
         pdebug(DEBUG_WARN, "Destination string pointer is NULL!");
@@ -496,7 +496,7 @@ extern int str_copy(char *dst, int dst_size, const char *src)
  * Return the length of the string.  If a null pointer is passed, return
  * null.
  */
-extern int str_length(const char *str)
+int str_length(const char *str)
 {
     if(!str) {
         return 0;
@@ -514,7 +514,7 @@ extern int str_length(const char *str)
  * Copy the passed string and return a pointer to the copy.
  * The caller is responsible for freeing the memory.
  */
-extern char *str_dup(const char *str)
+char *str_dup(const char *str)
 {
     if(!str) {
         return NULL;
@@ -532,7 +532,7 @@ extern char *str_dup(const char *str)
  * an int.  Return an int in integer in the passed
  * pointer and a status from the function.
  */
-extern int str_to_int(const char *str, int *val)
+int str_to_int(const char *str, int *val)
 {
     char *endptr;
     long int tmp_val;
@@ -555,7 +555,7 @@ extern int str_to_int(const char *str, int *val)
 }
 
 
-extern int str_to_float(const char *str, float *val)
+int str_to_float(const char *str, float *val)
 {
     char *endptr;
     double tmp_val_d;
@@ -580,7 +580,7 @@ extern int str_to_float(const char *str, float *val)
 }
 
 
-extern char **str_split(const char *str, const char *sep)
+char **str_split(const char *str, const char *sep)
 {
     int sub_str_count=0;
     int size = 0;
@@ -670,7 +670,7 @@ char *str_concat_impl(int num_args, ...)
     /* make a buffer big enough */
     total_length += 1;
 
-    result = mem_alloc(total_length);
+    result = (char*)mem_alloc(total_length);
     if(!result) {
         pdebug(DEBUG_ERROR,"Unable to allocate new string buffer!");
         return NULL;
@@ -862,7 +862,7 @@ struct thread_t {
  * TODO - use the stacksize!
  */
 
-extern int thread_create(thread_p *t, LPTHREAD_START_ROUTINE func, int stacksize, void *arg)
+int thread_create(thread_p *t, LPTHREAD_START_ROUTINE func, int stacksize, void *arg)
 {
     pdebug(DEBUG_DETAIL, "Starting.");
 
@@ -967,7 +967,7 @@ int thread_join(thread_p t)
  * Detach the thread.  You cannot call thread_join on a detached thread!
  */
 
-extern int thread_detach()
+int thread_detach()
 {
     /* FIXME - it does not look like you can do this on Windows??? */
 
@@ -984,7 +984,7 @@ extern int thread_detach()
  * This gets rid of the resources of a thread struct.  The thread in
  * question must be dead first!
  */
-extern int thread_destroy(thread_p *t)
+int thread_destroy(thread_p *t)
 {
     /*pdebug("Starting.");*/
 
@@ -1023,7 +1023,7 @@ extern int thread_destroy(thread_p *t)
 #define ATOMIC_UNLOCK_VAL ((LONG)(0))
 #define ATOMIC_LOCK_VAL ((LONG)(1))
 
-extern int lock_acquire_try(lock_t *lock)
+int lock_acquire_try(lock_t *lock)
 {
     LONG rc = InterlockedExchange(lock, ATOMIC_LOCK_VAL);
 
@@ -1035,14 +1035,14 @@ extern int lock_acquire_try(lock_t *lock)
 }
 
 
-extern int lock_acquire(lock_t *lock)
+int lock_acquire(lock_t *lock)
 {
     while(!lock_acquire_try(lock)) ;
 
     return 1;
 }
 
-extern void lock_release(lock_t *lock)
+void lock_release(lock_t *lock)
 {
     InterlockedExchange(lock, ATOMIC_UNLOCK_VAL);
     /*pdebug("released lock");*/
@@ -1081,7 +1081,7 @@ int cond_create(cond_p *c)
     /* clear the output first. */
     *c = NULL;
 
-    tmp_cond = mem_alloc((int)(unsigned int)sizeof(*tmp_cond));
+    tmp_cond = (cond_p)mem_alloc((int)(unsigned int)sizeof(*tmp_cond));
     if(!tmp_cond) {
         pdebug(DEBUG_WARN, "Unable to allocate new condition var!");
         return PLCTAG_ERR_NO_MEM;
@@ -1289,7 +1289,7 @@ static int socket_lib_init(void)
 
 
 
-extern int socket_create(sock_p *s)
+int socket_create(sock_p *s)
 {
     pdebug(DEBUG_DETAIL, "Starting.");
 
@@ -2138,7 +2138,7 @@ int sock_create_event_wakeup_channel(sock_p sock)
     SOCKET listener = INVALID_SOCKET;
     struct sockaddr_in listener_addr_info;
     socklen_t addr_info_size = sizeof(struct sockaddr_in);
-    int non_blocking = 1;
+    u_long non_blocking = 1;
     SOCKET wake_fds[2];
 
     pdebug(DEBUG_INFO, "Starting.");
@@ -2423,7 +2423,7 @@ serial_port_p plc_lib_open_serial_port(/*plc_lib lib,*/ const char *path, int ba
     }
 
     /* open the serial port device */
-    hSerialPort = CreateFile(path,
+    hSerialPort = CreateFileA(path,
                              GENERIC_READ | GENERIC_WRITE,
                              0,
                              NULL,
@@ -2661,7 +2661,7 @@ struct tm *localtime_r(const time_t *timep, struct tm *result)
  *
  * It will return NULL on failure.
  */
-extern void *mem_alloc(int size)
+void *mem_alloc(int size)
 {
     if(size <= 0) {
         pdebug(DEBUG_WARN, "Allocation size must be greater than zero bytes!");
@@ -2680,7 +2680,7 @@ extern void *mem_alloc(int size)
  *
  * It will return NULL on failure.
  */
-extern void *mem_realloc(void *orig, int size)
+void *mem_realloc(void *orig, int size)
 {
     if(size <= 0) {
         pdebug(DEBUG_WARN, "New allocation size must be greater than zero bytes!");
@@ -2698,7 +2698,7 @@ extern void *mem_realloc(void *orig, int size)
  * Free the allocated memory passed in.  If the passed pointer is
  * null, do nothing.
  */
-extern void mem_free(const void *mem)
+void mem_free(const void *mem)
 {
     if(mem) {
         free((void *)mem);
@@ -2713,7 +2713,7 @@ extern void mem_free(const void *mem)
  *
  * set memory to the passed argument.
  */
-extern void mem_set(void *dest, int c, int size)
+void mem_set(void *dest, int c, int size)
 {
     if(!dest) {
         pdebug(DEBUG_WARN, "Destination pointer is NULL!");
@@ -2737,7 +2737,7 @@ extern void mem_set(void *dest, int c, int size)
  *
  * copy memory from one pointer to another for the passed number of bytes.
  */
-extern void mem_copy(void *dest, void *src, int size)
+void mem_copy(void *dest, void *src, int size)
 {
     if(!dest) {
         pdebug(DEBUG_WARN, "Destination pointer is NULL!");
@@ -2769,7 +2769,7 @@ extern void mem_copy(void *dest, void *src, int size)
  *
  * move memory from one pointer to another for the passed number of bytes.
  */
-extern void mem_move(void *dest, void *src, int size)
+void mem_move(void *dest, void *src, int size)
 {
     if(!dest) {
         pdebug(DEBUG_WARN, "Destination pointer is NULL!");
@@ -2844,7 +2844,7 @@ int mem_cmp(void *src1, int src1_size, void *src2, int src2_size)
  *
  * Handle edge cases when NULL or zero length strings are passed.
  */
-extern int str_cmp(const char *first, const char *second)
+int str_cmp(const char *first, const char *second)
 {
     int first_zero = !str_length(first);
     int second_zero = !str_length(second);
@@ -2880,7 +2880,7 @@ extern int str_cmp(const char *first, const char *second)
  *
  * Handle the usual edge cases.
  */
-extern int str_cmp_i(const char *first, const char *second)
+int str_cmp_i(const char *first, const char *second)
 {
     int first_zero = !str_length(first);
     int second_zero = !str_length(second);
@@ -2915,7 +2915,7 @@ extern int str_cmp_i(const char *first, const char *second)
  *
  * It just passes this through to POSIX strncasecmp.
  */
-extern int str_cmp_i_n(const char *first, const char *second, int count)
+int str_cmp_i_n(const char *first, const char *second, int count)
 {
     int first_zero = !str_length(first);
     int second_zero = !str_length(second);
@@ -2960,7 +2960,7 @@ extern int str_cmp_i_n(const char *first, const char *second, int count)
  *
  * Handle the usual edge cases.
  */
-extern char *str_str_cmp_i(const char *haystack, const char *needle)
+char *str_str_cmp_i(const char *haystack, const char *needle)
 {
     int haystack_zero = !str_length(haystack);
     int needle_zero = !str_length(needle);
@@ -2985,7 +2985,7 @@ extern char *str_str_cmp_i(const char *haystack, const char *needle)
  *
  * Returns
  */
-extern int str_copy(char *dst, int dst_size, const char *src)
+int str_copy(char *dst, int dst_size, const char *src)
 {
     if (!dst) {
         pdebug(DEBUG_WARN, "Destination string pointer is NULL!");
@@ -3013,7 +3013,7 @@ extern int str_copy(char *dst, int dst_size, const char *src)
  * Return the length of the string.  If a null pointer is passed, return
  * null.
  */
-extern int str_length(const char *str)
+int str_length(const char *str)
 {
     if(!str) {
         return 0;
@@ -3031,7 +3031,7 @@ extern int str_length(const char *str)
  * Copy the passed string and return a pointer to the copy.
  * The caller is responsible for freeing the memory.
  */
-extern char *str_dup(const char *str)
+char *str_dup(const char *str)
 {
     if(!str) {
         return NULL;
@@ -3049,7 +3049,7 @@ extern char *str_dup(const char *str)
  * an int.  Return an int in integer in the passed
  * pointer and a status from the function.
  */
-extern int str_to_int(const char *str, int *val)
+int str_to_int(const char *str, int *val)
 {
     char *endptr;
     long int tmp_val;
@@ -3072,7 +3072,7 @@ extern int str_to_int(const char *str, int *val)
 }
 
 
-extern int str_to_float(const char *str, float *val)
+int str_to_float(const char *str, float *val)
 {
     char *endptr;
     float tmp_val;
@@ -3094,7 +3094,7 @@ extern int str_to_float(const char *str, float *val)
 }
 
 
-extern char **str_split(const char *str, const char *sep)
+char **str_split(const char *str, const char *sep)
 {
     int sub_str_count=0;
     int size = 0;
@@ -3379,7 +3379,7 @@ struct thread_t {
  * TODO - use the stacksize!
  */
 
-extern int thread_create(thread_p *t, thread_func_t func, int stacksize, void *arg)
+int thread_create(thread_p *t, thread_func_t func, int stacksize, void *arg)
 {
     pdebug(DEBUG_DETAIL, "Starting.");
 
@@ -3472,7 +3472,7 @@ int thread_join(thread_p t)
  * Detach the thread.  You cannot call thread_join on a detached thread!
  */
 
-extern int thread_detach()
+int thread_detach()
 {
     pthread_detach(pthread_self());
 
@@ -3487,7 +3487,7 @@ extern int thread_detach()
  * This gets rid of the resources of a thread struct.  The thread in
  * question must be dead first!
  */
-extern int thread_destroy(thread_p *t)
+int thread_destroy(thread_p *t)
 {
     pdebug(DEBUG_DETAIL, "Starting.");
 
@@ -3526,7 +3526,7 @@ extern int thread_destroy(thread_p *t)
 
 #define ATOMIC_LOCK_VAL (1)
 
-extern int lock_acquire_try(lock_t *lock)
+int lock_acquire_try(lock_t *lock)
 {
     int rc = __sync_lock_test_and_set((int*)lock, ATOMIC_LOCK_VAL);
 
@@ -3545,7 +3545,7 @@ int lock_acquire(lock_t *lock)
 }
 
 
-extern void lock_release(lock_t *lock)
+void lock_release(lock_t *lock)
 {
     __sync_lock_release((int*)lock);
     /*pdebug("released lock");*/
@@ -3801,7 +3801,7 @@ static int sock_create_event_wakeup_channel(sock_p sock);
 
 #define MAX_IPS (8)
 
-extern int socket_create(sock_p *s)
+int socket_create(sock_p *s)
 {
     pdebug(DEBUG_DETAIL, "Starting.");
 
@@ -5016,7 +5016,7 @@ attr_entry find_entry(attr a, const char *name)
  *
  * Create a new attr structure and return a pointer to it.
  */
-extern attr attr_create()
+attr attr_create()
 {
     return (attr)mem_alloc(sizeof(struct attr_t));
 }
@@ -5040,7 +5040,7 @@ extern attr attr_create()
  * You cannot, currently, have an "=" or "&" character in the value for an
  * attribute.
  */
-extern attr attr_create_from_str(const char *attr_str)
+attr attr_create_from_str(const char *attr_str)
 {
     attr res = NULL;
     char **kv_pairs = NULL;
@@ -5146,7 +5146,7 @@ extern attr attr_create_from_str(const char *attr_str)
  *
  * Set/create a new string attribute
  */
-extern int attr_set_str(attr attrs, const char *name, const char *val)
+int attr_set_str(attr attrs, const char *name, const char *val)
 {
     attr_entry e;
 
@@ -5208,7 +5208,7 @@ extern int attr_set_str(attr attrs, const char *name, const char *val)
 
 
 
-extern int attr_set_int(attr attrs, const char *name, int val)
+int attr_set_int(attr attrs, const char *name, int val)
 {
     char buf[64];
 
@@ -5219,7 +5219,7 @@ extern int attr_set_int(attr attrs, const char *name, int val)
 
 
 
-extern int attr_set_float(attr attrs, const char *name, float val)
+int attr_set_float(attr attrs, const char *name, float val)
 {
     char buf[64];
 
@@ -5238,7 +5238,7 @@ extern int attr_set_float(attr attrs, const char *name, float val)
  * Walk the list of attrs and return the value found with the passed name.
  * If the name is not found, return the passed default value.
  */
-extern const char *attr_get_str(attr attrs, const char *name, const char *def)
+const char *attr_get_str(attr attrs, const char *name, const char *def)
 {
     attr_entry e;
 
@@ -5257,7 +5257,7 @@ extern const char *attr_get_str(attr attrs, const char *name, const char *def)
 }
 
 
-extern int attr_get_int(attr attrs, const char *name, int def)
+int attr_get_int(attr attrs, const char *name, int def)
 {
     int res;
     int rc;
@@ -5279,7 +5279,7 @@ extern int attr_get_int(attr attrs, const char *name, int def)
 }
 
 
-extern float attr_get_float(attr attrs, const char *name, float def)
+float attr_get_float(attr attrs, const char *name, float def)
 {
     float res;
     int rc;
@@ -5301,7 +5301,7 @@ extern float attr_get_float(attr attrs, const char *name, float def)
 }
 
 
-extern int attr_remove(attr attrs, const char *name)
+int attr_remove(attr attrs, const char *name)
 {
     attr_entry e, p;
 
@@ -5354,7 +5354,7 @@ extern int attr_remove(attr attrs, const char *name)
  *
  * Destroy and free all memory for an attribute list.
  */
-extern void attr_destroy(attr a)
+void attr_destroy(attr a)
 {
     attr_entry e, p;
 
@@ -5498,7 +5498,7 @@ static uint32_t get_thread_id()
 
 static const char *debug_level_name[DEBUG_END] = {"NONE", "ERROR", "WARN", "INFO", "DETAIL", "SPEW"};
 
-extern void pdebug_impl(const char *func, int line_num, int debug_level, const char *templ, ...)
+void pdebug_impl(const char *func, int line_num, int debug_level, const char *templ, ...)
 {
     va_list va;
     struct tm t;
@@ -5865,7 +5865,7 @@ hashtable_p hashtable_create(int initial_capacity)
         return NULL;
     }
 
-    tab = mem_alloc(sizeof(struct hashtable_t));
+    tab = (hashtable_p)mem_alloc(sizeof(struct hashtable_t));
     if(!tab) {
         pdebug(DEBUG_ERROR,"Unable to allocate memory for hash table!");
         return NULL;
@@ -5875,7 +5875,7 @@ hashtable_p hashtable_create(int initial_capacity)
     tab->used_entries = 0;
     tab->hash_salt = (uint32_t)(time_ms()) + (uint32_t)(intptr_t)(tab);
 
-    tab->entries = mem_alloc(initial_capacity * (int)sizeof(struct hashtable_entry_t));
+    tab->entries = (hashtable_entry_t*)mem_alloc(initial_capacity * (int)sizeof(struct hashtable_entry_t));
     if(!tab->entries) {
         pdebug(DEBUG_ERROR,"Unable to allocate entry array!");
         hashtable_destroy(tab);
@@ -6162,7 +6162,7 @@ int expand_table(hashtable_p table)
 
         pdebug(DEBUG_SPEW, "trying new size = %d", total_entries);
 
-        new_table.entries = mem_alloc(total_entries * (int)sizeof(struct hashtable_entry_t));
+        new_table.entries = (hashtable_entry_t*)mem_alloc(total_entries * (int)sizeof(struct hashtable_entry_t));
         if(!new_table.entries) {
             pdebug(DEBUG_ERROR, "Unable to allocate new entry array!");
             return PLCTAG_ERR_NO_MEM;
@@ -6279,7 +6279,7 @@ void *rc_alloc_impl(const char *func, int line_num, int data_size, rc_cleanup_fu
 
     pdebug(DEBUG_SPEW,"Allocating %d-byte refcount struct",(int)sizeof(struct refcount_t));
 
-    rc = mem_alloc((int)sizeof(struct refcount_t) + data_size);
+    rc = (refcount_p)mem_alloc((int)sizeof(struct refcount_t) + data_size);
     if(!rc) {
         pdebug(DEBUG_WARN,"Unable to allocate refcount struct!");
         return NULL;
@@ -6342,7 +6342,7 @@ void *rc_inc_impl(const char *func, int line_num, void *data)
         if(rc->count > 0) {
             rc->count++;
             count = rc->count;
-            result = data;
+            result = (char*)data;
         } else {
             count = rc->count;
             result = NULL;
@@ -6469,7 +6469,7 @@ vector_p vector_create(int capacity, int max_inc)
         return NULL;
     }
 
-    vec = mem_alloc((int)sizeof(struct vector_t));
+    vec = (vector_p)mem_alloc((int)sizeof(struct vector_t));
     if(!vec) {
         pdebug(DEBUG_ERROR,"Unable to allocate memory for vector!");
         return NULL;
@@ -6479,7 +6479,7 @@ vector_p vector_create(int capacity, int max_inc)
     vec->capacity = capacity;
     vec->max_inc = max_inc;
 
-    vec->data = mem_alloc(capacity * (int)sizeof(void *));
+    vec->data = (void**)mem_alloc(capacity * (int)sizeof(void *));
     if(!vec->data) {
         pdebug(DEBUG_ERROR,"Unable to allocate memory for vector data!");
         vector_destroy(vec);
@@ -6829,12 +6829,6 @@ struct modbus_tag_t {
 tag_byte_order_t modbus_tag_byte_order = {
     .is_allocated = 0,
 
-    .int16_order = {1,0},
-    .int32_order = {3,2,1,0},
-    .int64_order = {7,6,5,4,3,2,1,0},
-    .float32_order = {3,2,1,0},
-    .float64_order = {7,6,5,4,3,2,1,0},
-
     .str_is_defined = 0, /* FIXME */
     .str_is_counted = 0,
     .str_is_fixed_length = 0,
@@ -6844,14 +6838,20 @@ tag_byte_order_t modbus_tag_byte_order = {
     .str_count_word_bytes = 0,
     .str_max_capacity = 0,
     .str_total_length = 0,
-    .str_pad_bytes = 0
+    .str_pad_bytes = 0,
+
+    .int16_order = {1,0},
+    .int32_order = {3,2,1,0},
+    .int64_order = {7,6,5,4,3,2,1,0},
+    .float32_order = {3,2,1,0},
+    .float64_order = {7,6,5,4,3,2,1,0},    
 };
 
 
 /* Modbus module globals. */
 mutex_p mb_mutex = NULL;
 modbus_plc_p plcs = NULL;
-volatile int library_terminating = 0;
+volatile int mb_library_terminating = 0;
 
 
 /* helper functions */
@@ -7080,7 +7080,7 @@ void modbus_tag_destructor(void *tag_arg)
         }
 
         pdebug(DEBUG_DETAIL, "Releasing the reference to the PLC.");
-        tag->plc = rc_dec(tag->plc);
+        tag->plc = (modbus_plc_p)rc_dec(tag->plc);
     }
 
     if(tag->api_mutex) {
@@ -7147,7 +7147,7 @@ int find_or_create_plc(attr attribs, modbus_plc_p *plc)
         /* did we find one. */
         if(*walker && (*walker)->connection_group_id == connection_group_id && (*walker)->server_id == (uint8_t)(unsigned int)server_id && str_cmp_i(server, (*walker)->server) == 0) {
             pdebug(DEBUG_DETAIL, "Using existing PLC connection.");
-            *plc = rc_inc(*walker);
+            *plc = (modbus_plc_p)rc_inc(*walker);
             is_new = 0;
         } else {
             /* nope, make a new one.  Do as little as possible in the mutex. */
@@ -7209,7 +7209,7 @@ int find_or_create_plc(attr attribs, modbus_plc_p *plc)
                 (*plc)->inactivity_timeout_ms = MODBUS_INACTIVITY_TIMEOUT + time_ms();
 
                 /* set up the PLC state */
-                (*plc)->state = PLC_CONNECT_START;
+                (*plc)->state = modbus_plc_t::PLC_CONNECT_START;
 
                 rc = thread_create(&((*plc)->handler_thread), modbus_plc_handler, 32768, (void *)(*plc));
                 if(rc != PLCTAG_STATUS_OK) {
@@ -7226,7 +7226,7 @@ int find_or_create_plc(attr attribs, modbus_plc_p *plc)
         pdebug(DEBUG_WARN, "PLC lookup and/or creation failed!");
 
         /* clean up. */
-        *plc = rc_dec(*plc);
+        *plc = (modbus_plc_p)rc_dec(*plc);
     }
 
     pdebug(DEBUG_INFO, "Done.");
@@ -7345,21 +7345,21 @@ THREAD_FUNC(modbus_plc_handler)
         }
 
         switch(plc->state) {
-        case PLC_CONNECT_START:
+        case modbus_plc_t::PLC_CONNECT_START:
             pdebug(DEBUG_DETAIL, "in PLC_CONNECT_START state.");
 
             /* connect to the PLC */
             rc = connect_plc(plc);
             if(rc == PLCTAG_STATUS_PENDING) {
                 pdebug(DEBUG_DETAIL, "Socket connection process started.  Going to PLC_CONNECT_WAIT state.");
-                plc->state = PLC_CONNECT_WAIT;
+                plc->state = modbus_plc_t::PLC_CONNECT_WAIT;
             } else if(rc == PLCTAG_STATUS_OK) {
                 pdebug(DEBUG_DETAIL, "Successfully connected to the PLC.  Going to PLC_READY state.");
 
                 /* reset err_delay */
                 err_delay = PLC_SOCKET_ERR_START_DELAY;
 
-                plc->state = PLC_READY;
+                plc->state = modbus_plc_t::PLC_READY;
             } else {
                 pdebug(DEBUG_WARN, "Error %s received while starting socket connection.", plc_tag_decode_error(rc));
 
@@ -7368,13 +7368,13 @@ THREAD_FUNC(modbus_plc_handler)
                 /* exponential increase with jitter. */
                 UPDATE_ERR_DELAY();
 
-                pdebug(DEBUG_WARN, "Unable to connect to the PLC, will retry later! Going to PLC_ERR_WAIT state to wait %"PRId64"ms.", err_delay);
+                pdebug(DEBUG_WARN, "Unable to connect to the PLC, will retry later! Going to PLC_ERR_WAIT state to wait %" PRId64 "ms.", err_delay);
 
-                plc->state = PLC_ERR_WAIT;
+                plc->state = modbus_plc_t::PLC_ERR_WAIT;
             }
             break;
 
-        case PLC_CONNECT_WAIT:
+        case modbus_plc_t::PLC_CONNECT_WAIT:
             rc = socket_connect_tcp_check(plc->sock, SOCKET_CONNECT_TIMEOUT);
             if(rc == PLCTAG_STATUS_OK) {
                 pdebug(DEBUG_DETAIL, "Socket connected, going to state PLC_READY.");
@@ -7385,7 +7385,7 @@ THREAD_FUNC(modbus_plc_handler)
                 /* reset err_delay */
                 err_delay = PLC_SOCKET_ERR_START_DELAY;
 
-                plc->state = PLC_READY;
+                plc->state = modbus_plc_t::PLC_READY;
             } else if(rc == PLCTAG_ERR_TIMEOUT) {
                 pdebug(DEBUG_DETAIL, "Still waiting for socket to connect.");
 
@@ -7398,13 +7398,13 @@ THREAD_FUNC(modbus_plc_handler)
                 /* exponential increase with jitter. */
                 UPDATE_ERR_DELAY();
 
-                pdebug(DEBUG_WARN, "Unable to connect to the PLC, will retry later! Going to PLC_ERR_WAIT state to wait %"PRId64"ms.", err_delay);
+                pdebug(DEBUG_WARN, "Unable to connect to the PLC, will retry later! Going to PLC_ERR_WAIT state to wait %" PRId64 "ms.", err_delay);
 
-                plc->state = PLC_ERR_WAIT;
+                plc->state = modbus_plc_t::PLC_ERR_WAIT;
             }
             break;
 
-        case PLC_READY:
+        case modbus_plc_t::PLC_READY:
             pdebug(DEBUG_DETAIL, "in PLC_READY state.");
 
             /* calculate what events we should be waiting for. */
@@ -7430,7 +7430,7 @@ THREAD_FUNC(modbus_plc_handler)
 
                 socket_destroy(&(plc->sock));
 
-                plc->state = PLC_CONNECT_START;
+                plc->state = modbus_plc_t::PLC_CONNECT_START;
                 break;
             }
 
@@ -7438,7 +7438,7 @@ THREAD_FUNC(modbus_plc_handler)
             if(sock_events & SOCK_EVENT_CAN_WRITE) {
                 if(plc->flags.request_ready) {
                     pdebug(DEBUG_DETAIL, "There is a request ready to send and we can send, going to state PLC_SEND_REQUEST.");
-                    plc->state = PLC_SEND_REQUEST;
+                    plc->state = modbus_plc_t::PLC_SEND_REQUEST;
                     break;
                 } else {
                     /* clear the buffer indexes just in case */
@@ -7450,7 +7450,7 @@ THREAD_FUNC(modbus_plc_handler)
 
             if(sock_events & SOCK_EVENT_CAN_READ) {
                 pdebug(DEBUG_DETAIL, "We can receive a response going to state PLC_RECEIVE_RESPONSE.");
-                plc->state = PLC_RECEIVE_RESPONSE;
+                plc->state = modbus_plc_t::PLC_RECEIVE_RESPONSE;
                 break;
             }
 
@@ -7464,7 +7464,7 @@ THREAD_FUNC(modbus_plc_handler)
 
             break;
 
-        case PLC_SEND_REQUEST:
+        case modbus_plc_t::PLC_SEND_REQUEST:
             debug_set_tag_id((int)plc->request_tag_id);
             pdebug(DEBUG_DETAIL, "in PLC_SEND_REQUEST state.");
 
@@ -7476,7 +7476,7 @@ THREAD_FUNC(modbus_plc_handler)
                 plc->write_data_len = 0;
                 plc->write_data_offset = 0;
 
-                plc->state = PLC_READY;
+                plc->state = modbus_plc_t::PLC_READY;
             } else if(rc == PLCTAG_STATUS_PENDING) {
                 pdebug(DEBUG_DETAIL, "Not all data written, will try again.");
             } else {
@@ -7492,7 +7492,7 @@ THREAD_FUNC(modbus_plc_handler)
                 plc->write_data_offset = 0;
 
                 /* try to reconnect immediately. */
-                plc->state = PLC_CONNECT_START;
+                plc->state = modbus_plc_t::PLC_CONNECT_START;
             }
 
             /* if we did not send all the packet, we stay in this state and keep trying. */
@@ -7502,7 +7502,7 @@ THREAD_FUNC(modbus_plc_handler)
             break;
 
 
-        case PLC_RECEIVE_RESPONSE:
+        case modbus_plc_t::PLC_RECEIVE_RESPONSE:
             pdebug(DEBUG_DETAIL, "in PLC_RECEIVE_RESPONSE state.");
 
             /* get a packet */
@@ -7510,7 +7510,7 @@ THREAD_FUNC(modbus_plc_handler)
             if(rc == PLCTAG_STATUS_OK) {
                 pdebug(DEBUG_DETAIL, "Response ready, going back to PLC_READY state.");
                 plc->flags.response_ready = 1;
-                plc->state = PLC_READY;
+                plc->state = modbus_plc_t::PLC_READY;
             } else if(rc == PLCTAG_STATUS_PENDING) {
                 pdebug(DEBUG_DETAIL, "Response not complete, continue reading data.");
             } else {
@@ -7526,14 +7526,14 @@ THREAD_FUNC(modbus_plc_handler)
                 plc->write_data_offset = 0;
 
                 /* try to reconnect immediately. */
-                plc->state = PLC_CONNECT_START;
+                plc->state = modbus_plc_t::PLC_CONNECT_START;
             }
 
             /* in all cases we want to cycle through the state machine immediately. */
 
             break;
 
-        case PLC_ERR_WAIT:
+        case modbus_plc_t::PLC_ERR_WAIT:
             pdebug(DEBUG_DETAIL, "in PLC_ERR_WAIT state.");
 
             /* clean up the socket in case we did not earlier */
@@ -7543,17 +7543,17 @@ THREAD_FUNC(modbus_plc_handler)
 
             /* wait until done. */
             if(err_delay_until > time_ms()) {
-                pdebug(DEBUG_DETAIL, "Waiting for at least %"PRId64"ms.", (err_delay_until - time_ms()));
+                pdebug(DEBUG_DETAIL, "Waiting for at least %" PRId64 "ms.", (err_delay_until - time_ms()));
                 sleep_ms(PLC_SOCKET_ERR_DELAY_WAIT_INCREMENT);
             } else {
                 pdebug(DEBUG_DETAIL, "Error wait is over, going to state PLC_CONNECT_START.");
-                plc->state = PLC_CONNECT_START;
+                plc->state = modbus_plc_t::PLC_CONNECT_START;
             }
             break;
 
         default:
             pdebug(DEBUG_WARN, "Unknown state %d!", plc->state);
-            plc->state = PLC_CONNECT_START;
+            plc->state = modbus_plc_t::PLC_CONNECT_START;
             break;
         }
 
@@ -7781,9 +7781,9 @@ int tickle_tag(modbus_plc_p plc, modbus_tag_p tag)
 
         case TAG_OP_READ_RESPONSE:
             /* cross check the state. */
-            if(plc->state == PLC_CONNECT_START
-            || plc->state == PLC_CONNECT_WAIT
-            || plc->state == PLC_ERR_WAIT) {
+            if(plc->state == modbus_plc_t::PLC_CONNECT_START
+            || plc->state == modbus_plc_t::PLC_CONNECT_WAIT
+            || plc->state == modbus_plc_t::PLC_ERR_WAIT) {
                 pdebug(DEBUG_WARN, "PLC changed state, restarting request.");
                 tag->op = TAG_OP_READ_REQUEST;
                 break;
@@ -7888,9 +7888,9 @@ int tickle_tag(modbus_plc_p plc, modbus_tag_p tag)
 
         case TAG_OP_WRITE_RESPONSE:
             /* cross check the state. */
-            if(plc->state == PLC_CONNECT_START
-            || plc->state == PLC_CONNECT_WAIT
-            || plc->state == PLC_ERR_WAIT) {
+            if(plc->state == modbus_plc_t::PLC_CONNECT_START
+            || plc->state == modbus_plc_t::PLC_CONNECT_WAIT
+            || plc->state == modbus_plc_t::PLC_ERR_WAIT) {
                 pdebug(DEBUG_WARN, "PLC changed state, restarting request.");
                 tag->op = TAG_OP_WRITE_REQUEST;
                 break;
@@ -7999,7 +7999,7 @@ int find_request_slot(modbus_plc_p plc, modbus_tag_p tag)
         return PLCTAG_ERR_BUSY;
     }
 
-    if(plc->state != PLC_READY) {
+    if(plc->state != modbus_plc_t::PLC_READY) {
         pdebug(DEBUG_DETAIL, "PLC not ready.");
         return PLCTAG_ERR_BUSY;
     }
@@ -8012,7 +8012,7 @@ int find_request_slot(modbus_plc_p plc, modbus_tag_p tag)
     /* search for a slot. */
     for(int slot=0; slot < plc->max_requests_in_flight; slot++) {
         if(plc->tags_with_requests[slot] == 0) {
-            pdebug(DEBUG_DETAIL, "Found request slot %d for tag %"PRId32".", slot, tag->tag_id);
+            pdebug(DEBUG_DETAIL, "Found request slot %d for tag %" PRId32 ".", slot, tag->tag_id);
             plc->tags_with_requests[slot] = tag->tag_id;
             tag->request_slot = slot;
             return PLCTAG_STATUS_OK;
@@ -8027,12 +8027,12 @@ int find_request_slot(modbus_plc_p plc, modbus_tag_p tag)
 
 void clear_request_slot(modbus_plc_p plc, modbus_tag_p tag)
 {
-    pdebug(DEBUG_DETAIL, "Starting for tag %"PRId32".", tag->tag_id);
+    pdebug(DEBUG_DETAIL, "Starting for tag %" PRId32 ".", tag->tag_id);
 
     /* find the tag in the slots. */
     for(int slot=0; slot < plc->max_requests_in_flight; slot++) {
         if(plc->tags_with_requests[slot] == tag->tag_id) {
-            pdebug(DEBUG_DETAIL, "Found tag %"PRId32" in slot %d.", tag->tag_id, slot);
+            pdebug(DEBUG_DETAIL, "Found tag %" PRId32 " in slot %d.", tag->tag_id, slot);
 
             if(slot != tag->request_slot) {
                 pdebug(DEBUG_DETAIL, "Tag was not in expected slot %d!", tag->request_slot);
@@ -8043,7 +8043,7 @@ void clear_request_slot(modbus_plc_p plc, modbus_tag_p tag)
         }
     }
 
-    pdebug(DEBUG_DETAIL, "Done for tag %"PRId32".", tag->tag_id);
+    pdebug(DEBUG_DETAIL, "Done for tag %" PRId32 ".", tag->tag_id);
 }
 
 
@@ -9072,7 +9072,7 @@ void mb_teardown(void)
 {
     pdebug(DEBUG_INFO, "Starting.");
 
-    library_terminating = 1;
+    mb_library_terminating = 1;
 
     if(mb_mutex) {
         pdebug(DEBUG_DETAIL, "Waiting for all Modbus PLCs to terminate.");
@@ -9158,12 +9158,6 @@ struct tag_vtable_t system_tag_vtable = {
 tag_byte_order_t system_tag_byte_order = {
     .is_allocated = 0,
 
-    .int16_order = {0,1},
-    .int32_order = {0,1,2,3},
-    .int64_order = {0,1,2,3,4,5,6,7},
-    .float32_order = {0,1,2,3},
-    .float64_order = {0,1,2,3,4,5,6,7},
-
     .str_is_defined = 1,
     .str_is_counted = 0,
     .str_is_fixed_length = 0,
@@ -9173,7 +9167,13 @@ tag_byte_order_t system_tag_byte_order = {
     .str_count_word_bytes = 0,
     .str_max_capacity = 0,
     .str_total_length = 0,
-    .str_pad_bytes = 0
+    .str_pad_bytes = 0,
+
+    .int16_order = {0,1},
+    .int32_order = {0,1,2,3},
+    .int64_order = {0,1,2,3,4,5,6,7},
+    .float32_order = {0,1,2,3},
+    .float64_order = {0,1,2,3,4,5,6,7},    
 };
 
 
@@ -9839,7 +9839,7 @@ int get_tag_data_type(ab_tag_p tag, attr attribs)
     int rc = PLCTAG_STATUS_OK;
     const char *elem_type = NULL;
     const char *tag_name = NULL;
-    pccc_addr_t file_addr =  {0};
+    pccc_addr_t file_addr =  {};
 
     pdebug(DEBUG_DETAIL, "Starting.");
 
@@ -9857,7 +9857,7 @@ int get_tag_data_type(ab_tag_p tag, attr attribs)
         }
 
         tag->elem_size = file_addr.element_size_bytes;
-        tag->file_type = (int)file_addr.file_type;
+        tag->file_type = file_addr.file_type;
 
         break;
 
@@ -10048,7 +10048,7 @@ int ab_tag_abort(ab_tag_p tag)
             tag->req->abort_request = 1;
         }
 
-        tag->req = rc_dec(tag->req);
+        tag->req = (ab_request_p)rc_dec(tag->req);
     } else {
         pdebug(DEBUG_DETAIL, "Called without a request in flight.");
     }
@@ -10634,7 +10634,7 @@ int cip_encode_path(const char *path, int *needs_connection, plc_type_t plc_type
 
     if(conn_path_index > 0) {
         /* allocate space for the connection path */
-        *conn_path = mem_alloc((int)(unsigned int)conn_path_index);
+        *conn_path = (uint8_t*)mem_alloc((int)(unsigned int)conn_path_index);
         if(! *conn_path) {
             pdebug(DEBUG_WARN, "Unable to allocate connection path!");
             return PLCTAG_ERR_NO_MEM;
@@ -11648,36 +11648,30 @@ struct tag_vtable_t udt_tag_vtable = {
 
 
 
-tag_byte_order_t listing_tag_logix_byte_order = {
-    .is_allocated = 0,
-
-    .int16_order = {0,1},
-    .int32_order = {0,1,2,3},
-    .int64_order = {0,1,2,3,4,5,6,7},
-    .float32_order = {0,1,2,3},
-    .float64_order = {0,1,2,3,4,5,6,7},
-
-    .str_is_defined = 1,
-    .str_is_counted = 1,
-    .str_is_fixed_length = 0,
-    .str_is_zero_terminated = 0,
-    .str_is_byte_swapped = 0,
-
-    .str_count_word_bytes = 2,
-    .str_max_capacity = 0,
-    .str_total_length = 0,
-    .str_pad_bytes = 0
-};
+//tag_byte_order_t listing_tag_logix_byte_order = {
+//    .is_allocated = 0,
+//
+//    .str_is_defined = 1,
+//    .str_is_counted = 1,
+//    .str_is_fixed_length = 0,
+//    .str_is_zero_terminated = 0,
+//    .str_is_byte_swapped = 0,
+//
+//    .str_count_word_bytes = 2,
+//    .str_max_capacity = 0,
+//    .str_total_length = 0,
+//    .str_pad_bytes = 0,
+//
+//    .int16_order = {0,1},
+//    .int32_order = {0,1,2,3},
+//    .int64_order = {0,1,2,3,4,5,6,7},
+//    .float32_order = {0,1,2,3},
+//    .float64_order = {0,1,2,3,4,5,6,7},
+//};
 
 /* strings are zero terminated. */
 tag_byte_order_t udt_tag_logix_byte_order = {
     .is_allocated = 0,
-
-    .int16_order = {0,1},
-    .int32_order = {0,1,2,3},
-    .int64_order = {0,1,2,3,4,5,6,7},
-    .float32_order = {0,1,2,3},
-    .float64_order = {0,1,2,3,4,5,6,7},
 
     .str_is_defined = 1,
     .str_is_counted = 0,
@@ -11688,7 +11682,13 @@ tag_byte_order_t udt_tag_logix_byte_order = {
     .str_count_word_bytes = 0,
     .str_max_capacity = 0,
     .str_total_length = 0,
-    .str_pad_bytes = 0
+    .str_pad_bytes = 0,
+
+    .int16_order = {0,1},
+    .int32_order = {0,1,2,3},
+    .int64_order = {0,1,2,3,4,5,6,7},
+    .float32_order = {0,1,2,3},
+    .float64_order = {0,1,2,3,4,5,6,7},
 };
 
 
@@ -11837,7 +11837,7 @@ static int raw_tag_check_write_status_connected(ab_tag_p tag)
     }
 
     /* guard against the request being deleted out from underneath us. */
-    request = rc_inc(tag->req);
+    request = (ab_request_p)rc_inc(tag->req);
     rc = check_write_request_status(tag, request);
     if(rc != PLCTAG_STATUS_OK)  {
         pdebug(DEBUG_DETAIL, "Write request status is not OK.");
@@ -11889,7 +11889,7 @@ static int raw_tag_check_write_status_connected(ab_tag_p tag)
         uint8_t *data_start = (uint8_t *)(&cip_resp->reply_service);
         uint8_t *data_end = request->data + (request->request_size);
         int data_size = (int)(unsigned int)(data_end - data_start);
-        uint8_t *tag_data_buffer = mem_realloc(tag->data, data_size);
+        uint8_t *tag_data_buffer = (uint8_t*)mem_realloc(tag->data, data_size);
 
         if(tag_data_buffer) {
             tag->data = tag_data_buffer;
@@ -11908,7 +11908,7 @@ static int raw_tag_check_write_status_connected(ab_tag_p tag)
 
     /* clean up the request. */
     request->abort_request = 1;
-    tag->req = rc_dec(request);
+    tag->req = (ab_request_p)rc_dec(request);
 
     /*
      * huh?  Yes, we do it a second time because we already had
@@ -11944,7 +11944,7 @@ static int raw_tag_check_write_status_unconnected(ab_tag_p tag)
     pdebug(DEBUG_SPEW, "Starting.");
 
     /* guard against the request being deleted out from underneath us. */
-    request = rc_inc(tag->req);
+    request = (ab_request_p)rc_inc(tag->req);
     rc = check_write_request_status(tag, request);
     if(rc != PLCTAG_STATUS_OK)  {
         pdebug(DEBUG_DETAIL, "Write request status is not OK.");
@@ -11996,7 +11996,7 @@ static int raw_tag_check_write_status_unconnected(ab_tag_p tag)
         uint8_t *data_start = (uint8_t *)(&cip_resp->reply_service);
         uint8_t *data_end = data_start + le2h16(cip_resp->cpf_udi_item_length);
         int data_size = (int)(unsigned int)(data_end - data_start);
-        uint8_t *tag_data_buffer = mem_realloc(tag->data, data_size);
+        uint8_t *tag_data_buffer = (uint8_t*)mem_realloc(tag->data, data_size);
 
         if(tag_data_buffer) {
             tag->data = tag_data_buffer;
@@ -12015,7 +12015,7 @@ static int raw_tag_check_write_status_unconnected(ab_tag_p tag)
 
     /* clean up the request. */
     request->abort_request = 1;
-    tag->req = rc_dec(request);
+    tag->req = (ab_request_p)rc_dec(request);
 
     /*
      * huh?  Yes, we do it a second time because we already had
@@ -12100,7 +12100,7 @@ int raw_tag_build_write_request_connected(ab_tag_p tag)
 
     if (rc != PLCTAG_STATUS_OK) {
         pdebug(DEBUG_ERROR, "Unable to add request to session! rc=%d", rc);
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
         return rc;
     }
 
@@ -12220,7 +12220,7 @@ int raw_tag_build_write_request_unconnected(ab_tag_p tag)
 
     if (rc != PLCTAG_STATUS_OK) {
         pdebug(DEBUG_ERROR, "Unable to add request to session! rc=%d", rc);
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
         return rc;
     }
 
@@ -12463,7 +12463,7 @@ static int listing_tag_check_read_status_connected(ab_tag_p tag)
     }
 
     /* guard against the request being deleted out from underneath us. */
-    request = rc_inc(tag->req);
+    request = (ab_request_p)rc_inc(tag->req);
     rc = check_read_request_status(tag, request);
     if(rc != PLCTAG_STATUS_OK)  {
         pdebug(DEBUG_DETAIL, "Read request status is not OK.");
@@ -12573,7 +12573,7 @@ static int listing_tag_check_read_status_connected(ab_tag_p tag)
 
     /* clean up the request */
     request->abort_request = 1;
-    tag->req = rc_dec(request);
+    tag->req = (ab_request_p)rc_dec(request);
 
     /*
      * huh?  Yes, we do it a second time because we already had
@@ -12750,7 +12750,7 @@ int listing_tag_build_read_request_connected(ab_tag_p tag)
 
     if (rc != PLCTAG_STATUS_OK) {
         pdebug(DEBUG_ERROR, "Unable to add request to session! rc=%d", rc);
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
         return rc;
     }
 
@@ -12940,7 +12940,7 @@ static int udt_tag_check_read_metadata_status_connected(ab_tag_p tag)
     }
 
     /* guard against the request being deleted out from underneath us. */
-    request = rc_inc(tag->req);
+    request = (ab_request_p)rc_inc(tag->req);
     rc = check_read_request_status(tag, request);
     if(rc != PLCTAG_STATUS_OK)  {
         pdebug(DEBUG_DETAIL, "Read request status is not OK.");
@@ -13057,7 +13057,7 @@ static int udt_tag_check_read_metadata_status_connected(ab_tag_p tag)
 
     /* clean up the request */
     request->abort_request = 1;
-    tag->req = rc_dec(request);
+    tag->req = (ab_request_p)rc_dec(request);
 
     /*
      * huh?  Yes, we do it a second time because we already had
@@ -13224,7 +13224,7 @@ int udt_tag_build_read_metadata_request_connected(ab_tag_p tag)
 
     if (rc != PLCTAG_STATUS_OK) {
         pdebug(DEBUG_ERROR, "Unable to add request to session! rc=%d", rc);
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
         return rc;
     }
 
@@ -13270,7 +13270,7 @@ int udt_tag_check_read_fields_status_connected(ab_tag_p tag)
     }
 
     /* guard against the request being deleted out from underneath us. */
-    request = rc_inc(tag->req);
+    request = (ab_request_p)rc_inc(tag->req);
     rc = check_read_request_status(tag, request);
     if(rc != PLCTAG_STATUS_OK)  {
         pdebug(DEBUG_DETAIL, "Read request status is not OK.");
@@ -13358,7 +13358,7 @@ int udt_tag_check_read_fields_status_connected(ab_tag_p tag)
 
     /* clean up the request */
     request->abort_request = 1;
-    tag->req = rc_dec(request);
+    tag->req = (ab_request_p)rc_dec(request);
 
     /*
      * huh?  Yes, we do it a second time because we already had
@@ -13518,7 +13518,7 @@ int udt_tag_build_read_fields_request_connected(ab_tag_p tag)
 
     if (rc != PLCTAG_STATUS_OK) {
         pdebug(DEBUG_ERROR, "Unable to add request to session! rc=%d", rc);
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
         return rc;
     }
 
@@ -13607,7 +13607,7 @@ CIP Tag Info command
  * This is a pseudo UDT structure for each tag entry when listing all the tags
  * in a PLC.
  */
-
+#if 0
 START_PACK typedef struct {
         uint32_le instance_id;  /* monotonically increasing but not contiguous */
         uint16_le symbol_type;   /* type of the symbol. */
@@ -13616,7 +13616,7 @@ START_PACK typedef struct {
         uint16_le string_len;   /* string length count. */
         //uint8_t string_name[82]; /* MAGIC string name bytes (string_len of them, zero padded) */
 } END_PACK tag_list_entry;
-
+#endif
 
 
 static int build_read_request_connected(ab_tag_p tag, int byte_offset);
@@ -13636,6 +13636,8 @@ static int tag_read_start(ab_tag_p tag);
 static int tag_tickler(ab_tag_p tag);
 static int tag_write_start(ab_tag_p tag);
 
+#if 0
+
 /* define the exported vtable for this tag type. */
 struct tag_vtable_t eip_cip_vtable = {
     (tag_vtable_func)ab_tag_abort, /* shared */
@@ -13654,12 +13656,6 @@ struct tag_vtable_t eip_cip_vtable = {
 tag_byte_order_t logix_tag_byte_order = {
     .is_allocated = 0,
 
-    .int16_order = {0,1},
-    .int32_order = {0,1,2,3},
-    .int64_order = {0,1,2,3,4,5,6,7},
-    .float32_order = {0,1,2,3},
-    .float64_order = {0,1,2,3,4,5,6,7},
-
     .str_is_defined = 1,
     .str_is_counted = 1,
     .str_is_fixed_length = 1,
@@ -13669,19 +13665,19 @@ tag_byte_order_t logix_tag_byte_order = {
     .str_count_word_bytes = 4,
     .str_max_capacity = 82,
     .str_total_length = 88,
-    .str_pad_bytes = 2
-};
-
-
-/* default string types used for Omron-NJ/NX PLCs. */
-tag_byte_order_t omron_njnx_tag_byte_order = {
-    .is_allocated = 0,
+    .str_pad_bytes = 2,
 
     .int16_order = {0,1},
     .int32_order = {0,1,2,3},
     .int64_order = {0,1,2,3,4,5,6,7},
     .float32_order = {0,1,2,3},
     .float64_order = {0,1,2,3,4,5,6,7},
+};
+
+
+/* default string types used for Omron-NJ/NX PLCs. */
+tag_byte_order_t omron_njnx_tag_byte_order = {
+    .is_allocated = 0,
 
     .str_is_defined = 1,
     .str_is_counted = 1,
@@ -13692,17 +13688,17 @@ tag_byte_order_t omron_njnx_tag_byte_order = {
     .str_count_word_bytes = 2,
     .str_max_capacity = 0,
     .str_total_length = 0,
-    .str_pad_bytes = 0
-};
-
-tag_byte_order_t logix_tag_listing_byte_order = {
-    .is_allocated = 0,
+    .str_pad_bytes = 0,
 
     .int16_order = {0,1},
     .int32_order = {0,1,2,3},
     .int64_order = {0,1,2,3,4,5,6,7},
     .float32_order = {0,1,2,3},
     .float64_order = {0,1,2,3,4,5,6,7},
+};
+
+tag_byte_order_t logix_tag_listing_byte_order = {
+    .is_allocated = 0,
 
     .str_is_defined = 1,
     .str_is_counted = 1,
@@ -13713,10 +13709,16 @@ tag_byte_order_t logix_tag_listing_byte_order = {
     .str_count_word_bytes = 2,
     .str_max_capacity = 0,
     .str_total_length = 0,
-    .str_pad_bytes = 0
+    .str_pad_bytes = 0,
+
+    .int16_order = {0,1},
+    .int32_order = {0,1,2,3},
+    .int64_order = {0,1,2,3,4,5,6,7},
+    .float32_order = {0,1,2,3},
+    .float64_order = {0,1,2,3,4,5,6,7},
 };
 
-
+#endif
 
 /*************************************************************************
  **************************** API Functions ******************************
@@ -13984,7 +13986,7 @@ int build_read_request_connected(ab_tag_p tag, int byte_offset)
 
     if (rc != PLCTAG_STATUS_OK) {
         pdebug(DEBUG_ERROR, "Unable to add request to session! rc=%d", rc);
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
         return rc;
     }
 
@@ -14123,7 +14125,7 @@ int build_read_request_unconnected(ab_tag_p tag, int byte_offset)
 
     if (rc != PLCTAG_STATUS_OK) {
         pdebug(DEBUG_ERROR, "Unable to add request to session! rc=%d", rc);
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
         return rc;
     }
 
@@ -14273,7 +14275,7 @@ int build_write_bit_request_connected(ab_tag_p tag)
 
     if (rc != PLCTAG_STATUS_OK) {
         pdebug(DEBUG_ERROR, "Unable to add request to session! rc=%d", rc);
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
         return rc;
     }
 
@@ -14461,7 +14463,7 @@ int build_write_bit_request_unconnected(ab_tag_p tag)
 
     if (rc != PLCTAG_STATUS_OK) {
         pdebug(DEBUG_ERROR, "Unable to add request to session! rc=%d", rc);
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
         return rc;
     }
 
@@ -14609,7 +14611,7 @@ int build_write_request_connected(ab_tag_p tag, int byte_offset)
 
     if (rc != PLCTAG_STATUS_OK) {
         pdebug(DEBUG_ERROR, "Unable to add request to session! rc=%d", rc);
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
         return rc;
     }
 
@@ -14790,7 +14792,7 @@ int build_write_request_unconnected(ab_tag_p tag, int byte_offset)
 
     if (rc != PLCTAG_STATUS_OK) {
         pdebug(DEBUG_ERROR, "Unable to add request to session! rc=%d", rc);
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
         return rc;
     }
 
@@ -14830,7 +14832,7 @@ static int check_read_status_connected(ab_tag_p tag)
     }
 
     /* guard against the request being deleted out from underneath us. */
-    request = rc_inc(tag->req);
+    request = (ab_request_p)rc_inc(tag->req);
     rc = check_read_request_status(tag, request);
     if(rc != PLCTAG_STATUS_OK)  {
         pdebug(DEBUG_DETAIL, "Read request status is not OK.");
@@ -14983,7 +14985,7 @@ static int check_read_status_connected(ab_tag_p tag)
 
     /* clean up the request */
     request->abort_request = 1;
-    tag->req = rc_dec(request);
+    tag->req = (ab_request_p)rc_dec(request);
 
     /*
      * huh?  Yes, we do it a second time because we already had
@@ -15049,7 +15051,7 @@ static int check_read_status_unconnected(ab_tag_p tag)
     }
 
     /* guard against the request being deleted out from underneath us. */
-    request = rc_inc(tag->req);
+    request = (ab_request_p)rc_inc(tag->req);
     rc = check_read_request_status(tag, request);
     if(rc != PLCTAG_STATUS_OK)  {
         pdebug(DEBUG_DETAIL, "Read request status is not OK.");
@@ -15197,7 +15199,7 @@ static int check_read_status_unconnected(ab_tag_p tag)
 
     /* clean up the request */
     request->abort_request = 1;
-    tag->req = rc_dec(request);
+    tag->req = (ab_request_p)rc_dec(request);
 
     /*
      * huh?  Yes, we do it a second time because we already had
@@ -15272,7 +15274,7 @@ static int check_write_status_connected(ab_tag_p tag)
     }
 
     /* guard against the request being deleted out from underneath us. */
-    request = rc_inc(tag->req);
+    request = (ab_request_p)rc_inc(tag->req);
     rc = check_write_request_status(tag, request);
     if(rc != PLCTAG_STATUS_OK)  {
         pdebug(DEBUG_DETAIL, "Write request status is not OK.");
@@ -15316,7 +15318,7 @@ static int check_write_status_connected(ab_tag_p tag)
 
     /* clean up the request. */
     request->abort_request = 1;
-    tag->req = rc_dec(request);
+    tag->req = (ab_request_p)rc_dec(request);
 
     /*
      * huh?  Yes, we do it a second time because we already had
@@ -15368,7 +15370,7 @@ static int check_write_status_unconnected(ab_tag_p tag)
     }
 
     /* guard against the request being deleted out from underneath us. */
-    request = rc_inc(tag->req);
+    request = (ab_request_p)rc_inc(tag->req);
     rc = check_write_request_status(tag, request);
     if(rc != PLCTAG_STATUS_OK)  {
         pdebug(DEBUG_DETAIL, "Write request status is not OK.");
@@ -15413,7 +15415,7 @@ static int check_write_status_unconnected(ab_tag_p tag)
 
     /* clean up the request. */
     request->abort_request = 1;
-    tag->req = rc_dec(request);
+    tag->req = (ab_request_p)rc_dec(request);
 
     /*
      * huh?  Yes, we do it a second time because we already had
@@ -15793,7 +15795,7 @@ int tag_read_start(ab_tag_p tag)
 
     if(rc != PLCTAG_STATUS_OK) {
         pdebug(DEBUG_ERROR, "Unable to add request to session! rc=%d", rc);
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
         tag->read_in_progress = 0;
 
         return rc;
@@ -15832,7 +15834,7 @@ static int check_read_status(ab_tag_p tag)
     }
 
     /* guard against the request being deleted out from underneath us. */
-    request = rc_inc(tag->req);
+    request = (ab_request_p)rc_inc(tag->req);
     rc = check_read_request_status(tag, request);
     if(rc != PLCTAG_STATUS_OK)  {
         pdebug(DEBUG_DETAIL, "Read request status is not OK.");
@@ -15934,7 +15936,7 @@ static int check_read_status(ab_tag_p tag)
 
     /* clean up the request */
     request->abort_request = 1;
-    tag->req = rc_dec(request);
+    tag->req = (ab_request_p)rc_dec(request);
 
     /*
      * huh?  Yes, we do it a second time because we already had
@@ -16134,7 +16136,7 @@ int tag_write_start(ab_tag_p tag)
     if(rc != PLCTAG_STATUS_OK) {
         pdebug(DEBUG_ERROR, "Unable to add request to session! rc=%d", rc);
         tag->write_in_progress = 0;
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
         return rc;
     }
 
@@ -16194,7 +16196,7 @@ static int check_write_status(ab_tag_p tag)
     if(rc != PLCTAG_STATUS_OK) {
         if(rc_is_error(rc)) {
             /* the request is dead, from session side. */
-            tag->req = rc_dec(tag->req);
+            tag->req = (ab_request_p)rc_dec(tag->req);
         }
 
         return rc;
@@ -16243,7 +16245,7 @@ static int check_write_status(ab_tag_p tag)
     } while(0);
 
     /* clean up the request */
-    tag->req = rc_dec(req);
+    tag->req = (ab_request_p)rc_dec(req);
 
     tag->write_in_progress = 0;
 
@@ -16555,7 +16557,7 @@ int tag_read_start(ab_tag_p tag)
         tag->read_in_progress = 0;
         pdebug(DEBUG_ERROR, "Unable to add request to session! rc=%d", rc);
         req->abort_request = 1;
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
         return rc;
     }
 
@@ -16743,7 +16745,7 @@ int tag_write_start(ab_tag_p tag)
         tag->write_in_progress = 0;
         pdebug(DEBUG_ERROR, "Unable to add request to session! rc=%d", rc);
         req->abort_request = 1;
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
         return rc;
     }
 
@@ -16778,7 +16780,7 @@ static int check_read_status(ab_tag_p tag)
     }
 
     /* guard against the request being deleted out from underneath us. */
-    request = rc_inc(tag->req);
+    request = (ab_request_p)rc_inc(tag->req);
     rc = check_read_request_status(tag, request);
     if(rc != PLCTAG_STATUS_OK)  {
         pdebug(DEBUG_DETAIL, "Read request status is not OK.");
@@ -16836,7 +16838,7 @@ static int check_read_status(ab_tag_p tag)
 
     /* clean up the request. */
     request->abort_request = 1;
-    tag->req = rc_dec(request);
+    tag->req = (ab_request_p)rc_dec(request);
 
     /*
      * huh?  Yes, we do it a second time because we already had
@@ -16869,7 +16871,7 @@ static int check_write_status(ab_tag_p tag)
     }
 
     /* guard against the request being deleted out from underneath us. */
-    request = rc_inc(tag->req);
+    request = (ab_request_p)rc_inc(tag->req);
     rc = check_write_request_status(tag, request);
     if(rc != PLCTAG_STATUS_OK)  {
         pdebug(DEBUG_DETAIL, "Write request status is not OK.");
@@ -16908,7 +16910,7 @@ static int check_write_status(ab_tag_p tag)
 
     /* clean up the request. */
     request->abort_request = 1;
-    tag->req = rc_dec(request);
+    tag->req = (ab_request_p)rc_dec(request);
 
     /*
      * huh?  Yes, we do it a second time because we already had
@@ -16956,12 +16958,6 @@ struct tag_vtable_t plc5_vtable = {
 tag_byte_order_t plc5_tag_byte_order = {
     .is_allocated = 0,
 
-    .int16_order = {0,1},
-    .int32_order = {0,1,2,3},
-    .int64_order = {0,1,2,3,4,5,6,7},
-    .float32_order = {2,3,0,1}, /* yes, it is that weird. */
-    .float64_order = {0,1,2,3,4,5,6,7},
-
     .str_is_defined = 1,
     .str_is_counted = 1,
     .str_is_fixed_length = 1,
@@ -16971,7 +16967,13 @@ tag_byte_order_t plc5_tag_byte_order = {
     .str_count_word_bytes = 2,
     .str_max_capacity = 82,
     .str_total_length = 84,
-    .str_pad_bytes = 0
+    .str_pad_bytes = 0,
+
+    .int16_order = {0,1},
+    .int32_order = {0,1,2,3},
+    .int64_order = {0,1,2,3,4,5,6,7},
+    .float32_order = {2,3,0,1}, /* yes, it is that weird. */
+    .float64_order = {0,1,2,3,4,5,6,7},
 };
 
 
@@ -17223,7 +17225,7 @@ int tag_read_start(ab_tag_p tag)
         req->abort_request = 1;
         tag->read_in_progress = 0;
 
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
 
         return rc;
     }
@@ -17264,7 +17266,7 @@ static int check_read_status(ab_tag_p tag)
     }
 
     /* guard against the request being deleted out from underneath us. */
-    request = rc_inc(tag->req);
+    request = (ab_request_p)rc_inc(tag->req);
     rc = check_read_request_status(tag, request);
     if(rc != PLCTAG_STATUS_OK)  {
         pdebug(DEBUG_DETAIL, "Read request status is not OK.");
@@ -17328,7 +17330,7 @@ static int check_read_status(ab_tag_p tag)
 
     /* clean up the request. */
     request->abort_request = 1;
-    tag->req = rc_dec(request);
+    tag->req = (ab_request_p)rc_dec(request);
 
     /*
      * huh?  Yes, we do it a second time because we already had
@@ -17525,7 +17527,7 @@ int tag_write_start(ab_tag_p tag)
         req->abort_request = 1;
         tag->write_in_progress = 0;
 
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
 
         return rc;
     }
@@ -17559,7 +17561,7 @@ static int check_write_status(ab_tag_p tag)
     }
 
     /* guard against the request being deleted out from underneath us. */
-    request = rc_inc(tag->req);
+    request = (ab_request_p)rc_inc(tag->req);
     rc = check_write_request_status(tag, request);
     if(rc != PLCTAG_STATUS_OK)  {
         pdebug(DEBUG_DETAIL, "Write request status is not OK.");
@@ -17603,7 +17605,7 @@ static int check_write_status(ab_tag_p tag)
 
     /* clean up the request. */
     request->abort_request = 1;
-    tag->req = rc_dec(request);
+    tag->req = (ab_request_p)rc_dec(request);
 
     /*
      * huh?  Yes, we do it a second time because we already had
@@ -17919,7 +17921,7 @@ int tag_read_start(ab_tag_p tag)
         tag->read_in_progress = 0;
         pdebug(DEBUG_ERROR, "Unable to add request to session! rc=%d", rc);
         req->abort_request = 1;
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
         return rc;
     }
 
@@ -18048,7 +18050,7 @@ int tag_write_start(ab_tag_p tag)
         tag->write_in_progress = 0;
         pdebug(DEBUG_ERROR, "Unable to add request to session! rc=%d", rc);
         req->abort_request = 1;
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
         return rc;
     }
 
@@ -18082,7 +18084,7 @@ static int check_read_status(ab_tag_p tag)
     }
 
     /* guard against the request being deleted out from underneath us. */
-    request = rc_inc(tag->req);
+    request = (ab_request_p)rc_inc(tag->req);
     rc = check_read_request_status(tag, request);
     if(rc != PLCTAG_STATUS_OK)  {
         pdebug(DEBUG_DETAIL, "Read request status is not OK.");
@@ -18140,7 +18142,7 @@ static int check_read_status(ab_tag_p tag)
 
     /* clean up the request. */
     request->abort_request = 1;
-    tag->req = rc_dec(request);
+    tag->req = (ab_request_p)rc_dec(request);
 
     /*
      * huh?  Yes, we do it a second time because we already had
@@ -18173,7 +18175,7 @@ static int check_write_status(ab_tag_p tag)
     }
 
     /* guard against the request being deleted out from underneath us. */
-    request = rc_inc(tag->req);
+    request = (ab_request_p)rc_inc(tag->req);
     rc = check_write_request_status(tag, request);
     if(rc != PLCTAG_STATUS_OK)  {
         pdebug(DEBUG_DETAIL, "Write request status is not OK.");
@@ -18212,7 +18214,7 @@ static int check_write_status(ab_tag_p tag)
 
     /* clean up the request. */
     request->abort_request = 1;
-    tag->req = rc_dec(request);
+    tag->req = (ab_request_p)rc_dec(request);
 
     /*
      * huh?  Yes, we do it a second time because we already had
@@ -18260,12 +18262,6 @@ struct tag_vtable_t slc_vtable = {
 tag_byte_order_t slc_tag_byte_order = {
     .is_allocated = 0,
 
-    .int16_order = {0,1},
-    .int32_order = {0,1,2,3},
-    .int64_order = {0,1,2,3,4,5,6,7},
-    .float32_order = {0,1,2,3},
-    .float64_order = {0,1,2,3,4,5,6,7},
-
     .str_is_defined = 1,
     .str_is_counted = 1,
     .str_is_fixed_length = 1,
@@ -18275,7 +18271,13 @@ tag_byte_order_t slc_tag_byte_order = {
     .str_count_word_bytes = 2,
     .str_max_capacity = 82,
     .str_total_length = 84,
-    .str_pad_bytes = 0
+    .str_pad_bytes = 0,
+
+    .int16_order = {0,1},
+    .int32_order = {0,1,2,3},
+    .int64_order = {0,1,2,3,4,5,6,7},
+    .float32_order = {0,1,2,3},
+    .float64_order = {0,1,2,3,4,5,6,7},
 };
 
 
@@ -18523,7 +18525,7 @@ int tag_read_start(ab_tag_p tag)
         req->abort_request = 1;
         tag->read_in_progress = 0;
 
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
 
         return rc;
     }
@@ -18565,7 +18567,7 @@ static int check_read_status(ab_tag_p tag)
     }
 
     /* guard against the request being deleted out from underneath us. */
-    request = rc_inc(tag->req);
+    request = (ab_request_p)rc_inc(tag->req);
     rc = check_read_request_status(tag, request);
     if(rc != PLCTAG_STATUS_OK)  {
         pdebug(DEBUG_DETAIL, "Read request status is not OK.");
@@ -18628,7 +18630,7 @@ static int check_read_status(ab_tag_p tag)
 
     /* clean up the request. */
     request->abort_request = 1;
-    tag->req = rc_dec(request);
+    tag->req = (ab_request_p)rc_dec(request);
 
     /*
      * huh?  Yes, we do it a second time because we already had
@@ -18785,7 +18787,7 @@ int tag_write_start(ab_tag_p tag)
         req->abort_request = 1;
         tag->write_in_progress =0;
 
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
 
         return rc;
     }
@@ -18827,7 +18829,7 @@ static int check_write_status(ab_tag_p tag)
     }
 
     /* guard against the request being deleted out from underneath us. */
-    request = rc_inc(tag->req);
+    request = (ab_request_p)rc_inc(tag->req);
     rc = check_write_request_status(tag, request);
     if(rc != PLCTAG_STATUS_OK)  {
         pdebug(DEBUG_DETAIL, "Write request status is not OK.");
@@ -18871,7 +18873,7 @@ static int check_write_status(ab_tag_p tag)
 
     /* clean up the request. */
     request->abort_request = 1;
-    tag->req = rc_dec(request);
+    tag->req = (ab_request_p)rc_dec(request);
 
     /*
      * huh?  Yes, we do it a second time because we already had
@@ -20642,7 +20644,7 @@ int remove_session_unsafe(ab_session_p session)
     }
 
     for(int i=0; i < vector_length(sessions); i++) {
-        ab_session_p tmp = vector_get(sessions, i);
+        ab_session_p tmp = (ab_session_p)vector_get(sessions, i);
 
         if(tmp == session) {
             vector_remove(sessions, i);
@@ -20709,10 +20711,10 @@ int session_match_valid(const char *host, const char *path, ab_session_p session
 ab_session_p find_session_by_host_unsafe(const char *host, const char *path, int connection_group_id)
 {
     for(int i=0; i < vector_length(sessions); i++) {
-        ab_session_p session = vector_get(sessions, i);
+        ab_session_p session = (ab_session_p)vector_get(sessions, i);
 
         /* is this session in the process of destruction? */
-        session = rc_inc(session);
+        session = (ab_session_p)rc_inc(session);
         if(session) {
             if(session->connection_group_id == connection_group_id && session_match_valid(host, path, session)) {
                 return session;
@@ -21072,7 +21074,7 @@ int session_close_socket(ab_session_p session)
 
 void session_destroy(void *session_arg)
 {
-    ab_session_p session = session_arg;
+    ab_session_p session = (ab_session_p)session_arg;
 
     pdebug(DEBUG_INFO, "Starting.");
 
@@ -21197,7 +21199,7 @@ int session_add_request_unsafe(ab_session_p session, ab_request_p req)
         return PLCTAG_ERR_NULL_PTR;
     }
 
-    req = rc_inc(req);
+    req = (ab_request_p)rc_inc(req);
 
     if(!req) {
         pdebug(DEBUG_WARN, "Request is either null or in the process of being deleted.");
@@ -21288,7 +21290,7 @@ typedef enum { SESSION_OPEN_SOCKET_START, SESSION_OPEN_SOCKET_WAIT, SESSION_REGI
 
 THREAD_FUNC(session_handler)
 {
-    ab_session_p session = arg;
+    ab_session_p session = (ab_session_p)arg;
     int rc = PLCTAG_STATUS_OK;
     session_state_t state = SESSION_OPEN_SOCKET_START;
     int64_t timeout_time = 0;
@@ -21606,7 +21608,7 @@ int purge_aborted_requests_unsafe(ab_session_p session)
 
     /* remove the aborted requests. */
     for(int i=0; i < vector_length(session->requests); i++) {
-        request = vector_get(session->requests, i);
+        request = (ab_request_p)vector_get(session->requests, i);
 
         /* filter out the aborts. */
         if(request && request->abort_request) {
@@ -21625,7 +21627,7 @@ int purge_aborted_requests_unsafe(ab_session_p session)
             request->resp_received = 1;
 
             /* release our hold on it. */
-            request = rc_dec(request);
+            request = (ab_request_p)rc_dec(request);
 
             /* vector size has changed, back up one. */
             i--;
@@ -21680,7 +21682,7 @@ int process_requests(ab_session_p session)
 
             if(vector_length(session->requests)) {
                 do {
-                    request = vector_get(session->requests, 0);
+                    request = (ab_request_p)vector_get(session->requests, 0);
 
                     remaining_space = remaining_space - get_payload_size(request);
 
@@ -21777,7 +21779,7 @@ int process_requests(ab_session_p session)
                 }
 
                 /* release our reference */
-                bundled_requests[i] = rc_dec(bundled_requests[i]);
+                bundled_requests[i] = (ab_request_p)rc_dec(bundled_requests[i]);
             }
 
             rc = PLCTAG_STATUS_OK;
@@ -21791,7 +21793,7 @@ int process_requests(ab_session_p session)
                     bundled_requests[i]->request_size = 0;
                     bundled_requests[i]->resp_received = 1;
 
-                    bundled_requests[i] = rc_dec(bundled_requests[i]);
+                    bundled_requests[i] = (ab_request_p)rc_dec(bundled_requests[i]);
                 }
             }
         }
@@ -22822,7 +22824,7 @@ int session_create_request(ab_session_p session, int tag_id, ab_request_p *req)
 
 void request_destroy(void *req_arg)
 {
-    ab_request_p req = req_arg;
+    ab_request_p req = (ab_request_p)req_arg;
 
     pdebug(DEBUG_DETAIL, "Starting.");
 
@@ -23550,11 +23552,11 @@ THREAD_FUNC(tag_tickler_func)
                 max_index = hashtable_capacity(tags);
 
                 if(i < max_index) {
-                    tag = hashtable_get_index(tags, i);
+                    tag = (plc_tag_p)hashtable_get_index(tags, i);
 
                     if(tag) {
                         debug_set_tag_id(tag->tag_id);
-                        tag = rc_inc(tag);
+                        tag = (plc_tag_p)rc_inc(tag);
                     }
                 } else {
                     debug_set_tag_id(0);
@@ -24130,12 +24132,12 @@ LIB_EXPORT void plc_tag_shutdown(void)
             tag_table_entries = hashtable_capacity(tags);
 
             if(i<tag_table_entries && tag_table_entries >= 0) {
-                tag = hashtable_get_index(tags, i);
+                tag = (plc_tag_p)hashtable_get_index(tags, i);
 
                 /* make sure the tag does not go away while we are using the pointer. */
                 if(tag) {
                     /* this returns NULL if the existing ref-count is zero. */
-                    tag = rc_inc(tag);
+                    tag = (plc_tag_p)rc_inc(tag);
                 }
             }
         }
@@ -24565,7 +24567,7 @@ LIB_EXPORT int plc_tag_destroy(int32_t tag_id)
     }
 
     critical_block(tag_lookup_mutex) {
-        tag = hashtable_remove(tags, tag_id);
+        tag = (plc_tag_p)hashtable_remove(tags, tag_id);
     }
 
     if(!tag) {
@@ -25189,7 +25191,7 @@ LIB_EXPORT int plc_tag_set_size(int32_t id, int new_size)
     }
 
     critical_block(tag->api_mutex) {
-        uint8_t *new_data = mem_realloc(tag->data, new_size);
+        uint8_t *new_data = (uint8_t*)mem_realloc(tag->data, new_size);
 
         if(new_data) {
             /* return the old size */
@@ -27004,7 +27006,7 @@ int set_tag_byte_order(plc_tag_p tag, attr attribs)
         const char *byte_order_str = NULL;
         int str_param = 0;
         int rc = PLCTAG_STATUS_OK;
-        tag_byte_order_t *new_byte_order = mem_alloc((int)(unsigned int)sizeof(*(tag->byte_order)));
+        tag_byte_order_t *new_byte_order = (tag_byte_order_t*)mem_alloc((int)(unsigned int)sizeof(*(tag->byte_order)));
 
         if(!new_byte_order) {
             pdebug(DEBUG_WARN, "Unable to allocate byte order struct for tag!");
@@ -27299,7 +27301,7 @@ plc_tag_p lookup_tag(int32_t tag_id)
     plc_tag_p tag = NULL;
 
     critical_block(tag_lookup_mutex) {
-        tag = hashtable_get(tags, (int64_t)tag_id);
+        tag = (plc_tag_p)hashtable_get(tags, (int64_t)tag_id);
 
         if(tag) {
             debug_set_tag_id(tag->tag_id);
@@ -27310,7 +27312,7 @@ plc_tag_p lookup_tag(int32_t tag_id)
 
         if(tag && tag->tag_id == tag_id) {
             pdebug(DEBUG_SPEW, "Found tag %p with id %d.", tag, tag->tag_id);
-            tag = rc_inc(tag);
+            tag = (plc_tag_p)rc_inc(tag);
         } else {
             debug_set_tag_id(0);
             tag = NULL;
@@ -27462,15 +27464,4 @@ int get_string_length_unsafe(plc_tag_p tag, int offset)
 }
 
 #endif // __LIB_LIB_C__
-
-
-
-#ifndef __X_H__
-#define __X_H__
-
-
-
-#endif // __X_H__
-
-
 

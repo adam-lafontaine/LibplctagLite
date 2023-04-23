@@ -39,10 +39,6 @@
 extern "C" {
 #endif
 
-#ifdef LIBPLCTAGDLL_EXPORTS
-#undef LIBPLCTAGDLL_EXPORTS
-#endif
-
 
 #if  defined(_WIN32) || defined(WIN32) || defined(WIN64) || defined(_WIN64)
     #ifdef __cplusplus
@@ -54,8 +50,7 @@ extern "C" {
     #ifdef LIBPLCTAGDLL_EXPORTS
         #define LIB_EXPORT __declspec(dllexport)
     #else
-        //#define LIB_EXPORT __declspec(dllimport)
-        #define LIB_EXPORT extern
+        #define LIB_EXPORT __declspec(dllimport)
     #endif
 #else
     #ifdef LIBPLCTAGDLL_EXPORTS
