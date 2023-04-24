@@ -125,10 +125,6 @@ namespace plctag
     void destroy(i32 tag);
     
     void shutdown(void);
-
-    bool thread_lock(i32 tag);
-
-    bool thread_unlock(i32 tag);
     
     bool abort(i32 tag);
 
