@@ -58,7 +58,7 @@ struct udt_entry_s {
     uint16_t num_fields;
     uint16_t struct_handle;
     uint32_t instance_size;
-    struct udt_field_entry_s fields[];
+    struct udt_field_entry_s fields[]; // max entries?
 };
 
 
@@ -466,7 +466,7 @@ bool process_tag_entry(int32_t tag, int* offset, uint16_t* last_tag_id, struct t
     *offset += 4;
 
     /* get the tag name length. */
-    tag_name_len = plc::get_string_length(tag, *offset).data;
+    tag_name_len = (int)plc::get_string_length(tag, *offset).data;
     // *offset += 2;
 
     /* allocate space for the the tag name.  Add one for the zero termination. */
@@ -484,7 +484,7 @@ bool process_tag_entry(int32_t tag, int* offset, uint16_t* last_tag_id, struct t
     }
 
     /* skip past the string. */
-    (*offset) += plc::get_string_total_length(tag, *offset).data;
+    (*offset) += (int)plc::get_string_total_length(tag, *offset).data;
 
     fprintf(stderr, "Tag %s, string length: %d.\n", tag_name, (int)(unsigned int)strlen(tag_name));
 
@@ -663,7 +663,7 @@ bool get_udt_definition(const char* tag_string_base, uint16_t udt_id)
         return false;
     }
 
-    tag_size = tag_result.data.tag_size;
+    tag_size = (int)tag_result.data.tag_size;
 
     /* the format in the tag buffer is:
      *
@@ -806,7 +806,7 @@ bool get_udt_definition(const char* tag_string_base, uint16_t udt_id)
     fprintf(stderr, "Getting data from UDT \"%s\".\n", udts[udt_id]->name);
 
     /* skip past the UDT name. */
-    offset += plc::get_string_total_length(udt_info_tag, offset).data;
+    offset += (int)plc::get_string_total_length(udt_info_tag, offset).data;
 
     /*
      * This is the second section of the data, the field names.   They appear
@@ -823,7 +823,7 @@ bool get_udt_definition(const char* tag_string_base, uint16_t udt_id)
 
         /* first get the zero-terminated string length */
         len_result = plc::get_string_length(udt_info_tag, offset);
-        name_len = len_result.data;
+        name_len = (int)len_result.data;
         if (!len_result.is_ok() || name_len >= 256) {
             plc::destroy(udt_info_tag);
             fprintf(stderr, "Unexpected UDT field name length: %d! Error: %s\n", name_len, len_result.error);
@@ -840,6 +840,7 @@ bool get_udt_definition(const char* tag_string_base, uint16_t udt_id)
                 plc::destroy(udt_info_tag);
                 fprintf(stderr, "Unable to allocate UDT field name string!\n");
                 usage();
+                continue;
             }
 
             fprintf(stderr, "The string for field %u is at %p.\n", field_index, (void*)name_str);
@@ -851,13 +852,14 @@ bool get_udt_definition(const char* tag_string_base, uint16_t udt_id)
                 fprintf(stderr, "Error %s retrieving UDT field name string from the tag!\n", str_result.error);
                 free(name_str);
                 usage();
+                continue;
             }
 
             udts[udt_id]->fields[field_index].name = name_str; // TODO
 
             fprintf(stderr, "UDT field %d is \"%s\".\n", field_index, udts[udt_id]->fields[field_index].name);
 
-            offset += plc::get_string_total_length(udt_info_tag, offset).data;
+            offset += (int)plc::get_string_total_length(udt_info_tag, offset).data;
         }
         else {
             /* field name was zero length. */

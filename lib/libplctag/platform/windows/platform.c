@@ -622,7 +622,7 @@ extern char **str_split(const char *str, const char *sep)
         sub_str_count++;
 
     /* calculate total size for string plus pointers */
-    size = sizeof(char *)*(sub_str_count+1)+str_length(str)+1;
+    size = (int)sizeof(char *) * (sub_str_count+1)+str_length(str)+1;
 
     /* allocate enough memory */
     res = (char**)mem_alloc(size);
@@ -630,7 +630,7 @@ extern char **str_split(const char *str, const char *sep)
         return NULL;
 
     /* calculate the beginning of the string */
-    tmp = (char *)res + sizeof(char *)*(sub_str_count+1);
+    tmp = (char *)res + (int)sizeof(char *) * (sub_str_count+1);
 
     /* copy the string into the new buffer past the first part with the array of char pointers. */
     str_copy((char *)tmp, (int)(size - ((char*)tmp - (char*)res)), str);
@@ -1340,7 +1340,7 @@ extern int socket_create(sock_p *s)
 int socket_connect_tcp_start(sock_p s, const char *host, int port)
 {
     int rc = PLCTAG_STATUS_OK;
-    IN_ADDR ips[MAX_IPS];
+    IN_ADDR ips[MAX_IPS] = { 0 };
     int num_ips = 0;
     struct sockaddr_in gw_addr;
     int sock_opt = 1;
@@ -1348,8 +1348,8 @@ int socket_connect_tcp_start(sock_p s, const char *host, int port)
     int i = 0;
     int done = 0;
     SOCKET fd;
-    struct timeval timeout; /* used for timing out connections etc. */
-    struct linger so_linger;
+    struct timeval timeout = { 0 }; /* used for timing out connections etc. */
+    struct linger so_linger = { 0 };
 
     pdebug(DEBUG_DETAIL, "Starting.");
 
@@ -1509,9 +1509,9 @@ int socket_connect_tcp_start(sock_p s, const char *host, int port)
 int socket_connect_tcp_check(sock_p sock, int timeout_ms)
 {
     int rc = PLCTAG_STATUS_OK;
-    fd_set write_set;
-    fd_set err_set;
-    struct timeval tv;
+    fd_set write_set = { 0 };
+    fd_set err_set = { 0 };
+    struct timeval tv = { 0 };
     int select_rc = 0;
 
     pdebug(DEBUG_DETAIL, "Starting.");
@@ -1603,9 +1603,9 @@ int socket_connect_tcp_check(sock_p sock, int timeout_ms)
 int socket_wait_event(sock_p sock, int events, int timeout_ms)
 {
     int result = SOCK_EVENT_NONE;
-    fd_set read_set;
-    fd_set write_set;
-    fd_set err_set;
+    fd_set read_set = { 0 };
+    fd_set write_set = { 0 };
+    fd_set err_set = { 0 };
     int num_sockets = 0;
 
     pdebug(DEBUG_DETAIL, "Starting.");
@@ -1653,7 +1653,7 @@ int socket_wait_event(sock_p sock, int events, int timeout_ms)
 
     /* calculate the timeout. */
     if(timeout_ms > 0) {
-        struct timeval tv;
+        struct timeval tv = { 0 };
 
         tv.tv_sec = (long)(timeout_ms / 1000);
         tv.tv_usec = (long)(timeout_ms % 1000) * (long)(1000);
@@ -1669,7 +1669,7 @@ int socket_wait_event(sock_p sock, int events, int timeout_ms)
         /* was there a wake up? */
         if(FD_ISSET(sock->wake_read_fd, &read_set)) {
             int bytes_read = 0;
-            char buf[32];
+            char buf[32] = { 0 };
 
             /* empty the socket. */
             while((bytes_read = (int)recv(sock->wake_read_fd, (char*)&buf[0], sizeof(buf), 0)) > 0) { }
@@ -1846,8 +1846,8 @@ int socket_read(sock_p s, uint8_t *buf, int size, int timeout_ms)
 
     /* only wait if we have a timeout and no data and no error. */
     if(rc == 0 && timeout_ms > 0) {
-        fd_set read_set;
-        TIMEVAL tv;
+        fd_set read_set = { 0 };
+        TIMEVAL tv = { 0 };
         int select_rc = 0;
 
         tv.tv_sec = (long)(timeout_ms / 1000);
@@ -1983,8 +1983,8 @@ int socket_write(sock_p s, uint8_t *buf, int size, int timeout_ms)
 
     /* only wait if we have a timeout and no data. */
     if(rc == 0 && timeout_ms > 0) {
-        fd_set write_set;
-        TIMEVAL tv;
+        fd_set write_set = { 0 };
+        TIMEVAL tv = { 0 };
         int select_rc = 0;
 
         tv.tv_sec = (long)(timeout_ms / 1000);
@@ -2155,7 +2155,7 @@ int sock_create_event_wakeup_channel(sock_p sock)
     struct sockaddr_in listener_addr_info;
     socklen_t addr_info_size = sizeof(struct sockaddr_in);
     int non_blocking = 1;
-    SOCKET wake_fds[2];
+    SOCKET wake_fds[2] = { 0 };
 
     pdebug(DEBUG_INFO, "Starting.");
 
@@ -2439,7 +2439,8 @@ serial_port_p plc_lib_open_serial_port(/*plc_lib lib,*/ const char *path, int ba
     }
 
     /* open the serial port device */
-    hSerialPort = CreateFile(path,
+    hSerialPort = CreateFileA(path,
+    //hSerialPort = CreateFile(path,
                              GENERIC_READ | GENERIC_WRITE,
                              0,
                              NULL,
