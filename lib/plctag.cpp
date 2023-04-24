@@ -9,12 +9,18 @@ namespace plctag
     constexpr auto ERR_ELEM_SIZE = "Tag element/count size error";
 
 
-
     template <class T>
     static void decode_result(Result<T>& result, int rc)
     {
-        result.status = static_cast<STATUS>(rc);
-        result.error = plc_tag_decode_error(rc);
+        if (rc < 0)
+        {
+            result.status = static_cast<Status>(rc);
+            result.error = plc_tag_decode_error(rc);
+        }
+        else
+        {
+            result.status = Status::OK;
+        }       
     }
 
 
@@ -70,7 +76,7 @@ namespace plctag
 
         if (elem_size <= 0 || elem_count <= 0 || size != elem_size * elem_count)
         {
-            result.status = STATUS::PLCTAG_ERR_BAD_SIZE;
+            result.status = Status::ERR_BAD_SIZE;
             result.error = ERR_ELEM_SIZE;
             result.data.tag_handle = -1;
             plc_tag_destroy(tag_id);

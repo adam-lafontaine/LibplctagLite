@@ -635,7 +635,7 @@ bool get_udt_definition(const char* tag_string_base, uint16_t udt_id)
     auto tag_result = open_tag(tag_string_base, buf);
     if (tag_result.is_error())
     {
-        if (tag_result.status == plc::STATUS::PLCTAG_ERR_UNSUPPORTED)
+        if (tag_result.status == plc::Status::ERR_UNSUPPORTED)
         {
             fprintf(stderr, "This PLC type does not support listing UDT definitions.\n");
             return false;
@@ -652,7 +652,7 @@ bool get_udt_definition(const char* tag_string_base, uint16_t udt_id)
     fprintf(stderr, "UDT info tag ID: %d\n", udt_info_tag);
 
     auto result = plc::receive(udt_info_tag, TIMEOUT_MS);
-    if (result.status == plc::STATUS::PLCTAG_ERR_UNSUPPORTED) {
+    if (result.status == plc::Status::ERR_UNSUPPORTED) {
         plc::destroy(udt_info_tag);
         fprintf(stderr, "UDT tag introspection is not supported on this PLC.\n");
         return false;

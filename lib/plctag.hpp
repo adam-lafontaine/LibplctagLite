@@ -21,54 +21,54 @@ namespace plctag
 {
    constexpr int TIMEOUT_DEFAULT_MS = 100;
 
-    enum class STATUS : int
+    enum class Status : int
     {
-        PLCTAG_STATUS_NOT_SET       = (99),
+        NOT_SET              = (99),
 
-        PLCTAG_STATUS_PENDING       = (1),
-        PLCTAG_STATUS_OK            = (0),
+        PENDING              = (1),
+        OK                   = (0),
 
-        PLCTAG_ERR_ABORT            = (-1),
-        PLCTAG_ERR_BAD_CONFIG       = (-2),
-        PLCTAG_ERR_BAD_CONNECTION   = (-3),
-        PLCTAG_ERR_BAD_DATA         = (-4),
-        PLCTAG_ERR_BAD_DEVICE       = (-5),
-        PLCTAG_ERR_BAD_GATEWAY      = (-6),
-        PLCTAG_ERR_BAD_PARAM        = (-7),
-        PLCTAG_ERR_BAD_REPLY        = (-8),
-        PLCTAG_ERR_BAD_STATUS       = (-9),
-        PLCTAG_ERR_CLOSE            = (-10),
-        PLCTAG_ERR_CREATE           = (-11),
-        PLCTAG_ERR_DUPLICATE        = (-12),
-        PLCTAG_ERR_ENCODE           = (-13),
-        PLCTAG_ERR_MUTEX_DESTROY    = (-14),
-        PLCTAG_ERR_MUTEX_INIT       = (-15),
-        PLCTAG_ERR_MUTEX_LOCK       = (-16),
-        PLCTAG_ERR_MUTEX_UNLOCK     = (-17),
-        PLCTAG_ERR_NOT_ALLOWED      = (-18),
-        PLCTAG_ERR_NOT_FOUND        = (-19),
-        PLCTAG_ERR_NOT_IMPLEMENTED  = (-20),
-        PLCTAG_ERR_NO_DATA          = (-21),
-        PLCTAG_ERR_NO_MATCH         = (-22),
-        PLCTAG_ERR_NO_MEM           = (-23),
-        PLCTAG_ERR_NO_RESOURCES     = (-24),
-        PLCTAG_ERR_NULL_PTR         = (-25),
-        PLCTAG_ERR_OPEN             = (-26),
-        PLCTAG_ERR_OUT_OF_BOUNDS    = (-27),
-        PLCTAG_ERR_READ             = (-28),
-        PLCTAG_ERR_REMOTE_ERR       = (-29),
-        PLCTAG_ERR_THREAD_CREATE    = (-30),
-        PLCTAG_ERR_THREAD_JOIN      = (-31),
-        PLCTAG_ERR_TIMEOUT          = (-32),
-        PLCTAG_ERR_TOO_LARGE        = (-33),
-        PLCTAG_ERR_TOO_SMALL        = (-34),
-        PLCTAG_ERR_UNSUPPORTED      = (-35),
-        PLCTAG_ERR_WINSOCK          = (-36),
-        PLCTAG_ERR_WRITE            = (-37),
-        PLCTAG_ERR_PARTIAL          = (-38),
-        PLCTAG_ERR_BUSY             = (-39),
+        ERR_ABORT            = (-1),
+        ERR_BAD_CONFIG       = (-2),
+        ERR_BAD_CONNECTION   = (-3),
+        ERR_BAD_DATA         = (-4),
+        ERR_BAD_DEVICE       = (-5),
+        ERR_BAD_GATEWAY      = (-6),
+        ERR_BAD_PARAM        = (-7),
+        ERR_BAD_REPLY        = (-8),
+        ERR_BAD_STATUS       = (-9),
+        ERR_CLOSE            = (-10),
+        ERR_CREATE           = (-11),
+        ERR_DUPLICATE        = (-12),
+        ERR_ENCODE           = (-13),
+        ERR_MUTEX_DESTROY    = (-14),
+        ERR_MUTEX_INIT       = (-15),
+        ERR_MUTEX_LOCK       = (-16),
+        ERR_MUTEX_UNLOCK     = (-17),
+        ERR_NOT_ALLOWED      = (-18),
+        ERR_NOT_FOUND        = (-19),
+        ERR_NOT_IMPLEMENTED  = (-20),
+        ERR_NO_DATA          = (-21),
+        ERR_NO_MATCH         = (-22),
+        ERR_NO_MEM           = (-23),
+        ERR_NO_RESOURCES     = (-24),
+        ERR_NULL_PTR         = (-25),
+        ERR_OPEN             = (-26),
+        ERR_OUT_OF_BOUNDS    = (-27),
+        ERR_READ             = (-28),
+        ERR_REMOTE_ERR       = (-29),
+        ERR_THREAD_CREATE    = (-30),
+        ERR_THREAD_JOIN      = (-31),
+        ERR_TIMEOUT          = (-32),
+        ERR_TOO_LARGE        = (-33),
+        ERR_TOO_SMALL        = (-34),
+        ERR_UNSUPPORTED      = (-35),
+        ERR_WINSOCK          = (-36),
+        ERR_WRITE            = (-37),
+        ERR_PARTIAL          = (-38),
+        ERR_BUSY             = (-39),
 
-        PLCTAG_ERR_BAD_SIZE         = (-99),
+        ERR_BAD_SIZE         = (-99),
     };
 
 
@@ -76,13 +76,13 @@ namespace plctag
     class Result
     {
     public:
-        STATUS status = STATUS::PLCTAG_STATUS_NOT_SET;
+        Status status = Status::NOT_SET;
         const char* error = nullptr;
 
         T data;
 
-        bool is_ok() { return status == STATUS::PLCTAG_STATUS_OK; }
-        bool is_pending() { return status == STATUS::PLCTAG_STATUS_PENDING; }
+        bool is_ok() { return status == Status::OK; }
+        bool is_pending() { return status == Status::PENDING; }
         bool is_error() { return static_cast<int>(status) < 0; }
     };
 
@@ -102,12 +102,12 @@ namespace plctag
 
     enum class DEBUG : int
     {
-        NONE = 0,
-        ERROR = 1,
-        WARN = 2,
-        INFO = 3,
+        NONE   = 0,
+        ERROR  = 1,
+        WARN   = 2,
+        INFO   = 3,
         DETAIL = 4,
-        SPEW = 5
+        SPEW   = 5
     };
 }
 
