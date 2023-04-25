@@ -1,12 +1,105 @@
 #include "plctag.hpp"
 #include "libplctag.h"
 
+#include <cstdio>
+#include <cstring>
+
 
 namespace plctag
 {
     constexpr auto ERR_NO_ERROR = "No error. Everything OK";
     constexpr auto ERR_TAG_SIZE = "Tag size error";
     constexpr auto ERR_ELEM_SIZE = "Tag element/count size error";
+
+    
+
+
+    namespace
+    {
+        class CharString
+        {
+        public:
+            u32 length = 0;
+            u32 capacity = 256;
+            char data[256] = { 0 };
+        };
+    }
+
+
+    static bool validate_tag_attributes(TagAttr const& attr)
+    {
+        if (!attr.hostname || !attr.tag_name)
+        {
+            false;
+        }
+
+        if (attr.controller != Controller::Modbus && !attr.path)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+
+    static bool build_connection_string(CharString& string, TagAttr const& attr)
+    {
+        constexpr auto AB_STRING_TEMPLATE = "protocol=ab-eip&gateway=%s&name=%s&path=%s&plc=%s";
+        constexpr auto MB_STRING_TEMPLATE = "protocol=mb-tcp&gateway=%s&name=%s&path=%s";
+
+        cstr plc = 0;
+
+        switch (attr.controller)
+        {
+        case Controller::ControlLogix:
+            plc = "controllogix";
+            break;
+        case Controller::PLC5:
+            plc = "plc5";
+            break;
+        case Controller::SLC500:
+            plc = "slc500";
+            break;
+        case Controller::LogixPccc:
+            plc = "lgxpccc";
+            break;
+        case Controller::Micro800:
+            plc = "micro800";
+            break;
+        case Controller::MicroLogix:
+            plc = "micrologix";
+            break;
+        case Controller::OmronNJNX:
+            plc = "omron-njnx";
+            break;
+        default:
+            plc = "invalid";
+            break;
+        }
+
+        if (attr.controller == Controller::Modbus)
+        {
+            auto total_length = strlen(MB_STRING_TEMPLATE) + strlen(attr.hostname) + strlen(attr.tag_name) + strlen(attr.path) - 6;
+            if (total_length >= string.capacity)
+            {
+                return false;
+            }
+
+            snprintf(string.data, string.capacity, MB_STRING_TEMPLATE, attr.hostname, attr.tag_name, attr.path);
+        }
+        else
+        {
+            auto total_length = strlen(AB_STRING_TEMPLATE) + strlen(attr.hostname) + strlen(attr.tag_name) + strlen(attr.path) + strlen(plc) - 8;
+            if (total_length >= string.capacity)
+            {
+                return false;
+            }
+
+            snprintf(string.data, string.capacity, MB_STRING_TEMPLATE, attr.hostname, attr.tag_name, attr.path, plc);
+        }
+
+        return true;
+    }
 
 
     template <class T>
@@ -22,6 +115,9 @@ namespace plctag
             result.status = Status::OK;
         }       
     }
+
+
+
 
 
     /*
@@ -40,11 +136,71 @@ namespace plctag
     #define PLCTAG_DEBUG_SPEW      (5)
     */
 
-    void set_debug_level(DEBUG debug_level)
+    void set_debug_level(DebugLevel debug_level)
     {
         plc_tag_set_debug_level(static_cast<int>(debug_level));
     }
-    
+
+
+    ConnectResult connect(TagAttr attr, int timeout)
+    {
+        ConnectResult result{};
+
+        if (!validate_tag_attributes(attr))
+        {
+            result.status = Status::ERR_BAD_ATTRS;
+            result.error = "Invalid tag attributes";
+            return result;
+        }
+
+        CharString str{};
+
+        if (!build_connection_string(str, attr))
+        {
+            result.status = Status::ERR_BAD_ATTRS;
+            result.error = "Invalid tag attributes";
+            return result;
+        }
+
+        auto rc = plc_tag_create(str.data, timeout);
+
+        decode_result(result, rc);
+
+        if (!result.is_ok())
+        {
+            return result;
+        }
+
+        i32 tag_id = rc;
+
+        auto size = plc_tag_get_size(rc);
+        if (size <= 0)
+        {
+            rc = plc_tag_status(size);
+            decode_result(result, rc);
+            plc_tag_destroy(tag_id);
+            return result;
+        }
+
+        auto elem_size = plc_tag_get_int_attribute(rc, "elem_size", 0);
+        auto elem_count = plc_tag_get_int_attribute(rc, "elem_count", 0);
+
+        if (elem_size <= 0 || elem_count <= 0 || size != elem_size * elem_count)
+        {
+            result.status = Status::ERR_BAD_SIZE;
+            result.error = ERR_ELEM_SIZE;
+            result.data.tag_handle = -1;
+            plc_tag_destroy(tag_id);
+            return result;
+        }
+
+        result.data.tag_handle = tag_id;
+        result.data.tag_size = (u64)size;
+        result.data.elem_size = (u64)elem_size;
+        result.data.elem_count = (u64)elem_count;
+
+        return result;
+    }    
 
 
     ConnectResult connect(const char* attrib_str, int timeout)

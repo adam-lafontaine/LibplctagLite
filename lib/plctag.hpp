@@ -15,6 +15,7 @@ using u64 = uint64_t;
 using i64 = int64_t;
 using f32 = float;
 using f64 = double;
+using cstr = const char*;
 
 
 namespace plctag
@@ -23,66 +24,96 @@ namespace plctag
 
     enum class Status : int
     {
-        NOT_SET              = (99),
+        NOT_SET              = 99,
 
-        PENDING              = (1),
-        OK                   = (0),
+        PENDING              = 1,
+        OK                   = 0,
 
-        ERR_ABORT            = (-1),
-        ERR_BAD_CONFIG       = (-2),
-        ERR_BAD_CONNECTION   = (-3),
-        ERR_BAD_DATA         = (-4),
-        ERR_BAD_DEVICE       = (-5),
-        ERR_BAD_GATEWAY      = (-6),
-        ERR_BAD_PARAM        = (-7),
-        ERR_BAD_REPLY        = (-8),
-        ERR_BAD_STATUS       = (-9),
-        ERR_CLOSE            = (-10),
-        ERR_CREATE           = (-11),
-        ERR_DUPLICATE        = (-12),
-        ERR_ENCODE           = (-13),
-        ERR_MUTEX_DESTROY    = (-14),
-        ERR_MUTEX_INIT       = (-15),
-        ERR_MUTEX_LOCK       = (-16),
-        ERR_MUTEX_UNLOCK     = (-17),
-        ERR_NOT_ALLOWED      = (-18),
-        ERR_NOT_FOUND        = (-19),
-        ERR_NOT_IMPLEMENTED  = (-20),
-        ERR_NO_DATA          = (-21),
-        ERR_NO_MATCH         = (-22),
-        ERR_NO_MEM           = (-23),
-        ERR_NO_RESOURCES     = (-24),
-        ERR_NULL_PTR         = (-25),
-        ERR_OPEN             = (-26),
-        ERR_OUT_OF_BOUNDS    = (-27),
-        ERR_READ             = (-28),
-        ERR_REMOTE_ERR       = (-29),
-        ERR_THREAD_CREATE    = (-30),
-        ERR_THREAD_JOIN      = (-31),
-        ERR_TIMEOUT          = (-32),
-        ERR_TOO_LARGE        = (-33),
-        ERR_TOO_SMALL        = (-34),
-        ERR_UNSUPPORTED      = (-35),
-        ERR_WINSOCK          = (-36),
-        ERR_WRITE            = (-37),
-        ERR_PARTIAL          = (-38),
-        ERR_BUSY             = (-39),
+        ERR_ABORT            = -1,
+        ERR_BAD_CONFIG       = -2,
+        ERR_BAD_CONNECTION   = -3,
+        ERR_BAD_DATA         = -4,
+        ERR_BAD_DEVICE       = -5,
+        ERR_BAD_GATEWAY      = -6,
+        ERR_BAD_PARAM        = -7,
+        ERR_BAD_REPLY        = -8,
+        ERR_BAD_STATUS       = -9,
+        ERR_CLOSE            = -10,
+        ERR_CREATE           = -11,
+        ERR_DUPLICATE        = -12,
+        ERR_ENCODE           = -13,
+        ERR_MUTEX_DESTROY    = -14,
+        ERR_MUTEX_INIT       = -15,
+        ERR_MUTEX_LOCK       = -16,
+        ERR_MUTEX_UNLOCK     = -17,
+        ERR_NOT_ALLOWED      = -18,
+        ERR_NOT_FOUND        = -19,
+        ERR_NOT_IMPLEMENTED  = -20,
+        ERR_NO_DATA          = -21,
+        ERR_NO_MATCH         = -22,
+        ERR_NO_MEM           = -23,
+        ERR_NO_RESOURCES     = -24,
+        ERR_NULL_PTR         = -25,
+        ERR_OPEN             = -26,
+        ERR_OUT_OF_BOUNDS    = -27,
+        ERR_READ             = -28,
+        ERR_REMOTE_ERR       = -29,
+        ERR_THREAD_CREATE    = -30,
+        ERR_THREAD_JOIN      = -31,
+        ERR_TIMEOUT          = -32,
+        ERR_TOO_LARGE        = -33,
+        ERR_TOO_SMALL        = -34,
+        ERR_UNSUPPORTED      = -35,
+        ERR_WINSOCK          = -36,
+        ERR_WRITE            = -37,
+        ERR_PARTIAL          = -38,
+        ERR_BUSY             = -39,
 
-        ERR_BAD_SIZE         = (-99),
+        ERR_BAD_SIZE         = -1000,
+        ERR_BAD_ATTRS        = -1001
     };
 
 
+    enum class DebugLevel : int
+    {
+        NONE   = 0,
+        ERROR  = 1,
+        WARN   = 2,
+        INFO   = 3,
+        DETAIL = 4,
+        SPEW   = 5
+    };
+
+
+    enum class Controller : int
+    {
+        ControlLogix,
+        PLC5,
+        SLC500,
+        LogixPccc,
+        Micro800,
+        MicroLogix,
+        OmronNJNX,
+        Modbus
+    };
+
+
+
+}
+
+
+namespace plctag
+{
     template <typename T>
     class Result
     {
     public:
         Status status = Status::NOT_SET;
-        const char* error = nullptr;
+        cstr error = nullptr;
 
         T data;
 
         bool is_ok() { return status == Status::OK; }
-        bool is_pending() { return status == Status::PENDING; }
         bool is_error() { return static_cast<int>(status) < 0; }
     };
 
@@ -100,26 +131,30 @@ namespace plctag
     using ConnectResult = Result<TagDesc>;
 
 
-    enum class DEBUG : int
+    class TagAttr
     {
-        NONE   = 0,
-        ERROR  = 1,
-        WARN   = 2,
-        INFO   = 3,
-        DETAIL = 4,
-        SPEW   = 5
+    public:
+        Controller controller = Controller::ControlLogix;
+        cstr hostname = nullptr;
+        cstr path = "1,0";
+        cstr tag_name = nullptr;
     };
 }
 
 
 namespace plctag
 { 
-    void set_debug_level(DEBUG debug_level);
+    void set_debug_level(DebugLevel debug_level);
 
 
-    ConnectResult connect(const char* attrib_str, int timeout);
+    ConnectResult connect(TagAttr attr, int timeout);
 
-    inline ConnectResult connect(const char* attrib_str) { return connect(attrib_str, TIMEOUT_DEFAULT_MS); }
+    inline ConnectResult connect(TagAttr attr) { return connect(attr, TIMEOUT_DEFAULT_MS); }
+
+
+    ConnectResult connect(cstr attrib_str, int timeout);
+
+    inline ConnectResult connect(cstr attrib_str) { return connect(attrib_str, TIMEOUT_DEFAULT_MS); }
 
     
     void destroy(i32 tag);
