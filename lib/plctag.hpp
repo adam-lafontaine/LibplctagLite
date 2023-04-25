@@ -135,7 +135,7 @@ namespace plctag
     {
     public:
         Controller controller = Controller::ControlLogix;
-        cstr hostname = nullptr;
+        cstr gateway = nullptr;
         cstr path = "1,0";
         cstr tag_name = nullptr;
     };
@@ -144,6 +144,11 @@ namespace plctag
 
 namespace plctag
 { 
+    
+
+
+
+
     void set_debug_level(DebugLevel debug_level);
 
 
@@ -201,6 +206,11 @@ namespace plctag
     Result<u64> get_string_total_length(i32 tag_id, int string_start_offset);
 
     Result<int> get_string(i32 tag_id, int string_start_offset, char* buffer, int buffer_length);
+
+
+    cstr decode_controller(Controller c);
+
+    cstr decode_controller(int c);
 }
 
 
@@ -215,3 +225,12 @@ namespace plctag
 }
 
 #endif
+
+
+namespace plctag 
+{ 
+namespace dbg
+{
+    bool build_attr_string(TagAttr attr, char* dst, size_t max_len);
+}
+}

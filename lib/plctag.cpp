@@ -3,6 +3,7 @@
 
 #include <cstdio>
 #include <cstring>
+#include <cassert>
 
 
 namespace plctag
@@ -11,24 +12,81 @@ namespace plctag
     constexpr auto ERR_TAG_SIZE = "Tag size error";
     constexpr auto ERR_ELEM_SIZE = "Tag element/count size error";
 
-    
+    // attribute max lengths
+    constexpr size_t GATEWAY_SZ = sizeof("gateway=192.168.101.101");
+    constexpr size_t PATH_SZ    = sizeof("path=1,0");
+    constexpr size_t NAME_SZ    = sizeof("name=SomeTagNameWhichIsTheLongestNameThatWeWantToSupport");
+
+    constexpr size_t CONNECTION_STRING_SZ = GATEWAY_SZ + PATH_SZ + NAME_SZ + 50;
 
 
     namespace
     {
+        template <size_t N>
         class CharString
         {
         public:
-            u32 length = 0;
-            u32 capacity = 256;
-            char data[256] = { 0 };
+            static constexpr u32 capacity = N;
+            char data[N] = { 0 };
         };
+    }
+
+
+    using GatewayStr = CharString<GATEWAY_SZ>;
+    using PathStr = CharString<PATH_SZ>;
+    using NameStr = CharString<NAME_SZ>;
+    using ConnectionStr = CharString<CONNECTION_STRING_SZ>;
+
+
+    template <size_t N>
+    static bool build_kv_string(cstr key, cstr value, CharString<N>& dst)
+    {
+        auto base = "%s=%s";
+
+        auto len = strlen(key) + strlen(value) + 2;
+        if (dst.capacity < len)
+        {
+            return false;
+        }
+
+        snprintf(dst.data, dst.capacity, base, key, value);
+        return true;
+    }
+
+
+    static bool build_connection_string(cstr kv_1, cstr kv_2, cstr kv_3, cstr kv_4, cstr kv_5, ConnectionStr& dst)
+    {
+        auto base = "%s&%s&%s&%s&%s";
+
+        auto len = strlen(kv_1) + strlen(kv_2) + strlen(kv_3) + strlen(kv_4) + strlen(kv_5) + 5;
+        if (dst.capacity < len)
+        {
+            return false;
+        }
+
+        snprintf(dst.data, dst.capacity, base, kv_1, kv_2, kv_3, kv_4, kv_5);
+        return true;
+    }
+
+
+    static bool build_connection_string(cstr kv_1, cstr kv_2, cstr kv_3, cstr kv_4, ConnectionStr& dst)
+    {
+        auto base = "%s&%s&%s&%s";
+
+        auto len = strlen(kv_1) + strlen(kv_2) + strlen(kv_3) + strlen(kv_4) + 4;
+        if (dst.capacity < len)
+        {
+            return false;
+        }
+
+        snprintf(dst.data, dst.capacity, base, kv_1, kv_2, kv_3, kv_4);
+        return true;
     }
 
 
     static bool validate_tag_attributes(TagAttr const& attr)
     {
-        if (!attr.hostname || !attr.tag_name)
+        if (!attr.gateway || !attr.tag_name)
         {
             false;
         }
@@ -42,64 +100,141 @@ namespace plctag
     }
 
 
-    static bool build_connection_string(CharString& string, TagAttr const& attr)
+    static bool build_connection_string(TagAttr const& attr, ConnectionStr& dst)
     {
-        constexpr auto AB_STRING_TEMPLATE = "protocol=ab-eip&gateway=%s&name=%s&path=%s&plc=%s";
-        constexpr auto MB_STRING_TEMPLATE = "protocol=mb-tcp&gateway=%s&name=%s&path=%s";
-
+        cstr protocol = 0;
         cstr plc = 0;
+
+        GatewayStr gateway{};
+        PathStr path{};
+        NameStr name{};
+
+        bool result = true;
 
         switch (attr.controller)
         {
         case Controller::ControlLogix:
-            plc = "controllogix";
+            protocol = "protocol=ab-eip";
+            plc = "plc=controllogix";
+
+            result &= build_kv_string("gateway", attr.gateway, gateway);
+            result &= build_kv_string("path", attr.path, path);
+            result &= build_kv_string("name", attr.tag_name, name);
+
+            if (result)
+            {
+                result &= build_connection_string(protocol, plc, gateway.data, path.data, name.data, dst);
+            }
+
             break;
         case Controller::PLC5:
+            protocol = "protocol=ab-eip";
             plc = "plc5";
+
+            result &= build_kv_string("gateway", attr.gateway, gateway);
+            result &= build_kv_string("path", attr.path, path);
+            result &= build_kv_string("name", attr.tag_name, name);
+
+            if (result)
+            {
+                result &= build_connection_string(protocol, plc, gateway.data, path.data, name.data, dst);
+            }
+
             break;
         case Controller::SLC500:
+            protocol = "protocol=ab-eip";
             plc = "slc500";
+
+            result &= build_kv_string("gateway", attr.gateway, gateway);
+            result &= build_kv_string("path", attr.path, path);
+            result &= build_kv_string("name", attr.tag_name, name);
+
+            if (result)
+            {
+                result &= build_connection_string(protocol, plc, gateway.data, path.data, name.data, dst);
+            }
+
             break;
         case Controller::LogixPccc:
+            protocol = "protocol=ab-eip";
             plc = "lgxpccc";
+
+            result &= build_kv_string("gateway", attr.gateway, gateway);
+            result &= build_kv_string("path", attr.path, path);
+            result &= build_kv_string("name", attr.tag_name, name);
+
+            if (result)
+            {
+                result &= build_connection_string(protocol, plc, gateway.data, path.data, name.data, dst);
+            }
+
             break;
         case Controller::Micro800:
+            protocol = "protocol=ab-eip";
             plc = "micro800";
+
+            result &= build_kv_string("gateway", attr.gateway, gateway);
+            result &= build_kv_string("name", attr.tag_name, name);
+
+            if (result)
+            {
+                result &= build_connection_string(protocol, plc, gateway.data, name.data, dst);
+            }
+
             break;
         case Controller::MicroLogix:
+            protocol = "protocol=ab-eip";
             plc = "micrologix";
+
+            result &= build_kv_string("gateway", attr.gateway, gateway);
+            result &= build_kv_string("path", attr.path, path);
+            result &= build_kv_string("name", attr.tag_name, name);
+
+            if (result)
+            {
+                result &= build_connection_string(protocol, plc, gateway.data, path.data, name.data, dst);
+            }
+
             break;
         case Controller::OmronNJNX:
+            protocol = "protocol=ab-eip";
             plc = "omron-njnx";
+
+            result &= build_kv_string("gateway", attr.gateway, gateway);
+            result &= build_kv_string("path", attr.path, path);
+            result &= build_kv_string("name", attr.tag_name, name);
+
+            if (result)
+            {
+                result &= build_connection_string(protocol, plc, gateway.data, path.data, name.data, dst);
+            }
+
+            break;
+        case Controller::Modbus:
+            protocol = "protocol=mb-tcp";
+
+            result &= build_kv_string("gateway", attr.gateway, gateway);
+            result &= build_kv_string("path", attr.path, path);
+            result &= build_kv_string("name", attr.tag_name, name);
+
+            if (result)
+            {
+                result &= build_connection_string(protocol, gateway.data, path.data, name.data, dst);
+            }
+
             break;
         default:
-            plc = "invalid";
             break;
         }
 
-        if (attr.controller == Controller::Modbus)
-        {
-            auto total_length = strlen(MB_STRING_TEMPLATE) + strlen(attr.hostname) + strlen(attr.tag_name) + strlen(attr.path) - 6;
-            if (total_length >= string.capacity)
-            {
-                return false;
-            }
-
-            snprintf(string.data, string.capacity, MB_STRING_TEMPLATE, attr.hostname, attr.tag_name, attr.path);
-        }
-        else
-        {
-            auto total_length = strlen(AB_STRING_TEMPLATE) + strlen(attr.hostname) + strlen(attr.tag_name) + strlen(attr.path) + strlen(plc) - 8;
-            if (total_length >= string.capacity)
-            {
-                return false;
-            }
-
-            snprintf(string.data, string.capacity, MB_STRING_TEMPLATE, attr.hostname, attr.tag_name, attr.path, plc);
-        }
-
-        return true;
+        return result;
     }
+}
+
+
+namespace plctag
+{
+    
 
 
     template <class T>
@@ -153,9 +288,9 @@ namespace plctag
             return result;
         }
 
-        CharString str{};
+        ConnectionStr str{};
 
-        if (!build_connection_string(str, attr))
+        if (!build_connection_string(attr, str))
         {
             result.status = Status::ERR_BAD_ATTRS;
             result.error = "Invalid tag attributes";
@@ -502,6 +637,78 @@ namespace plctag
 
         return result;
     }
+
+
+    cstr decode_controller(Controller c)
+    {
+        switch (c)
+        {
+        case Controller::ControlLogix:
+            return "Control Logix";
+            break;
+        case Controller::PLC5:
+            return "PLC/5";
+            break;
+        case Controller::SLC500:
+            return "SLC 500";
+            break;
+        case Controller::LogixPccc:
+            return "Control Logix PLC/5";
+            break;
+        case Controller::Micro800:
+            return "Micro800";
+            break;
+        case Controller::MicroLogix:
+            return "Micrologix";
+            break;
+        case Controller::OmronNJNX:
+            return "Omron NJ/NX";
+            break;
+        case Controller::Modbus:
+            return "Modbus";
+            break;
+        default:
+            assert(false);
+            return "unknown";
+            break;
+        }
+    }
+
+
+    cstr decode_controller(int c)
+    {
+        switch (static_cast<Controller>(c))
+        {
+        case Controller::ControlLogix:
+            return "Control Logix";
+            break;
+        case Controller::PLC5:
+            return "PLC/5";
+            break;
+        case Controller::SLC500:
+            return "SLC 500";
+            break;
+        case Controller::LogixPccc:
+            return "Control Logix PLC/5";
+            break;
+        case Controller::Micro800:
+            return "Micro800";
+            break;
+        case Controller::MicroLogix:
+            return "Micrologix";
+            break;
+        case Controller::OmronNJNX:
+            return "Omron NJ/NX";
+            break;
+        case Controller::Modbus:
+            return "Modbus";
+            break;
+        default:
+            // lets us know if the int passed is invalid
+            return nullptr;
+            break;
+        }
+    }
 }
 
 
@@ -551,3 +758,29 @@ namespace plctag
 }
 
 #endif
+
+
+namespace plctag
+{
+namespace dbg
+{
+    bool build_attr_string(TagAttr attr, char* dst, size_t max_len)
+    {
+        ConnectionStr str{};
+
+        if (strlen(str.data) > max_len)
+        {
+            return false;
+        }
+
+        if (!build_connection_string(attr, str))
+        {
+            return false;
+        }
+
+        strcpy_s(dst, max_len, str.data);
+
+        return true;
+    }
+}
+}
