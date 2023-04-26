@@ -24,7 +24,7 @@
     <ClInclude Include="..\..\lib\plctag.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\examples\cpp\attr_string.cpp" />
+    <ClCompile Include="..\..\examples\cpp\list_tags_logix.cpp" />
     <ClCompile Include="..\..\lib\libplctag\lib\init.c" />
     <ClCompile Include="..\..\lib\libplctag\lib\lib.c" />
     <ClCompile Include="..\..\lib\libplctag\platform\windows\platform.c" />

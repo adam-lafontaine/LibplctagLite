@@ -125,7 +125,7 @@
     <ClCompile Include="..\..\lib\libplctag\protocols\ab\session.c">
       <Filter>Source Files\libplctag\protocols\ab</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\examples\cpp\attr_string.cpp">
+    <ClCompile Include="..\..\examples\cpp\list_tags_logix.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

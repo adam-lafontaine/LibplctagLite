@@ -176,7 +176,7 @@ namespace plctag
 
             if (attr.has_dhp)
             {
-                result &= build_connection_string(protocol, plc, gateway.data, path.data, name.data, dst);
+                result &= has_path && build_connection_string(protocol, plc, gateway.data, path.data, name.data, dst);
             }
             else
             {
@@ -190,7 +190,7 @@ namespace plctag
 
             if (attr.has_dhp)
             {
-                result &= build_connection_string(protocol, plc, gateway.data, path.data, name.data, dst);
+                result &= has_path && build_connection_string(protocol, plc, gateway.data, path.data, name.data, dst);
             }
             else
             {
@@ -204,7 +204,7 @@ namespace plctag
 
             if (attr.has_dhp)
             {
-                result &= build_connection_string(protocol, plc, gateway.data, path.data, name.data, dst);
+                result &= has_path && build_connection_string(protocol, plc, gateway.data, path.data, name.data, dst);
             }
             else
             {
