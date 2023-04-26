@@ -6,12 +6,54 @@
 #include <cassert>
 
 
+/* validation */
+
 namespace plctag
 {
     constexpr auto ERR_NO_ERROR = "No error. Everything OK";
     constexpr auto ERR_TAG_SIZE = "Tag size error";
     constexpr auto ERR_ELEM_SIZE = "Tag element/count size error";
 
+
+    static bool validate_tag_attributes(TagAttr const& attr)
+    {
+        if (!attr.gateway || !attr.tag_name)
+        {
+            false;
+        }
+
+        auto has_path = strlen(attr.path) > 0;
+        auto dhp_path_ok = (attr.has_dhp ? has_path : true);
+
+        bool result = true;
+
+        switch (attr.controller)
+        {
+        case Controller::ControlLogix:
+            result &= has_path;
+            break;
+        case Controller::PLC5:
+            result &= dhp_path_ok;
+            break;
+        case Controller::SLC500:
+            result &= dhp_path_ok;
+            break;
+        case Controller::MicroLogix:
+            result &= dhp_path_ok;
+            break;
+        default:            
+            break;
+        }
+
+        return true;
+    }
+}
+
+
+/* connection string */
+
+namespace plctag
+{
     // attribute max lengths
     constexpr size_t GATEWAY_SZ = sizeof("gateway=192.168.101.101");
     constexpr size_t PATH_SZ    = sizeof("path=1,0");
@@ -84,22 +126,6 @@ namespace plctag
     }
 
 
-    static bool validate_tag_attributes(TagAttr const& attr)
-    {
-        if (!attr.gateway || !attr.tag_name)
-        {
-            false;
-        }
-
-        if (attr.controller != Controller::Modbus && !attr.path)
-        {
-            return false;
-        }
-
-        return true;
-    }
-
-
     static bool build_connection_string(TagAttr const& attr, ConnectionStr& dst)
     {
         cstr protocol = 0;
@@ -109,120 +135,107 @@ namespace plctag
         PathStr path{};
         NameStr name{};
 
+        auto has_path = strlen(attr.path) > 0;
+
         bool result = true;
+
+        result &= build_kv_string("gateway", attr.gateway, gateway);
+        result &= build_kv_string("name", attr.tag_name, name);
+
+        if (has_path)
+        {
+            result &= build_kv_string("path", attr.path, path);
+        }
+
+        if (!result)
+        {
+            return false;
+        }
+        
 
         switch (attr.controller)
         {
         case Controller::ControlLogix:
             protocol = "protocol=ab-eip";
             plc = "plc=controllogix";
-
-            result &= build_kv_string("gateway", attr.gateway, gateway);
-            result &= build_kv_string("path", attr.path, path);
-            result &= build_kv_string("name", attr.tag_name, name);
-
-            if (result)
-            {
-                result &= build_connection_string(protocol, plc, gateway.data, path.data, name.data, dst);
-            }
+            
+            result &= build_connection_string(protocol, plc, gateway.data, path.data, name.data, dst);
 
             break;
-        case Controller::PLC5:
-            protocol = "protocol=ab-eip";
-            plc = "plc5";
 
-            result &= build_kv_string("gateway", attr.gateway, gateway);
-            result &= build_kv_string("path", attr.path, path);
-            result &= build_kv_string("name", attr.tag_name, name);
-
-            if (result)
-            {
-                result &= build_connection_string(protocol, plc, gateway.data, path.data, name.data, dst);
-            }
-
-            break;
-        case Controller::SLC500:
-            protocol = "protocol=ab-eip";
-            plc = "slc500";
-
-            result &= build_kv_string("gateway", attr.gateway, gateway);
-            result &= build_kv_string("path", attr.path, path);
-            result &= build_kv_string("name", attr.tag_name, name);
-
-            if (result)
-            {
-                result &= build_connection_string(protocol, plc, gateway.data, path.data, name.data, dst);
-            }
-
-            break;
-        case Controller::LogixPccc:
-            protocol = "protocol=ab-eip";
-            plc = "lgxpccc";
-
-            result &= build_kv_string("gateway", attr.gateway, gateway);
-            result &= build_kv_string("path", attr.path, path);
-            result &= build_kv_string("name", attr.tag_name, name);
-
-            if (result)
-            {
-                result &= build_connection_string(protocol, plc, gateway.data, path.data, name.data, dst);
-            }
-
-            break;
-        case Controller::Micro800:
-            protocol = "protocol=ab-eip";
-            plc = "micro800";
-
-            result &= build_kv_string("gateway", attr.gateway, gateway);
-            result &= build_kv_string("name", attr.tag_name, name);
-
-            if (result)
-            {
-                result &= build_connection_string(protocol, plc, gateway.data, name.data, dst);
-            }
-
-            break;
-        case Controller::MicroLogix:
-            protocol = "protocol=ab-eip";
-            plc = "micrologix";
-
-            result &= build_kv_string("gateway", attr.gateway, gateway);
-            result &= build_kv_string("path", attr.path, path);
-            result &= build_kv_string("name", attr.tag_name, name);
-
-            if (result)
-            {
-                result &= build_connection_string(protocol, plc, gateway.data, path.data, name.data, dst);
-            }
-
-            break;
-        case Controller::OmronNJNX:
-            protocol = "protocol=ab-eip";
-            plc = "omron-njnx";
-
-            result &= build_kv_string("gateway", attr.gateway, gateway);
-            result &= build_kv_string("path", attr.path, path);
-            result &= build_kv_string("name", attr.tag_name, name);
-
-            if (result)
-            {
-                result &= build_connection_string(protocol, plc, gateway.data, path.data, name.data, dst);
-            }
-
-            break;
         case Controller::Modbus:
             protocol = "protocol=mb-tcp";
 
-            result &= build_kv_string("gateway", attr.gateway, gateway);
-            result &= build_kv_string("path", attr.path, path);
-            result &= build_kv_string("name", attr.tag_name, name);
-
-            if (result)
-            {
-                result &= build_connection_string(protocol, gateway.data, path.data, name.data, dst);
-            }
+            result &= build_connection_string(protocol, gateway.data, path.data, name.data, dst);
 
             break;
+
+        case Controller::PLC5:
+            protocol = "protocol=ab-eip";
+            plc = "plc=plc5"; 
+
+            if (attr.has_dhp)
+            {
+                result &= build_connection_string(protocol, plc, gateway.data, path.data, name.data, dst);
+            }
+            else
+            {
+                result &= build_connection_string(protocol, plc, gateway.data, name.data, dst);
+            }
+            break;
+
+        case Controller::SLC500:
+            protocol = "protocol=ab-eip";
+            plc = "plc=slc500";
+
+            if (attr.has_dhp)
+            {
+                result &= build_connection_string(protocol, plc, gateway.data, path.data, name.data, dst);
+            }
+            else
+            {
+                result &= build_connection_string(protocol, plc, gateway.data, name.data, dst);
+            }
+            break;
+
+        case Controller::MicroLogix:
+            protocol = "protocol=ab-eip";
+            plc = "plc=micrologix";
+
+            if (attr.has_dhp)
+            {
+                result &= build_connection_string(protocol, plc, gateway.data, path.data, name.data, dst);
+            }
+            else
+            {
+                result &= build_connection_string(protocol, plc, gateway.data, name.data, dst);
+            }
+            break;
+
+        case Controller::LogixPccc:
+            protocol = "protocol=ab-eip";
+            plc = "plc=lgxpccc";
+
+            result &= build_connection_string(protocol, plc, gateway.data, name.data, dst);
+
+            break;
+
+        case Controller::Micro800:
+            protocol = "protocol=ab-eip";
+            plc = "plc=micro800";
+
+            result &= build_connection_string(protocol, plc, gateway.data, name.data, dst);
+
+            break;
+        
+        case Controller::OmronNJNX:
+            protocol = "protocol=ab-eip";
+            plc = "plc=omron-njnx";
+
+            result &= build_connection_string(protocol, plc, gateway.data, name.data, dst);
+
+            break;
+        
         default:
             break;
         }
@@ -232,11 +245,10 @@ namespace plctag
 }
 
 
+/* api wrapper */
+
 namespace plctag
 {
-    
-
-
     template <class T>
     static void decode_result(Result<T>& result, int rc)
     {
@@ -250,9 +262,6 @@ namespace plctag
             result.status = Status::OK;
         }       
     }
-
-
-
 
 
     /*
@@ -639,6 +648,14 @@ namespace plctag
     }
 
 
+    
+}
+
+
+/* extra */
+
+namespace plctag
+{
     cstr decode_controller(Controller c)
     {
         switch (c)
@@ -759,6 +776,9 @@ namespace plctag
 
 #endif
 
+
+
+/* debugging */
 
 namespace plctag
 {

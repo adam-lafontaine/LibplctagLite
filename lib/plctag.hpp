@@ -18,6 +18,8 @@ using f64 = double;
 using cstr = const char*;
 
 
+/* enums */
+
 namespace plctag
 {
    constexpr int TIMEOUT_DEFAULT_MS = 100;
@@ -102,6 +104,8 @@ namespace plctag
 }
 
 
+/* class/struct definitions */
+
 namespace plctag
 {
     template <typename T>
@@ -138,17 +142,14 @@ namespace plctag
         cstr gateway = nullptr;
         cstr path = "1,0";
         cstr tag_name = nullptr;
+        bool has_dhp = false;
     };
 }
 
 
+/* api wrapper */
 namespace plctag
 { 
-    
-
-
-
-
     void set_debug_level(DebugLevel debug_level);
 
 
@@ -206,8 +207,13 @@ namespace plctag
     Result<u64> get_string_total_length(i32 tag_id, int string_start_offset);
 
     Result<int> get_string(i32 tag_id, int string_start_offset, char* buffer, int buffer_length);
+}
 
 
+/* extra */
+
+namespace plctag
+{
     cstr decode_controller(Controller c);
 
     cstr decode_controller(int c);
@@ -226,6 +232,8 @@ namespace plctag
 
 #endif
 
+
+/* debugging */
 
 namespace plctag 
 { 

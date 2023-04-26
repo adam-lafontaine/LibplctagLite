@@ -17,6 +17,7 @@ int main()
 	attr.gateway = ip_address;
 	attr.path = path;
 	attr.tag_name = name;
+	attr.has_dhp = false;
 
 	for (int c = 0; plc::decode_controller(c); ++c)
 	{
