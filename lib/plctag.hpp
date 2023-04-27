@@ -4,6 +4,8 @@
 
 
 #include <cstdint>
+#include <vector>
+#include <string>
 
 using u8 = uint8_t;
 using i8 = int8_t;
@@ -17,12 +19,17 @@ using f32 = float;
 using f64 = double;
 using cstr = const char*;
 
+template <typename T>
+using List = std::vector<T>;
+
+using String = std::string;
+
 
 /* enums */
 
 namespace plctag
 {
-   constexpr int TIMEOUT_DEFAULT_MS = 100;
+   constexpr int TIMEOUT_DEFAULT_MS = 1000;
 
     enum class Status : int
     {
@@ -100,6 +107,75 @@ namespace plctag
     };
 
 
+    /*
+    
+    case 0xC1: type = "BOOL: Boolean value"; break;
+            case 0xC2: type = "SINT: Signed 8-bit integer value"; break;
+            case 0xC3: type = "INT: Signed 16-bit integer value"; break;
+            case 0xC4: type = "DINT: Signed 32-bit integer value"; break;
+            case 0xC5: type = "LINT: Signed 64-bit integer value"; break;
+            case 0xC6: type = "USINT: Unsigned 8-bit integer value"; break;
+            case 0xC7: type = "UINT: Unsigned 16-bit integer value"; break;
+            case 0xC8: type = "UDINT: Unsigned 32-bit integer value"; break;
+            case 0xC9: type = "ULINT: Unsigned 64-bit integer value"; break;
+            case 0xCA: type = "REAL: 32-bit floating point value, IEEE format"; break;
+            case 0xCB: type = "LREAL: 64-bit floating point value, IEEE format"; break;
+            case 0xCC: type = "Synchronous time value"; break;
+            case 0xCD: type = "Date value"; break;
+            case 0xCE: type = "Time of day value"; break;
+            case 0xCF: type = "Date and time of day value"; break;
+            case 0xD0: type = "Character string, 1 byte per character"; break;
+            case 0xD1: type = "8-bit bit string"; break;
+            case 0xD2: type = "16-bit bit string"; break;
+            case 0xD3: type = "32-bit bit string"; break;
+            case 0xD4: type = "64-bit bit string"; break;
+            case 0xD5: type = "Wide char character string, 2 bytes per character"; break;
+            case 0xD6: type = "High resolution duration value"; break;
+            case 0xD7: type = "Medium resolution duration value"; break;
+            case 0xD8: type = "Low resolution duration value"; break;
+            case 0xD9: type = "N-byte per char character string"; break;
+            case 0xDA: type = "Counted character sting with 1 byte per character and 1 byte length indicator"; break;
+            case 0xDB: type = "Duration in milliseconds"; break;
+            case 0xDC: type = "CIP path segment(s)"; break;
+            case 0xDD: type = "Engineering units"; break;
+            case 0xDE: type = "International character string (encoding?)"; break;
+    
+    */
+
+
+    enum class DataType : u16
+    {
+        BOOL                 = 0xC1,
+        SINT                 = 0xC2,
+        INT                  = 0xC3,
+        DINT                 = 0xC4,
+        LINT                 = 0xC5,
+        USINT                = 0xC6,
+        UINT                 = 0xC7,
+        UDINT                = 0xC8,
+        ULINT                = 0xC9,
+        REAL                 = 0xCA,
+        LREAL                = 0xCB,
+        SYNCHRONOUS_TIME     = 0xCC,
+        DATE                 = 0xCD,
+        TIME                 = 0xCE,
+        DATETIME             = 0xCF,
+        CHAR_STRING          = 0xD0,
+        STRING_8             = 0xD1,
+        STRING_16            = 0xD2,
+        STRING_32            = 0xD3,
+        STRING_64            = 0xD4,
+        WIDE_STRING          = 0xD5,
+        HIGH_RES_DURATION    = 0xD6,
+        MED_RES_DURATION     = 0xD7,
+        LOW_RES_DURATION     = 0xD8,
+        N_BYTE_STRING        = 0xD9,
+        COUNTED_CHAR_STRING  = 0xDA,
+        DURATION_MS          = 0xDB,
+        CIP_PATH             = 0xDC,
+        ENGINEERING_UNITS    = 0xDD,
+        INTERNATIONAL_STRING = 0xDE
+    };
 
 }
 
@@ -122,7 +198,7 @@ namespace plctag
     };
 
 
-    class TagDesc
+    class Tag_Desc
     {
     public:
         i32 tag_handle = -1;
@@ -132,10 +208,10 @@ namespace plctag
     };
 
 
-    using ConnectResult = Result<TagDesc>;
+    using ConnectResult = Result<Tag_Desc>;
 
 
-    class TagAttr
+    class Tag_Attr
     {
     public:
         Controller controller = Controller::ControlLogix;
@@ -143,6 +219,56 @@ namespace plctag
         cstr path = "1,0";
         cstr tag_name = nullptr;
         bool has_dhp = false;
+    };
+
+
+    class Tag_Entry
+    {
+    public:
+        u32 instance_id = 0;
+        u16 type = 0;
+        u16 elem_size = 0;
+        u16 elem_count = 0;
+        u16 num_dimensions = 0;
+        u16 dimensions[3] = { 0 };
+        String name;
+    };
+
+
+    class UDT_Field_Entry
+    {
+    public:
+        cstr name;
+        u16 type;
+        u16 metadata;
+        u32 size;
+        u32 offset;
+    };
+
+
+    class UDT_Entry
+    {
+    public:
+        cstr name;
+        u16 id;
+        u16 num_fields;
+        u16 struct_handle;
+        u32 instance_size;
+        List<UDT_Field_Entry> fields;
+    };
+
+
+    class PLC_Desc
+    {
+    public:
+        Controller controller = Controller::ControlLogix;
+        cstr gateway = nullptr;
+        cstr path = "1,0";
+        bool has_dhp = false;
+
+        List<cstr> program_names;
+        List<Tag_Entry> tags;
+        List<UDT_Entry> udts;
     };
 }
 
@@ -153,14 +279,9 @@ namespace plctag
     void set_debug_level(DebugLevel debug_level);
 
 
-    ConnectResult connect(TagAttr attr, int timeout);
+    ConnectResult connect(Tag_Attr attr, int timeout);
 
-    inline ConnectResult connect(TagAttr attr) { return connect(attr, TIMEOUT_DEFAULT_MS); }
-
-
-    ConnectResult connect(cstr attrib_str, int timeout);
-
-    inline ConnectResult connect(cstr attrib_str) { return connect(attrib_str, TIMEOUT_DEFAULT_MS); }
+    inline ConnectResult connect(Tag_Attr attr) { return connect(attr, TIMEOUT_DEFAULT_MS); }
 
     
     void destroy(i32 tag);
@@ -214,6 +335,11 @@ namespace plctag
 
 namespace plctag
 {
+    ConnectResult enumerate_tags(PLC_Desc& data, int timeout);
+
+    inline ConnectResult enumerate_tags(PLC_Desc& data) { return enumerate_tags(data, TIMEOUT_DEFAULT_MS); }
+
+
     cstr decode_controller(Controller c);
 
     cstr decode_controller(int c);
@@ -239,6 +365,6 @@ namespace plctag
 { 
 namespace dbg
 {
-    bool build_attr_string(TagAttr attr, char* dst, size_t max_len);
+    bool build_attr_string(Tag_Attr attr, char* dst, size_t max_len);
 }
 }

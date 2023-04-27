@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cassert>
+#include <algorithm>
 
 
 /* validation */
@@ -15,7 +16,7 @@ namespace plctag
     constexpr auto ERR_ELEM_SIZE = "Tag element/count size error";
 
 
-    static bool validate_tag_attributes(TagAttr const& attr)
+    static bool validate_tag_attributes(Tag_Attr const& attr)
     {
         if (!attr.gateway || !attr.tag_name)
         {
@@ -126,7 +127,7 @@ namespace plctag
     }
 
 
-    static bool build_connection_string(TagAttr const& attr, ConnectionStr& dst)
+    static bool build_connection_string(Tag_Attr const& attr, ConnectionStr& dst)
     {
         cstr protocol = 0;
         cstr plc = 0;
@@ -242,6 +243,9 @@ namespace plctag
 
         return result;
     }
+
+
+
 }
 
 
@@ -262,6 +266,56 @@ namespace plctag
             result.status = Status::OK;
         }       
     }
+
+
+    static ConnectResult attempt_connection(Tag_Attr attr, int timeout)
+    {
+        ConnectResult result{};
+
+        if (!validate_tag_attributes(attr))
+        {
+            result.status = Status::ERR_BAD_ATTRS;
+            result.error = "Invalid tag attributes";
+            return result;
+        }
+
+        ConnectionStr str{};
+
+        if (!build_connection_string(attr, str))
+        {
+            result.status = Status::ERR_BAD_ATTRS;
+            result.error = "Invalid tag attributes";
+            return result;
+        }
+
+        auto rc = plc_tag_create(str.data, timeout);
+        decode_result(result, rc);
+        if (!result.is_ok())
+        {
+            return result;
+        }
+
+        i32 tag_id = rc;
+
+        rc = plc_tag_read(tag_id, timeout);
+        decode_result(result, rc);
+        if (!result.is_ok())
+        {
+            return result;
+        }
+
+        auto size = std::max(plc_tag_get_size(rc), 0);
+        auto elem_size = std::max(plc_tag_get_int_attribute(rc, "elem_size", 0), 0);
+        auto elem_count = std::max(plc_tag_get_int_attribute(rc, "elem_count", 0), 0);
+
+        result.data.tag_handle = tag_id;
+        result.data.tag_size = (u64)size;
+        result.data.elem_size = (u64)elem_size;
+        result.data.elem_count = (u64)elem_count;
+
+        return result;
+    }
+
 
 
     /*
@@ -286,112 +340,29 @@ namespace plctag
     }
 
 
-    ConnectResult connect(TagAttr attr, int timeout)
+    ConnectResult connect(Tag_Attr attr, int timeout)
     {
-        ConnectResult result{};
-
-        if (!validate_tag_attributes(attr))
-        {
-            result.status = Status::ERR_BAD_ATTRS;
-            result.error = "Invalid tag attributes";
-            return result;
-        }
-
-        ConnectionStr str{};
-
-        if (!build_connection_string(attr, str))
-        {
-            result.status = Status::ERR_BAD_ATTRS;
-            result.error = "Invalid tag attributes";
-            return result;
-        }
-
-        auto rc = plc_tag_create(str.data, timeout);
-
-        decode_result(result, rc);
+        ConnectResult result = attempt_connection(attr, timeout);
 
         if (!result.is_ok())
         {
             return result;
         }
 
-        i32 tag_id = rc;
+        // kill the connection if sizes don't make sense;
+        auto data = result.data;
 
-        auto size = plc_tag_get_size(rc);
-        if (size <= 0)
-        {
-            rc = plc_tag_status(size);
-            decode_result(result, rc);
-            plc_tag_destroy(tag_id);
-            return result;
-        }
-
-        auto elem_size = plc_tag_get_int_attribute(rc, "elem_size", 0);
-        auto elem_count = plc_tag_get_int_attribute(rc, "elem_count", 0);
-
-        if (elem_size <= 0 || elem_count <= 0 || size != elem_size * elem_count)
+        if (data.tag_size == 0 || data.tag_size != data.elem_count * data.elem_size)
         {
             result.status = Status::ERR_BAD_SIZE;
             result.error = ERR_ELEM_SIZE;
-            result.data.tag_handle = -1;
-            plc_tag_destroy(tag_id);
+            plc_tag_destroy(data.tag_handle);
+            result.data.tag_handle = -1;            
             return result;
         }
-
-        result.data.tag_handle = tag_id;
-        result.data.tag_size = (u64)size;
-        result.data.elem_size = (u64)elem_size;
-        result.data.elem_count = (u64)elem_count;
-
-        return result;
-    }    
-
-
-    ConnectResult connect(const char* attrib_str, int timeout)
-    {
-        ConnectResult result {};
-
-        auto rc = plc_tag_create(attrib_str, timeout);
-
-        decode_result(result, rc);
-
-        if  (!result.is_ok())
-        {
-            return result;
-        }
-
-        i32 tag_id = rc;
-
-        auto size = plc_tag_get_size(rc);
-        if (size <= 0)
-        {
-            rc = plc_tag_status(size);
-            decode_result(result, rc);
-            plc_tag_destroy(tag_id);
-            return result;
-        }
-
-        auto elem_size = plc_tag_get_int_attribute(rc, "elem_size", 0);
-        auto elem_count = plc_tag_get_int_attribute(rc, "elem_count", 0);
-
-        if (elem_size <= 0 || elem_count <= 0 || size != elem_size * elem_count)
-        {
-            result.status = Status::ERR_BAD_SIZE;
-            result.error = ERR_ELEM_SIZE;
-            result.data.tag_handle = -1;
-            plc_tag_destroy(tag_id);
-            return result;
-        }
-
-        result.data.tag_handle = tag_id;
-        result.data.tag_size = (u64)size;
-        result.data.elem_size = (u64)elem_size;
-        result.data.elem_count = (u64)elem_count;
 
         return result;
     }
-
-
 
 
     /*
@@ -656,38 +627,113 @@ namespace plctag
 
 namespace plctag
 {
+    constexpr auto CONTROLLER_TAGS_KEY = "@tags";
+
+    constexpr auto TYPE_IS_STRUCT   = (u16)0x8000;
+    constexpr auto TYPE_IS_SYSTEM   = (u16)0x1000;
+    constexpr auto TYPE_DIM_MASK    = (u16)0x6000;
+    constexpr auto TYPE_UDT_ID_MASK = (u16)0x0FFF;
+    constexpr auto TAG_DIM_MASK     = (u16)0x6000;    
+
+
+    static bool append_tag_list(Tag_Desc const& tag, List<Tag_Entry>& tag_list)
+    {
+        auto payload_size = plc_tag_get_size(tag.tag_handle);
+        if (payload_size < 4)
+        {
+            return false;
+        }
+
+        auto handle = tag.tag_handle;        
+
+        /* each entry looks like this:
+        uint32_t instance_id    monotonically increasing but not contiguous
+        uint16_t symbol_type    type of the symbol.
+        uint16_t element_length length of one array element in bytes.
+        uint32_t array_dims[3]  array dimensions.
+        uint16_t string_len     string length count.
+        uint8_t string_data[]   string bytes (string_len of them)
+        */
+
+        u16 symbol_type = 0;
+
+        int offset = 0;
+        while (offset < payload_size)
+        {
+            Tag_Entry entry{};
+
+            entry.instance_id = plc_tag_get_uint32(handle, offset);
+            offset += 4;
+
+            symbol_type = plc_tag_get_uint16(handle, offset);
+            entry.type = symbol_type; // TODO
+            offset += 2;
+
+            entry.elem_size = plc_tag_get_uint16(handle, offset);
+            offset += 2;
+
+            entry.num_dimensions = (u16)((symbol_type & TAG_DIM_MASK) >> 13);
+            entry.elem_count = 0;
+            for (u32 i = 0; i < entry.num_dimensions; ++i)
+            {
+                entry.dimensions[i] = (u16)plc_tag_get_uint32(handle, offset);
+                entry.elem_count += entry.dimensions[i];
+                offset += 4;
+            }
+
+            auto string_len = (u64)plc_tag_get_string_length(handle, offset);
+            
+            entry.name.reserve(string_len + 1);
+
+            auto rc = plc_tag_get_string(handle, offset, entry.name.data(), entry.name.length());
+            if (rc != PLCTAG_STATUS_OK)
+            {
+                return false;
+            }
+
+            tag_list.push_back(std::move(entry));
+
+            offset += plc_tag_get_string_total_length(handle, offset);
+        }
+    }
+
+
+    ConnectResult enumerate_tags(PLC_Desc& data, int timeout)
+    {
+        Tag_Attr attr{};
+        attr.controller = data.controller;
+        attr.gateway = data.gateway;
+        attr.path = data.path;
+        attr.has_dhp = data.has_dhp;
+
+        attr.tag_name = CONTROLLER_TAGS_KEY;
+        
+        ConnectResult result = attempt_connection(attr, timeout);
+        if (!result.is_ok())
+        {
+            return result;
+        }
+
+        append_tag_list(result.data, data.tags);
+
+
+        return result;
+    }
+
+
     cstr decode_controller(Controller c)
     {
         switch (c)
         {
-        case Controller::ControlLogix:
-            return "Control Logix";
-            break;
-        case Controller::PLC5:
-            return "PLC/5";
-            break;
-        case Controller::SLC500:
-            return "SLC 500";
-            break;
-        case Controller::LogixPccc:
-            return "Control Logix PLC/5";
-            break;
-        case Controller::Micro800:
-            return "Micro800";
-            break;
-        case Controller::MicroLogix:
-            return "Micrologix";
-            break;
-        case Controller::OmronNJNX:
-            return "Omron NJ/NX";
-            break;
-        case Controller::Modbus:
-            return "Modbus";
-            break;
-        default:
-            assert(false);
-            return "unknown";
-            break;
+        case Controller::ControlLogix: return "Control Logix";
+        case Controller::PLC5:         return "PLC/5";
+        case Controller::SLC500:       return "SLC 500";
+        case Controller::LogixPccc:    return "Control Logix PLC/5";
+        case Controller::Micro800:     return "Micro800";
+        case Controller::MicroLogix:   return "Micrologix";
+        case Controller::OmronNJNX:    return "Omron NJ/NX";
+        case Controller::Modbus:       return "Modbus";
+        default:                       assert(false); return "unknown";
         }
     }
 
@@ -696,34 +742,17 @@ namespace plctag
     {
         switch (static_cast<Controller>(c))
         {
-        case Controller::ControlLogix:
-            return "Control Logix";
-            break;
-        case Controller::PLC5:
-            return "PLC/5";
-            break;
-        case Controller::SLC500:
-            return "SLC 500";
-            break;
-        case Controller::LogixPccc:
-            return "Control Logix PLC/5";
-            break;
-        case Controller::Micro800:
-            return "Micro800";
-            break;
-        case Controller::MicroLogix:
-            return "Micrologix";
-            break;
-        case Controller::OmronNJNX:
-            return "Omron NJ/NX";
-            break;
-        case Controller::Modbus:
-            return "Modbus";
-            break;
+        case Controller::ControlLogix: return "Control Logix";
+        case Controller::PLC5:         return "PLC/5";
+        case Controller::SLC500:       return "SLC 500";
+        case Controller::LogixPccc:    return "Control Logix PLC/5";
+        case Controller::Micro800:     return "Micro800";
+        case Controller::MicroLogix:   return "Micrologix";
+        case Controller::OmronNJNX:    return "Omron NJ/NX";
+        case Controller::Modbus:       return "Modbus";
         default:
             // lets us know if the int passed is invalid
             return nullptr;
-            break;
         }
     }
 }
@@ -784,7 +813,7 @@ namespace plctag
 {
 namespace dbg
 {
-    bool build_attr_string(TagAttr attr, char* dst, size_t max_len)
+    bool build_attr_string(Tag_Attr attr, char* dst, size_t max_len)
     {
         ConnectionStr str{};
 
