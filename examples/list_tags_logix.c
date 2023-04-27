@@ -37,7 +37,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "../lib/libplctag.h"
-#include "utils.h"
 
 #define REQUIRED_VERSION 2,4,0
 
@@ -577,7 +576,7 @@ void print_element_type(uint16_t element_type)
     } else if(element_type & TYPE_IS_STRUCT) {
         printf("element type UDT (0x%04x) %s", (unsigned int)(element_type), udts[(size_t)(unsigned int)(element_type & TYPE_UDT_ID_MASK)]->name);
     } else {
-        uint16_t atomic_type = element_type & 0xFF; /* MAGIC */
+        uint16_t atomic_type = element_type & 0x00FF; /* MAGIC */
         const char *type = NULL;
 
         switch(atomic_type) {

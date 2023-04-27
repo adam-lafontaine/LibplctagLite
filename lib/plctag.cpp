@@ -633,7 +633,59 @@ namespace plctag
     constexpr auto TYPE_IS_SYSTEM   = (u16)0x1000;
     constexpr auto TYPE_DIM_MASK    = (u16)0x6000;
     constexpr auto TYPE_UDT_ID_MASK = (u16)0x0FFF;
-    constexpr auto TAG_DIM_MASK     = (u16)0x6000;    
+    constexpr auto TAG_DIM_MASK     = (u16)0x6000;
+
+
+    static TagType get_tag_type(uint16_t element_type)
+    {
+        if (element_type & TYPE_IS_SYSTEM)
+        {
+            return TagType::SYSTEM;
+        }
+        else if (element_type & TYPE_IS_STRUCT)
+        {
+            return TagType::UDT;
+        }
+
+        uint16_t atomic_type = element_type & 0x00FF; /* MAGIC */
+        const char* type = NULL;
+
+        switch (atomic_type) 
+        {
+        case 0xC1: return TagType::BOOL;
+        case 0xC2: return TagType::SINT;
+        case 0xC3: return TagType::INT;
+        case 0xC4: return TagType::DINT;
+        case 0xC5: return TagType::LINT;
+        case 0xC6: return TagType::USINT;
+        case 0xC7: return TagType::UINT;
+        case 0xC8: return TagType::UDINT;
+        case 0xC9: return TagType::ULINT;
+        case 0xCA: return TagType::REAL;
+        case 0xCB: return TagType::LREAL;
+        case 0xCC: return TagType::SYNCHRONOUS_TIME;
+        case 0xCD: return TagType::DATE;
+        case 0xCE: return TagType::TIME;
+        case 0xCF: return TagType::DATE;
+        case 0xD0: return TagType::CHAR_STRING;
+        case 0xD1: return TagType::STRING_8;
+        case 0xD2: return TagType::STRING_16;
+        case 0xD3: return TagType::STRING_32;
+        case 0xD4: return TagType::STRING_64;
+        case 0xD5: return TagType::WIDE_STRING;
+        case 0xD6: return TagType::HIGH_RES_DURATION;
+        case 0xD7: return TagType::MED_RES_DURATION;
+        case 0xD8: return TagType::LOW_RES_DURATION;
+        case 0xD9: return TagType::N_BYTE_STRING;
+        case 0xDA: return TagType::COUNTED_CHAR_STRING;
+        case 0xDB: return TagType::DURATION_MS;
+        case 0xDC: return TagType::CIP_PATH;
+        case 0xDD: return TagType::ENGINEERING_UNITS;
+        case 0xDE: return TagType::INTERNATIONAL_STRING;
+        }
+        
+        return TagType::UNKNOWN;
+    }
 
 
     static bool append_tag_list(Tag_Desc const& tag, List<Tag_Entry>& tag_list)
@@ -651,11 +703,11 @@ namespace plctag
         uint16_t symbol_type    type of the symbol.
         uint16_t element_length length of one array element in bytes.
         uint32_t array_dims[3]  array dimensions.
-        uint16_t string_len     string length count.
         uint8_t string_data[]   string bytes (string_len of them)
         */
 
         u16 symbol_type = 0;
+        char name_buffer[256];
 
         int offset = 0;
         while (offset < payload_size)
@@ -666,30 +718,32 @@ namespace plctag
             offset += 4;
 
             symbol_type = plc_tag_get_uint16(handle, offset);
-            entry.type = symbol_type; // TODO
+            entry.tag_type = get_tag_type(symbol_type);
             offset += 2;
 
             entry.elem_size = plc_tag_get_uint16(handle, offset);
             offset += 2;
 
             entry.num_dimensions = (u16)((symbol_type & TAG_DIM_MASK) >> 13);
-            entry.elem_count = 0;
-            for (u32 i = 0; i < entry.num_dimensions; ++i)
+            entry.elem_count = 1;
+            for (u32 i = 0; i < 3; ++i)
             {
                 entry.dimensions[i] = (u16)plc_tag_get_uint32(handle, offset);
-                entry.elem_count += entry.dimensions[i];
+                entry.elem_count *= std::max((u16)1, entry.dimensions[i]);
                 offset += 4;
             }
 
-            auto string_len = (u64)plc_tag_get_string_length(handle, offset);
-            
-            entry.name.reserve(string_len + 1);
+            memset(name_buffer, 0, sizeof(name_buffer));
 
-            auto rc = plc_tag_get_string(handle, offset, entry.name.data(), entry.name.length());
+            auto string_len = (u64)plc_tag_get_string_length(handle, offset);
+
+            auto rc = plc_tag_get_string(handle, offset, name_buffer, string_len + 1);
             if (rc != PLCTAG_STATUS_OK)
             {
                 return false;
             }
+
+            entry.name = name_buffer;
 
             tag_list.push_back(std::move(entry));
 
@@ -716,7 +770,6 @@ namespace plctag
 
         append_tag_list(result.data, data.tags);
 
-
         return result;
     }
 
@@ -740,19 +793,62 @@ namespace plctag
 
     cstr decode_controller(int c)
     {
-        switch (static_cast<Controller>(c))
+        auto controller = static_cast<Controller>(c);
+        switch (controller)
         {
-        case Controller::ControlLogix: return "Control Logix";
-        case Controller::PLC5:         return "PLC/5";
-        case Controller::SLC500:       return "SLC 500";
-        case Controller::LogixPccc:    return "Control Logix PLC/5";
-        case Controller::Micro800:     return "Micro800";
-        case Controller::MicroLogix:   return "Micrologix";
-        case Controller::OmronNJNX:    return "Omron NJ/NX";
-        case Controller::Modbus:       return "Modbus";
+        case Controller::ControlLogix:
+        case Controller::PLC5:
+        case Controller::SLC500:
+        case Controller::LogixPccc:
+        case Controller::Micro800:
+        case Controller::MicroLogix:
+        case Controller::OmronNJNX:
+        case Controller::Modbus:
+            return decode_controller(controller);
         default:
             // lets us know if the int passed is invalid
             return nullptr;
+        }
+    }
+
+
+    cstr decode_tag_type(TagType t)
+    {
+        switch (t)
+        {
+        case TagType::SYSTEM:               return "System";
+        case TagType::UDT:                  return "UDT: User defined type";
+        case TagType::BOOL:                 return "BOOL: Boolean value";
+        case TagType::SINT:                 return "SINT: Signed 8-bit integer value";
+        case TagType::INT:                  return "INT: Signed 16-bit integer value";
+        case TagType::DINT:                 return "DINT: Signed 32-bit integer value";
+        case TagType::LINT:                 return "LINT: Signed 64-bit integer value";
+        case TagType::USINT:                return "USINT: Unsigned 8-bit integer value";
+        case TagType::UINT:                 return "UINT: Unsigned 16-bit integer value";
+        case TagType::UDINT:                return "UDINT: Unsigned 32-bit integer value";
+        case TagType::ULINT:                return "ULINT: Unsigned 64-bit integer value";
+        case TagType::REAL:                 return "REAL: 32-bit floating point value, IEEE format";
+        case TagType::LREAL:                return "LREAL: 64-bit floating point value, IEEE format";
+        case TagType::SYNCHRONOUS_TIME:     return "Synchronous time value";
+        case TagType::DATE:                 return "Date value";
+        case TagType::TIME:                 return "Time of day value";
+        case TagType::DATETIME:             return "Date and time of day value";
+        case TagType::CHAR_STRING:          return "Character string, 1 byte per character";
+        case TagType::STRING_8:             return "8-bit bit string";
+        case TagType::STRING_16:            return "16-bit bit string";
+        case TagType::STRING_32:            return "32-bit bit string";
+        case TagType::STRING_64:            return "64-bit bit string";
+        case TagType::WIDE_STRING:          return "Wide char character string, 2 bytes per character";
+        case TagType::HIGH_RES_DURATION:    return "High resolution duration value";
+        case TagType::MED_RES_DURATION:     return "Medium resolution duration value";
+        case TagType::LOW_RES_DURATION:     return "Low resolution duration value";
+        case TagType::N_BYTE_STRING:        return "N-byte per char character string";
+        case TagType::COUNTED_CHAR_STRING:  return "Counted character sting with 1 byte per character and 1 byte length indicator";
+        case TagType::DURATION_MS:          return "Duration in milliseconds";
+        case TagType::CIP_PATH:             return "CIP path segment(s)";
+        case TagType::ENGINEERING_UNITS:    return "Engineering units";
+        case TagType::INTERNATIONAL_STRING: return "International character string (encoding?)";
+        default:                            assert(false); return "unknown";
         }
     }
 }

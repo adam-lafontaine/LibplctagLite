@@ -107,74 +107,41 @@ namespace plctag
     };
 
 
-    /*
-    
-    case 0xC1: type = "BOOL: Boolean value"; break;
-            case 0xC2: type = "SINT: Signed 8-bit integer value"; break;
-            case 0xC3: type = "INT: Signed 16-bit integer value"; break;
-            case 0xC4: type = "DINT: Signed 32-bit integer value"; break;
-            case 0xC5: type = "LINT: Signed 64-bit integer value"; break;
-            case 0xC6: type = "USINT: Unsigned 8-bit integer value"; break;
-            case 0xC7: type = "UINT: Unsigned 16-bit integer value"; break;
-            case 0xC8: type = "UDINT: Unsigned 32-bit integer value"; break;
-            case 0xC9: type = "ULINT: Unsigned 64-bit integer value"; break;
-            case 0xCA: type = "REAL: 32-bit floating point value, IEEE format"; break;
-            case 0xCB: type = "LREAL: 64-bit floating point value, IEEE format"; break;
-            case 0xCC: type = "Synchronous time value"; break;
-            case 0xCD: type = "Date value"; break;
-            case 0xCE: type = "Time of day value"; break;
-            case 0xCF: type = "Date and time of day value"; break;
-            case 0xD0: type = "Character string, 1 byte per character"; break;
-            case 0xD1: type = "8-bit bit string"; break;
-            case 0xD2: type = "16-bit bit string"; break;
-            case 0xD3: type = "32-bit bit string"; break;
-            case 0xD4: type = "64-bit bit string"; break;
-            case 0xD5: type = "Wide char character string, 2 bytes per character"; break;
-            case 0xD6: type = "High resolution duration value"; break;
-            case 0xD7: type = "Medium resolution duration value"; break;
-            case 0xD8: type = "Low resolution duration value"; break;
-            case 0xD9: type = "N-byte per char character string"; break;
-            case 0xDA: type = "Counted character sting with 1 byte per character and 1 byte length indicator"; break;
-            case 0xDB: type = "Duration in milliseconds"; break;
-            case 0xDC: type = "CIP path segment(s)"; break;
-            case 0xDD: type = "Engineering units"; break;
-            case 0xDE: type = "International character string (encoding?)"; break;
-    
-    */
-
-
-    enum class DataType : u16
+    enum class TagType : int
     {
-        BOOL                 = 0xC1,
-        SINT                 = 0xC2,
-        INT                  = 0xC3,
-        DINT                 = 0xC4,
-        LINT                 = 0xC5,
-        USINT                = 0xC6,
-        UINT                 = 0xC7,
-        UDINT                = 0xC8,
-        ULINT                = 0xC9,
-        REAL                 = 0xCA,
-        LREAL                = 0xCB,
-        SYNCHRONOUS_TIME     = 0xCC,
-        DATE                 = 0xCD,
-        TIME                 = 0xCE,
-        DATETIME             = 0xCF,
-        CHAR_STRING          = 0xD0,
-        STRING_8             = 0xD1,
-        STRING_16            = 0xD2,
-        STRING_32            = 0xD3,
-        STRING_64            = 0xD4,
-        WIDE_STRING          = 0xD5,
-        HIGH_RES_DURATION    = 0xD6,
-        MED_RES_DURATION     = 0xD7,
-        LOW_RES_DURATION     = 0xD8,
-        N_BYTE_STRING        = 0xD9,
-        COUNTED_CHAR_STRING  = 0xDA,
-        DURATION_MS          = 0xDB,
-        CIP_PATH             = 0xDC,
-        ENGINEERING_UNITS    = 0xDD,
-        INTERNATIONAL_STRING = 0xDE
+        SYSTEM = 0,
+        UDT,
+        BOOL,
+        SINT,
+        INT,
+        DINT,
+        LINT,
+        USINT,
+        UINT,
+        UDINT,
+        ULINT,
+        REAL,
+        LREAL,
+        SYNCHRONOUS_TIME,
+        DATE,
+        TIME,
+        DATETIME,
+        CHAR_STRING,
+        STRING_8,
+        STRING_16,
+        STRING_32,
+        STRING_64,
+        WIDE_STRING,
+        HIGH_RES_DURATION,
+        MED_RES_DURATION,
+        LOW_RES_DURATION,
+        N_BYTE_STRING,
+        COUNTED_CHAR_STRING,
+        DURATION_MS,
+        CIP_PATH,
+        ENGINEERING_UNITS,
+        INTERNATIONAL_STRING,
+        UNKNOWN
     };
 
 }
@@ -226,7 +193,7 @@ namespace plctag
     {
     public:
         u32 instance_id = 0;
-        u16 type = 0;
+        TagType tag_type = TagType::UNKNOWN;
         u16 elem_size = 0;
         u16 elem_count = 0;
         u16 num_dimensions = 0;
