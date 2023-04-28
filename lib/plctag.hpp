@@ -193,12 +193,14 @@ namespace plctag
     {
     public:
         u32 instance_id = 0;
-        TagType tag_type = TagType::UNKNOWN;
+        u16 type_code = 0;        
         u16 elem_size = 0;
         u16 elem_count = 0;
         u16 num_dimensions = 0;
         u16 dimensions[3] = { 0 };
+
         String name;
+        TagType tag_type = TagType::UNKNOWN;
     };
 
 
@@ -233,8 +235,8 @@ namespace plctag
         cstr path = "1,0";
         bool has_dhp = false;
 
-        List<cstr> program_names;
-        List<Tag_Entry> tags;
+        List<Tag_Entry> controller_tags;
+        List<Tag_Entry> program_tags;
         List<UDT_Entry> udts;
     };
 }
@@ -253,7 +255,7 @@ namespace plctag
     
     void destroy(i32 tag);
     
-    void shutdown(void);
+    void shutdown();
     
     bool abort(i32 tag);
 
@@ -298,18 +300,23 @@ namespace plctag
 }
 
 
+namespace plctag
+{
+    cstr decode_controller(Controller c);
+
+    cstr decode_controller(int c);
+
+    cstr decode_tag_type(TagType t);
+}
+
+
 /* extra */
 
 namespace plctag
 {
-    ConnectResult enumerate_tags(PLC_Desc& data, int timeout);
+    Result<int> enumerate_tags(PLC_Desc& data, int timeout);
 
-    inline ConnectResult enumerate_tags(PLC_Desc& data) { return enumerate_tags(data, TIMEOUT_DEFAULT_MS); }
-
-
-    cstr decode_controller(Controller c);
-
-    cstr decode_controller(int c);
+    inline Result<int> enumerate_tags(PLC_Desc& data) { return enumerate_tags(data, TIMEOUT_DEFAULT_MS); }
 }
 
 

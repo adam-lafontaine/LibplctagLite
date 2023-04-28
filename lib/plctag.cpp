@@ -5,6 +5,10 @@
 #include <cstring>
 #include <cassert>
 #include <algorithm>
+#include <ranges>
+
+namespace rng = std::ranges;
+namespace rnv = std::views;
 
 
 /* validation */
@@ -14,6 +18,38 @@ namespace plctag
     constexpr auto ERR_NO_ERROR = "No error. Everything OK";
     constexpr auto ERR_TAG_SIZE = "Tag size error";
     constexpr auto ERR_ELEM_SIZE = "Tag element/count size error";
+
+
+    template <class T>
+    static void decode_result(Result<T>& result, int rc)
+    {
+        if (rc < 0)
+        {
+            result.status = static_cast<Status>(rc);
+            result.error = plc_tag_decode_error(rc);
+        }
+        else
+        {
+            result.status = Status::OK;
+            result.error = ERR_NO_ERROR;
+        }
+    }
+
+
+    template <class A, class B>
+    static void copy_result_status(Result<A> const& src, Result<B>& dst)
+    {
+        dst.status = src.status;
+        dst.error = src.error;
+    }
+
+
+    template <class T>
+    static void make_ok_result(Result<T>& result)
+    {
+        result.status = Status::OK;
+        result.error = ERR_NO_ERROR;
+    }
 
 
     static bool validate_tag_attributes(Tag_Attr const& attr)
@@ -253,19 +289,7 @@ namespace plctag
 
 namespace plctag
 {
-    template <class T>
-    static void decode_result(Result<T>& result, int rc)
-    {
-        if (rc < 0)
-        {
-            result.status = static_cast<Status>(rc);
-            result.error = plc_tag_decode_error(rc);
-        }
-        else
-        {
-            result.status = Status::OK;
-        }       
-    }
+    
 
 
     static ConnectResult attempt_connection(Tag_Attr attr, int timeout)
@@ -395,7 +419,7 @@ namespace plctag
     * from working.
     */
 
-    void shutdown(void)
+    void shutdown()
     {
         plc_tag_shutdown();
     }
@@ -623,17 +647,15 @@ namespace plctag
 }
 
 
-/* extra */
+/* decode enums */
 
 namespace plctag
 {
-    constexpr auto CONTROLLER_TAGS_KEY = "@tags";
-
-    constexpr auto TYPE_IS_STRUCT   = (u16)0x8000;
-    constexpr auto TYPE_IS_SYSTEM   = (u16)0x1000;
-    constexpr auto TYPE_DIM_MASK    = (u16)0x6000;
+    constexpr auto TYPE_IS_STRUCT = (u16)0x8000;
+    constexpr auto TYPE_IS_SYSTEM = (u16)0x1000;
+    constexpr auto TYPE_DIM_MASK = (u16)0x6000;
     constexpr auto TYPE_UDT_ID_MASK = (u16)0x0FFF;
-    constexpr auto TAG_DIM_MASK     = (u16)0x6000;
+    constexpr auto TAG_DIM_MASK = (u16)0x6000;
 
 
     static TagType get_tag_type(uint16_t element_type)
@@ -650,7 +672,7 @@ namespace plctag
         uint16_t atomic_type = element_type & 0x00FF; /* MAGIC */
         const char* type = NULL;
 
-        switch (atomic_type) 
+        switch (atomic_type)
         {
         case 0xC1: return TagType::BOOL;
         case 0xC2: return TagType::SINT;
@@ -683,94 +705,8 @@ namespace plctag
         case 0xDD: return TagType::ENGINEERING_UNITS;
         case 0xDE: return TagType::INTERNATIONAL_STRING;
         }
-        
+
         return TagType::UNKNOWN;
-    }
-
-
-    static bool append_tag_list(Tag_Desc const& tag, List<Tag_Entry>& tag_list)
-    {
-        auto payload_size = plc_tag_get_size(tag.tag_handle);
-        if (payload_size < 4)
-        {
-            return false;
-        }
-
-        auto handle = tag.tag_handle;        
-
-        /* each entry looks like this:
-        uint32_t instance_id    monotonically increasing but not contiguous
-        uint16_t symbol_type    type of the symbol.
-        uint16_t element_length length of one array element in bytes.
-        uint32_t array_dims[3]  array dimensions.
-        uint8_t string_data[]   string bytes (string_len of them)
-        */
-
-        u16 symbol_type = 0;
-        char name_buffer[256];
-
-        int offset = 0;
-        while (offset < payload_size)
-        {
-            Tag_Entry entry{};
-
-            entry.instance_id = plc_tag_get_uint32(handle, offset);
-            offset += 4;
-
-            symbol_type = plc_tag_get_uint16(handle, offset);
-            entry.tag_type = get_tag_type(symbol_type);
-            offset += 2;
-
-            entry.elem_size = plc_tag_get_uint16(handle, offset);
-            offset += 2;
-
-            entry.num_dimensions = (u16)((symbol_type & TAG_DIM_MASK) >> 13);
-            entry.elem_count = 1;
-            for (u32 i = 0; i < 3; ++i)
-            {
-                entry.dimensions[i] = (u16)plc_tag_get_uint32(handle, offset);
-                entry.elem_count *= std::max((u16)1, entry.dimensions[i]);
-                offset += 4;
-            }
-
-            memset(name_buffer, 0, sizeof(name_buffer));
-
-            auto string_len = (u64)plc_tag_get_string_length(handle, offset);
-
-            auto rc = plc_tag_get_string(handle, offset, name_buffer, string_len + 1);
-            if (rc != PLCTAG_STATUS_OK)
-            {
-                return false;
-            }
-
-            entry.name = name_buffer;
-
-            tag_list.push_back(std::move(entry));
-
-            offset += plc_tag_get_string_total_length(handle, offset);
-        }
-    }
-
-
-    ConnectResult enumerate_tags(PLC_Desc& data, int timeout)
-    {
-        Tag_Attr attr{};
-        attr.controller = data.controller;
-        attr.gateway = data.gateway;
-        attr.path = data.path;
-        attr.has_dhp = data.has_dhp;
-
-        attr.tag_name = CONTROLLER_TAGS_KEY;
-        
-        ConnectResult result = attempt_connection(attr, timeout);
-        if (!result.is_ok())
-        {
-            return result;
-        }
-
-        append_tag_list(result.data, data.tags);
-
-        return result;
     }
 
 
@@ -851,6 +787,141 @@ namespace plctag
         default:                            assert(false); return "unknown";
         }
     }
+}
+
+
+/* extra */
+
+namespace plctag
+{
+    constexpr auto TAG_LIST_KEY = "@tags";
+
+
+    static bool append_tag_list(Tag_Desc const& tag, List<Tag_Entry>& tag_list)
+    {
+        auto payload_size = plc_tag_get_size(tag.tag_handle);
+        if (payload_size < 4)
+        {
+            return false;
+        }
+
+        auto handle = tag.tag_handle;        
+
+        /* each entry looks like this:
+        uint32_t instance_id    monotonically increasing but not contiguous
+        uint16_t symbol_type    type of the symbol.
+        uint16_t element_length length of one array element in bytes.
+        uint32_t array_dims[3]  array dimensions.
+        uint8_t string_data[]   string bytes (string_len of them)
+        */
+
+        u16 symbol_type = 0;
+        char name_buffer[256];
+
+        int offset = 0;
+        while (offset < payload_size)
+        {
+            Tag_Entry entry{};
+
+            entry.instance_id = plc_tag_get_uint32(handle, offset);
+            offset += 4;
+
+            symbol_type = plc_tag_get_uint16(handle, offset);
+            entry.type_code = symbol_type;
+            entry.tag_type = get_tag_type(symbol_type);
+            offset += 2;
+
+            entry.elem_size = plc_tag_get_uint16(handle, offset);
+            offset += 2;
+
+            entry.num_dimensions = (u16)((symbol_type & TAG_DIM_MASK) >> 13);
+            entry.elem_count = 1;
+            for (u32 i = 0; i < 3; ++i)
+            {
+                entry.dimensions[i] = (u16)plc_tag_get_uint32(handle, offset);
+                entry.elem_count *= std::max((u16)1, entry.dimensions[i]);
+                offset += 4;
+            }
+
+            memset(name_buffer, 0, sizeof(name_buffer));
+
+            auto string_len = plc_tag_get_string_length(handle, offset);
+
+            auto rc = plc_tag_get_string(handle, offset, name_buffer, string_len + 1);
+            if (rc != PLCTAG_STATUS_OK)
+            {
+                continue;
+            }
+
+            entry.name = name_buffer;
+
+            tag_list.push_back(std::move(entry));
+
+            offset += plc_tag_get_string_total_length(handle, offset);
+        }
+
+        return true;
+    }
+
+
+    Result<int> enumerate_tags(PLC_Desc& data, int timeout)
+    {
+        Tag_Attr attr{};
+        attr.controller = data.controller;
+        attr.gateway = data.gateway;
+        attr.path = data.path;
+        attr.has_dhp = data.has_dhp;
+        attr.tag_name = 0;
+
+        Result<int> result{};
+
+        ConnectResult controller_result{};
+        ConnectResult program_result{};
+
+        // constroller tags
+        attr.tag_name = TAG_LIST_KEY;        
+        controller_result = attempt_connection(attr, timeout);
+        if (!controller_result.is_ok())
+        {
+            copy_result_status(controller_result, result);
+            return result;
+        }
+
+        append_tag_list(controller_result.data, data.controller_tags);
+        destroy(controller_result.data.tag_handle);
+
+        // program tags
+        auto const is_program_tag = [](Tag_Entry const& tag) { return tag.name.starts_with("Program:"); };
+        auto program_headers = rnv::filter(data.controller_tags, is_program_tag);
+
+        char name_buffer[256] = { 0 };
+
+        for(auto& header : program_headers)
+        {
+            memset(name_buffer, 0, sizeof(name_buffer));
+            snprintf(name_buffer, sizeof(name_buffer), "%s.%s", header.name.c_str(), TAG_LIST_KEY);
+
+            attr.tag_name = name_buffer;
+            program_result = attempt_connection(attr, timeout);
+            if (!program_result.is_ok())
+            {
+                header.name += " [ERROR]";
+                continue;
+            }
+
+            append_tag_list(program_result.data, data.program_tags);
+            destroy(program_result.data.tag_handle);
+        }
+
+        make_ok_result(result);
+        return result;
+    }
+
+
+    
+
+
+    
 }
 
 

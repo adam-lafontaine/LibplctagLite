@@ -128,8 +128,5 @@
     <ClCompile Include="..\..\examples\cpp\list_tags_logix.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\examples\list_tags_logix.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
 </Project>

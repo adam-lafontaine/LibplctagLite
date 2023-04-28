@@ -93,9 +93,16 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    for (auto const& tag : plc.tags)
+    tag_print("Controller tags:\n");
+    for (auto const& tag : plc.controller_tags)
     {
-        tag_print("%s\n", tag.name);
+        tag_print("%s: %s\n", tag.name.c_str(), plc::decode_tag_type(tag.tag_type));
+    }
+
+    tag_print("Program tags:\n");
+    for (auto const& tag : plc.program_tags)
+    {
+        tag_print("%s: %s\n", tag.name.c_str(), plc::decode_tag_type(tag.tag_type));
     }
 
     tag_print("Done!\n");   
