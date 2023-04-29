@@ -6,6 +6,7 @@
 #include <cassert>
 #include <algorithm>
 #include <ranges>
+#include <stdarg.h>
 
 namespace rng = std::ranges;
 namespace rnv = std::views;
@@ -94,7 +95,7 @@ namespace plctag
     // attribute max lengths
     constexpr size_t GATEWAY_SZ = sizeof("gateway=192.168.101.101");
     constexpr size_t PATH_SZ    = sizeof("path=1,0");
-    constexpr size_t NAME_SZ    = sizeof("name=SomeTagNameWhichIsTheLongestNameThatWeWantToSupport");
+    constexpr size_t NAME_SZ = 256;
 
     constexpr size_t CONNECTION_STRING_SZ = GATEWAY_SZ + PATH_SZ + NAME_SZ + 50;
 
@@ -118,6 +119,25 @@ namespace plctag
 
 
     template <size_t N>
+    static void reset_string_data(CharString<N>& str)
+    {
+        memset(str.data, 0, str.capacity);
+    }
+
+
+    template <size_t N>
+    static void write_string_data(CharString<N>& str, const char* format, ...)
+    {
+        va_list args;
+        va_start(args, format);
+
+        snprintf(str.data, str.capacity, format, args);
+
+        va_end(args);
+    }
+
+
+    template <size_t N>
     static bool build_kv_string(cstr key, cstr value, CharString<N>& dst)
     {
         auto base = "%s=%s";
@@ -128,7 +148,7 @@ namespace plctag
             return false;
         }
 
-        snprintf(dst.data, dst.capacity, base, key, value);
+        write_string_data(dst, base, key, value);
         return true;
     }
 
@@ -143,7 +163,7 @@ namespace plctag
             return false;
         }
 
-        snprintf(dst.data, dst.capacity, base, kv_1, kv_2, kv_3, kv_4, kv_5);
+        write_string_data(dst, base, kv_1, kv_2, kv_3, kv_4, kv_5);
         return true;
     }
 
@@ -158,7 +178,7 @@ namespace plctag
             return false;
         }
 
-        snprintf(dst.data, dst.capacity, base, kv_1, kv_2, kv_3, kv_4);
+        write_string_data(dst, base, kv_1, kv_2, kv_3, kv_4);
         return true;
     }
 
@@ -187,24 +207,19 @@ namespace plctag
         if (!result)
         {
             return false;
-        }
-        
+        }        
 
         switch (attr.controller)
         {
         case Controller::ControlLogix:
             protocol = "protocol=ab-eip";
-            plc = "plc=controllogix";
-            
+            plc = "plc=controllogix";            
             result &= build_connection_string(protocol, plc, gateway.data, path.data, name.data, dst);
-
             break;
 
         case Controller::Modbus:
             protocol = "protocol=mb-tcp";
-
             result &= build_connection_string(protocol, gateway.data, path.data, name.data, dst);
-
             break;
 
         case Controller::PLC5:
@@ -252,25 +267,19 @@ namespace plctag
         case Controller::LogixPccc:
             protocol = "protocol=ab-eip";
             plc = "plc=lgxpccc";
-
             result &= build_connection_string(protocol, plc, gateway.data, name.data, dst);
-
             break;
 
         case Controller::Micro800:
             protocol = "protocol=ab-eip";
             plc = "plc=micro800";
-
             result &= build_connection_string(protocol, plc, gateway.data, name.data, dst);
-
             break;
         
         case Controller::OmronNJNX:
             protocol = "protocol=ab-eip";
             plc = "plc=omron-njnx";
-
             result &= build_connection_string(protocol, plc, gateway.data, name.data, dst);
-
             break;
         
         default:
@@ -710,6 +719,18 @@ namespace plctag
     }
 
 
+    cstr decode_status(Status s)
+    {
+        switch (s)
+        {
+        case Status::NOT_SET:       return "No status set";
+        case Status::ERR_BAD_SIZE:  return "Unexpected or negative tag size";
+        case Status::ERR_BAD_ATTRS: return "Invalid tag attributes/connection string";
+        default:                    return plc_tag_decode_error(static_cast<int>(s));
+        }
+    }
+
+
     cstr decode_controller(Controller c)
     {
         switch (c)
@@ -795,18 +816,44 @@ namespace plctag
 namespace plctag
 {
     constexpr auto TAG_LIST_KEY = "@tags";
+    constexpr auto UDT_KEY = "@udt";
 
-
-    static bool append_tag_list(Tag_Desc const& tag, List<Tag_Entry>& tag_list)
+    template <size_t N>
+    static bool fill_string_buffer(CharString<N>& buffer, i32 handle, int offset)
     {
-        auto payload_size = plc_tag_get_size(tag.tag_handle);
-        if (payload_size < 4)
+        reset_string_data(buffer);
+
+        auto string_len = plc_tag_get_string_length(handle, offset);
+        if (string_len <= 0 || string_len >= buffer.capacity)
         {
+            write_string_data(buffer, "ERROR plc_tag_get_string_length");
             return false;
         }
 
-        auto handle = tag.tag_handle;        
+        auto rc = plc_tag_get_string(handle, offset, buffer.data, string_len + 1);
+        if (rc != PLCTAG_STATUS_OK)
+        {
+            write_string_data(buffer, "ERROR plc_tag_get_string: %s", plc_tag_decode_error(rc));
+            return false;
+        }
 
+        return true;
+    }
+
+
+    template <class ENTRY>
+    static void get_entry_name(ENTRY& entry, i32 handle, int offset)
+    {
+        NameStr name;
+
+        fill_string_buffer(name, handle, offset);
+
+        entry.name = name.data;
+    }
+
+
+    int build_tag_entry(Tag_Entry& entry, i32 handle, int offset)
+    {
         /* each entry looks like this:
         uint32_t instance_id    monotonically increasing but not contiguous
         uint16_t symbol_type    type of the symbol.
@@ -815,45 +862,165 @@ namespace plctag
         uint8_t string_data[]   string bytes (string_len of them)
         */
 
-        u16 symbol_type = 0;
-        char name_buffer[256];
+        constexpr int sz32 = 4;
+        constexpr int sz16 = 2;
 
+        u16 symbol_type = 0;
+
+        entry.instance_id = plc_tag_get_uint32(handle, offset);
+        offset += sz32;
+
+        symbol_type = plc_tag_get_uint16(handle, offset);
+        entry.type_code = symbol_type;
+        entry.tag_type = get_tag_type(symbol_type);
+        offset += sz16;
+
+        entry.elem_size = plc_tag_get_uint16(handle, offset);
+        offset += sz16;
+
+        entry.num_dimensions = (u16)((symbol_type & TAG_DIM_MASK) >> 13);
+        entry.elem_count = 1;
+        for (u32 i = 0; i < 3; ++i)
+        {
+            entry.dimensions[i] = (u16)plc_tag_get_uint32(handle, offset);
+            entry.elem_count *= std::max((u16)1, entry.dimensions[i]);
+            offset += sz32;
+        }
+
+        get_entry_name(entry, handle, offset);
+
+        return offset;
+    }
+
+
+    int build_udt_entry(UDT_Entry& entry, i32 handle, u16 udt_id)
+    {
+        /*
+
+        The format in the tag buffer is:
+
+        A new header of 14 bytes:
+
+        Bytes   Meaning
+        0-1     16-bit UDT ID
+        2-5     32-bit UDT member description size, in 32-bit words.
+        6-9     32-bit UDT instance size, in bytes.
+        10-11   16-bit UDT number of members (fields).
+        12-13   16-bit UDT handle/type.
+
+        Then the raw field info.
+
+        N x field info entries
+            uint16_t field_metadata - array element count or bit field number
+            uint16_t field_type
+            uint32_t field_offset
+
+        int8_t string - zero-terminated string, UDT name, but name stops at first semicolon!
+
+        N x field names
+            int8_t string - zero-terminated.
+
+        */
+
+        // get header info
+        entry.id = plc_tag_get_uint16(handle, 0);
+        //member_desc_size = plc_tag_get_uint32(udt_info_tag, 2);
+        entry.instance_size = plc_tag_get_uint32(handle, 6);
+        entry.num_fields = plc_tag_get_uint16(handle, 10);
+        entry.struct_handle = plc_tag_get_uint16(handle, 12);
+
+        constexpr int sz32 = 4;
+        constexpr int sz16 = 2;
+
+        u16 symbol_type = 0;
+        int offset = 14; // skip past the header
+
+        if (entry.id != udt_id)
+        {
+            // should be the same
+        }
+
+        entry.fields = List<UDT_Field_Entry>(entry.num_fields);
+
+        for (auto& field : entry.fields)
+        {
+            field.metadata = plc_tag_get_uint16(handle, offset);
+            offset += sz16;
+
+            symbol_type = plc_tag_get_uint16(handle, offset);
+            field.type_code = symbol_type;
+            field.tag_type = get_tag_type(symbol_type);
+            offset += sz16;
+
+            field.offset = plc_tag_get_uint32(handle, offset);
+            offset += sz32;
+
+            // child udts
+            if (field.tag_type == TagType::UDT)
+            {
+                auto child_id = field.type_code & TYPE_UDT_ID_MASK;
+            }
+        }
+
+        /*
+
+        Get the template/UDT name.   This is weird.
+        Scan until we see a 0x3B, semicolon, byte.   That is the end of the
+        template name.   Actually we should look for ";n" but the semicolon
+        seems to be enough for now.
+
+        */
+
+        NameStr name;
+
+        if (!fill_string_buffer(name, handle, offset))
+        {
+            entry.name = name.data;
+        }
+        else
+        {
+            int idx = 0;
+            for (; name.data[idx] != ';' && idx < 256; ++idx) {}
+            if (name.data[idx] == ';')
+            {
+                name.data[idx] = 0;
+                entry.name = name.data;
+            }
+            else
+            {
+                entry.name = "ERROR parsing UDT name string";
+            }
+        }
+
+        offset += plc_tag_get_string_total_length(handle, offset);
+
+        // field names
+        for (auto& field : entry.fields)
+        {
+            get_entry_name(field, handle, offset);
+
+            offset += plc_tag_get_string_total_length(handle, offset);
+        }
+
+        return offset;
+    }
+
+
+    static bool append_tag_list(Tag_Desc const& tag_info, List<Tag_Entry>& tag_list)
+    {
+        auto handle = tag_info.tag_handle;
+
+        auto payload_size = plc_tag_get_size(tag_info.tag_handle);
+        if (payload_size < 4)
+        {
+            return false;
+        }
+        
         int offset = 0;
         while (offset < payload_size)
         {
             Tag_Entry entry{};
-
-            entry.instance_id = plc_tag_get_uint32(handle, offset);
-            offset += 4;
-
-            symbol_type = plc_tag_get_uint16(handle, offset);
-            entry.type_code = symbol_type;
-            entry.tag_type = get_tag_type(symbol_type);
-            offset += 2;
-
-            entry.elem_size = plc_tag_get_uint16(handle, offset);
-            offset += 2;
-
-            entry.num_dimensions = (u16)((symbol_type & TAG_DIM_MASK) >> 13);
-            entry.elem_count = 1;
-            for (u32 i = 0; i < 3; ++i)
-            {
-                entry.dimensions[i] = (u16)plc_tag_get_uint32(handle, offset);
-                entry.elem_count *= std::max((u16)1, entry.dimensions[i]);
-                offset += 4;
-            }
-
-            memset(name_buffer, 0, sizeof(name_buffer));
-
-            auto string_len = plc_tag_get_string_length(handle, offset);
-
-            auto rc = plc_tag_get_string(handle, offset, name_buffer, string_len + 1);
-            if (rc != PLCTAG_STATUS_OK)
-            {
-                continue;
-            }
-
-            entry.name = name_buffer;
+            offset = build_tag_entry(entry, handle, offset);
 
             tag_list.push_back(std::move(entry));
 
@@ -864,23 +1031,45 @@ namespace plctag
     }
 
 
+    static bool append_udt_list(Tag_Desc const& tag_info, List<UDT_Entry>& udt_list, u16 udt_id)
+    {
+        auto handle = tag_info.tag_handle;
+
+        auto payload_size = plc_tag_get_size(tag_info.tag_handle);
+        if (payload_size < 4)
+        {
+            return false;
+        }
+
+        UDT_Entry entry{};
+
+        build_udt_entry(entry, handle, udt_id);
+
+        udt_list.push_back(std::move(entry));
+        return true;
+    }
+
+
     Result<int> enumerate_tags(PLC_Desc& data, int timeout)
     {
-        Tag_Attr attr{};
-        attr.controller = data.controller;
-        attr.gateway = data.gateway;
-        attr.path = data.path;
-        attr.has_dhp = data.has_dhp;
-        attr.tag_name = 0;
+        Tag_Attr tag_info_attr{};
+        tag_info_attr.controller = data.controller;
+        tag_info_attr.gateway = data.gateway;
+        tag_info_attr.path = data.path;
+        tag_info_attr.has_dhp = data.has_dhp;
+        tag_info_attr.tag_name = 0;
 
         Result<int> result{};
 
         ConnectResult controller_result{};
         ConnectResult program_result{};
+        ConnectResult udt_result{};
+
+        auto const close_connection = [](ConnectResult& res) { destroy(res.data.tag_handle); };
 
         // constroller tags
-        attr.tag_name = TAG_LIST_KEY;        
-        controller_result = attempt_connection(attr, timeout);
+        tag_info_attr.tag_name = TAG_LIST_KEY;        
+        controller_result = attempt_connection(tag_info_attr, timeout);
         if (!controller_result.is_ok())
         {
             copy_result_status(controller_result, result);
@@ -888,29 +1077,51 @@ namespace plctag
         }
 
         append_tag_list(controller_result.data, data.controller_tags);
-        destroy(controller_result.data.tag_handle);
+        close_connection(controller_result);
 
-        // program tags
+        NameStr name_str{};
+
         auto const is_program_tag = [](Tag_Entry const& tag) { return tag.name.starts_with("Program:"); };
+        auto const is_udt_tag = [](Tag_Entry const& tag) { return tag.tag_type == TagType::UDT; };
+
+        // program tags        
         auto program_headers = rnv::filter(data.controller_tags, is_program_tag);
-
-        char name_buffer[256] = { 0 };
-
         for(auto& header : program_headers)
         {
-            memset(name_buffer, 0, sizeof(name_buffer));
-            snprintf(name_buffer, sizeof(name_buffer), "%s.%s", header.name.c_str(), TAG_LIST_KEY);
+            reset_string_data(name_str);
+            write_string_data(name_str, "%s.%s", header.name.c_str(), TAG_LIST_KEY);
 
-            attr.tag_name = name_buffer;
-            program_result = attempt_connection(attr, timeout);
+            tag_info_attr.tag_name = name_str.data;
+            program_result = attempt_connection(tag_info_attr, timeout);
             if (!program_result.is_ok())
             {
-                header.name += " [ERROR]";
+                header.name += " [" + std::string(decode_status(program_result.status)) + "]";
                 continue;
             }
 
             append_tag_list(program_result.data, data.program_tags);
-            destroy(program_result.data.tag_handle);
+            close_connection(program_result);
+        }
+
+        // UDT tags        
+        auto udt_headers = rnv::filter(data.controller_tags, is_udt_tag);
+        for (auto& header : udt_headers)
+        {
+            auto udt_id = header.type_code & TYPE_UDT_ID_MASK;
+
+            reset_string_data(name_str);
+            write_string_data(name_str, "%s/%u", UDT_KEY, (u32)udt_id);
+
+            tag_info_attr.tag_name = name_str.data;
+            udt_result = attempt_connection(tag_info_attr, timeout);
+            if (!udt_result.is_ok())
+            {
+                header.name += " < " + std::string(decode_status(program_result.status)) + " >";
+                continue;
+            }
+
+            append_udt_list(udt_result.data, data.udt_tags, udt_id);
+            close_connection(udt_result);
         }
 
         make_ok_result(result);

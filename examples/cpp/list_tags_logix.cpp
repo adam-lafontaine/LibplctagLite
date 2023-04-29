@@ -17,18 +17,50 @@ constexpr auto DEFAULT_IP = "192.168.19.230";
 constexpr auto DEFAULT_PATH = "1,0";
 
 
-FILE* out_file;
-FILE* err_file;
+FILE* out_files[4] = { 0 };
+constexpr int OUT_CTL = 0;
+constexpr int OUT_PGM = 1;
+constexpr int OUT_UDT = 2;
+constexpr int OUT_ERR = 3;
 
 
-void tag_print(const char* format, ...)
+static void close_files()
+{
+    for (int i = 0; i < 4; ++i)
+    {
+        if (out_files[i])
+        {
+            fclose(out_files[i]);
+        }
+    }
+}
+
+
+static bool open_files()
+{
+    auto err = fopen_s(&out_files[OUT_CTL], "controller_tags.txt", "w");
+    err     += fopen_s(&out_files[OUT_PGM], "program_tags.txt", "w");
+    err     += fopen_s(&out_files[OUT_UDT], "udt_tags.txt", "w");
+    err     += fopen_s(&out_files[OUT_ERR], "errors.txt", "w");
+
+    if (err)
+    {
+        close_files();
+        return false;
+    }
+
+    return true;
+}
+
+
+static void tag_print(int file_id, const char* format, ...)
 {
     va_list args;
     va_start(args, format);
 
-    if (out_file)
+    if (out_files[file_id])
     {
-        vfprintf(out_file, format, args);
+        vfprintf(out_files[file_id], format, args);
     }
 
     vfprintf(stdout, format, args);
@@ -37,14 +69,14 @@ void tag_print(const char* format, ...)
 }
 
 
-void tag_print_error(const char* format, ...)
+static void tag_print_error(const char* format, ...)
 {
     va_list args;
     va_start(args, format);
 
-    if (err_file)
+    if (out_files[OUT_ERR])
     {
-        vfprintf(err_file, format, args);
+        vfprintf(out_files[OUT_ERR], format, args);
     }
 
     vfprintf(stderr, format, args);
@@ -53,30 +85,18 @@ void tag_print_error(const char* format, ...)
 }
 
 
-bool str_is_equal(cstr lhs, cstr rhs)
-{
-    auto len = std::max(strlen(lhs), strlen(rhs));
-
-    return strncmp(lhs, rhs, len) == 0;
-}
-
-
-bool str_starts_with(cstr str, cstr prefix)
-{
-    auto len = strlen(prefix);
-    return strlen(str) >= len && strncmp(str, prefix, len) == 0;
-}
-
-
 int main(int argc, char** argv)
 {
-    auto error = fopen_s(&out_file, "output.txt", "w");
-    error = error = fopen_s(&err_file, "errors.txt", "w");
+    if (!open_files())
+    {
+        printf("could not open output files\n");
+        return 0;
+    }
 
     auto const cleanup = [&]() 
     {
-        if (out_file) { fclose(out_file); }
-        if (err_file) { fclose(err_file); }
+        close_files();
+        plc::shutdown();
     };
 
     plc::PLC_Desc plc;
@@ -93,19 +113,29 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    tag_print("Controller tags:\n");
+    tag_print(OUT_CTL, "Controller tags:\n");
     for (auto const& tag : plc.controller_tags)
     {
-        tag_print("%s: %s\n", tag.name.c_str(), plc::decode_tag_type(tag.tag_type));
+        tag_print(OUT_CTL, "%s: %s\n", tag.name.c_str(), plc::decode_tag_type(tag.tag_type));
     }
 
-    tag_print("Program tags:\n");
+    tag_print(OUT_PGM, "Program tags:\n");
     for (auto const& tag : plc.program_tags)
     {
-        tag_print("%s: %s\n", tag.name.c_str(), plc::decode_tag_type(tag.tag_type));
+        tag_print(OUT_PGM, "%s: %s\n", tag.name.c_str(), plc::decode_tag_type(tag.tag_type));
     }
 
-    tag_print("Done!\n");   
+    tag_print(OUT_UDT, "UDT tags:\n");
+    for (auto const& tag : plc.udt_tags)
+    {
+        tag_print(OUT_UDT, "%s:\n", tag.name.c_str());
+        for (auto const& field : tag.fields)
+        {
+            tag_print(OUT_UDT, "  %s: %s\n", field.name.c_str(), plc::decode_tag_type(field.tag_type));
+        }        
+    }
+
+    printf("Done!\n");   
 
     cleanup();
     return 0;

@@ -413,7 +413,6 @@ char *setup_tag_string(int argc, char **argv)
 }
 
 
-
 int open_tag(char *base, char *tag_name)
 {
     int32_t tag = PLCTAG_ERR_CREATE;
@@ -472,8 +471,6 @@ int get_tag_list(int32_t tag, struct tag_entry_s **tag_list, struct tag_entry_s 
 
     return PLCTAG_STATUS_OK;
 }
-
-
 
 
 int process_tag_entry(int32_t tag, int *offset, uint16_t *last_tag_id, struct tag_entry_s **tag_list, struct tag_entry_s *parent)
@@ -566,7 +563,6 @@ int process_tag_entry(int32_t tag, int *offset, uint16_t *last_tag_id, struct ta
 
     return PLCTAG_STATUS_OK;
 }
-
 
 
 void print_element_type(uint16_t element_type)

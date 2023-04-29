@@ -37,7 +37,6 @@ namespace plctag
 
         PENDING              = 1,
         OK                   = 0,
-
         ERR_ABORT            = -1,
         ERR_BAD_CONFIG       = -2,
         ERR_BAD_CONNECTION   = -3,
@@ -207,23 +206,25 @@ namespace plctag
     class UDT_Field_Entry
     {
     public:
-        cstr name;
-        u16 type;
-        u16 metadata;
-        u32 size;
-        u32 offset;
+        u16 metadata = 0;
+        u16 type_code = 0;
+        u32 offset = 0;
+
+        String name;
+        TagType tag_type = TagType::UNKNOWN;
     };
 
 
     class UDT_Entry
     {
-    public:
-        cstr name;
-        u16 id;
-        u16 num_fields;
-        u16 struct_handle;
-        u32 instance_size;
+    public:        
+        u16 id = 0;
+        u16 num_fields = 0;
+        u16 struct_handle = 0;
+        u32 instance_size = 0;
         List<UDT_Field_Entry> fields;
+
+        String name;
     };
 
 
@@ -237,7 +238,7 @@ namespace plctag
 
         List<Tag_Entry> controller_tags;
         List<Tag_Entry> program_tags;
-        List<UDT_Entry> udts;
+        List<UDT_Entry> udt_tags;
     };
 }
 
