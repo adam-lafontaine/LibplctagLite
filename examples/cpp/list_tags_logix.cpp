@@ -104,6 +104,8 @@ int main(int argc, char** argv)
     plc.gateway = DEFAULT_IP;
     plc.path = DEFAULT_PATH;
 
+    printf("Scanning for tags... ");
+
     auto result = plc::enumerate_tags(plc);
 
     if (!result.is_ok())
@@ -113,17 +115,42 @@ int main(int argc, char** argv)
         return 0;
     }
 
+    printf("Done!\n");
+
+    printf("Testing controller tags... ");
+
+    plc::Tag_Attr attr{};
+    attr.controller = plc.controller;
+    attr.gateway = plc.gateway;
+    attr.path = plc.path;
+
     tag_print(OUT_CTL, "Controller tags:\n");
     for (auto const& tag : plc.controller_tags)
     {
-        tag_print(OUT_CTL, "%s: %s\n", tag.name.c_str(), plc::decode_tag_type(tag.tag_type));
+        u32 size = 0;
+        attr.tag_name = tag.name.c_str();
+        auto result = plc::connect(attr);
+        if (result.is_ok())
+        {
+            size = result.data.tag_size;
+        }
+        tag_print(OUT_CTL, "%20s: %5u bytes - %s\n", tag.name.c_str(), size, plc::decode_tag_type(tag.tag_type));
+        plc::destroy(result.data.tag_handle);
     }
+
+    printf("Done!\n");
+
+    printf("Listing program tags... ");
 
     tag_print(OUT_PGM, "Program tags:\n");
     for (auto const& tag : plc.program_tags)
     {
-        tag_print(OUT_PGM, "%s: %s\n", tag.name.c_str(), plc::decode_tag_type(tag.tag_type));
+        tag_print(OUT_PGM, "%20s: %s\n", tag.name.c_str(), plc::decode_tag_type(tag.tag_type));
     }
+
+    printf("Done!\n");
+
+    printf("Listing UDT tags... ");
 
     tag_print(OUT_UDT, "UDT tags:\n");
     for (auto const& tag : plc.udt_tags)
@@ -131,7 +158,7 @@ int main(int argc, char** argv)
         tag_print(OUT_UDT, "%s:\n", tag.name.c_str());
         for (auto const& field : tag.fields)
         {
-            tag_print(OUT_UDT, "  %s: %s\n", field.name.c_str(), plc::decode_tag_type(field.tag_type));
+            tag_print(OUT_UDT, "  %20s: %s\n", field.name.c_str(), plc::decode_tag_type(field.tag_type));
         }        
     }
 

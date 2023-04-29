@@ -168,9 +168,9 @@ namespace plctag
     {
     public:
         i32 tag_handle = -1;
-        u64 tag_size = 0;
-        u64 elem_size = 0;
-        u64 elem_count = 0;
+        u32 tag_size = 0;
+        u32 elem_size = 0;
+        u32 elem_count = 0;
     };
 
 
@@ -288,7 +288,7 @@ namespace plctag
 
     Result<f64> get_f64(i32 tag, int offset);
 
-    Result<int> get_bytes(i32 id, int offset, u8 *buffer, int buffer_length);
+    Result<int> get_bytes(i32 id, int offset, u8* buffer, int buffer_length);
 
 
     Result<u64> get_string_length(i32 tag_id, int string_start_offset);

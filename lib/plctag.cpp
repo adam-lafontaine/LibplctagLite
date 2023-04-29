@@ -298,9 +298,6 @@ namespace plctag
 
 namespace plctag
 {
-    
-
-
     static ConnectResult attempt_connection(Tag_Attr attr, int timeout)
     {
         ConnectResult result{};
@@ -342,9 +339,9 @@ namespace plctag
         auto elem_count = std::max(plc_tag_get_int_attribute(rc, "elem_count", 0), 0);
 
         result.data.tag_handle = tag_id;
-        result.data.tag_size = (u64)size;
-        result.data.elem_size = (u64)elem_size;
-        result.data.elem_count = (u64)elem_count;
+        result.data.tag_size = (u32)size;
+        result.data.elem_size = (u32)elem_size;
+        result.data.elem_count = (u32)elem_count;
 
         return result;
     }
@@ -1095,7 +1092,7 @@ namespace plctag
             program_result = attempt_connection(tag_info_attr, timeout);
             if (!program_result.is_ok())
             {
-                header.name += " [" + std::string(decode_status(program_result.status)) + "]";
+                header.name += " < " + std::string(decode_status(program_result.status)) + " > ";
                 continue;
             }
 
