@@ -8,7 +8,6 @@
 #include <ranges>
 #include <stdarg.h>
 
-namespace rng = std::ranges;
 namespace rnv = std::views;
 
 
@@ -16,24 +15,19 @@ namespace rnv = std::views;
 
 namespace plctag
 {
-    constexpr auto ERR_NO_ERROR = "No error. Everything OK";
-    constexpr auto ERR_TAG_SIZE = "Tag size error";
-    constexpr auto ERR_ELEM_SIZE = "Tag element/count size error";
-
-
     template <class T>
     static void decode_result(Result<T>& result, int rc)
     {
-        if (rc < 0)
-        {
-            result.status = static_cast<Status>(rc);
-            result.error = plc_tag_decode_error(rc);
-        }
-        else
-        {
-            result.status = Status::OK;
-            result.error = ERR_NO_ERROR;
-        }
+        result.status = static_cast<Status>(rc);
+        result.error = decode_status(rc);
+    }
+
+
+    template <class T>
+    static void decode_result(Result<T>& result, Status s)
+    {
+        result.status = s;
+        result.error = decode_status(s);
     }
 
 
@@ -49,7 +43,7 @@ namespace plctag
     static void make_ok_result(Result<T>& result)
     {
         result.status = Status::OK;
-        result.error = ERR_NO_ERROR;
+        result.error = decode_status(result.status);
     }
 
 
@@ -83,7 +77,7 @@ namespace plctag
             break;
         }
 
-        return true;
+        return result;
     }
 }
 
@@ -103,7 +97,7 @@ namespace plctag
     namespace
     {
         template <size_t N>
-        class CharString
+        class CharArray
         {
         public:
             static constexpr u32 capacity = N;
@@ -112,21 +106,21 @@ namespace plctag
     }
 
 
-    using GatewayStr = CharString<GATEWAY_SZ>;
-    using PathStr = CharString<PATH_SZ>;
-    using NameStr = CharString<NAME_SZ>;
-    using ConnectionStr = CharString<CONNECTION_STRING_SZ>;
+    using GatewayStr = CharArray<GATEWAY_SZ>;
+    using PathStr = CharArray<PATH_SZ>;
+    using NameStr = CharArray<NAME_SZ>;
+    using ConnectionStr = CharArray<CONNECTION_STRING_SZ>;
 
 
     template <size_t N>
-    static void reset_string_data(CharString<N>& str)
+    static void reset_string_data(CharArray<N>& str)
     {
         memset(str.data, 0, str.capacity);
     }
 
 
     template <size_t N>
-    static void write_string_data(CharString<N>& str, const char* format, ...)
+    static void write_string_data(CharArray<N>& str, const char* format, ...)
     {
         va_list args;
         va_start(args, format);
@@ -138,47 +132,41 @@ namespace plctag
 
 
     template <size_t N>
-    static bool build_kv_string(cstr key, cstr value, CharString<N>& dst)
+    static bool build_kv_string(cstr key, cstr value, CharArray<N>& dst)
     {
-        auto base = "%s=%s";
-
         auto len = strlen(key) + strlen(value) + 2;
         if (dst.capacity < len)
         {
             return false;
         }
 
-        write_string_data(dst, base, key, value);
+        write_string_data(dst, "%s=%s", key, value);
         return true;
     }
 
 
     static bool build_connection_string(cstr kv_1, cstr kv_2, cstr kv_3, cstr kv_4, cstr kv_5, ConnectionStr& dst)
     {
-        auto base = "%s&%s&%s&%s&%s";
-
         auto len = strlen(kv_1) + strlen(kv_2) + strlen(kv_3) + strlen(kv_4) + strlen(kv_5) + 5;
         if (dst.capacity < len)
         {
             return false;
         }
 
-        write_string_data(dst, base, kv_1, kv_2, kv_3, kv_4, kv_5);
+        write_string_data(dst, "%s&%s&%s&%s&%s", kv_1, kv_2, kv_3, kv_4, kv_5);
         return true;
     }
 
 
     static bool build_connection_string(cstr kv_1, cstr kv_2, cstr kv_3, cstr kv_4, ConnectionStr& dst)
     {
-        auto base = "%s&%s&%s&%s";
-
         auto len = strlen(kv_1) + strlen(kv_2) + strlen(kv_3) + strlen(kv_4) + 4;
         if (dst.capacity < len)
         {
             return false;
         }
 
-        write_string_data(dst, base, kv_1, kv_2, kv_3, kv_4);
+        write_string_data(dst, "%s&%s&%s&%s", kv_1, kv_2, kv_3, kv_4);
         return true;
     }
 
@@ -215,6 +203,24 @@ namespace plctag
             protocol = "protocol=ab-eip";
             plc = "plc=controllogix";            
             result &= build_connection_string(protocol, plc, gateway.data, path.data, name.data, dst);
+            break;
+
+        case Controller::LogixPccc:
+            protocol = "protocol=ab-eip";
+            plc = "plc=lgxpccc";
+            result &= build_connection_string(protocol, plc, gateway.data, name.data, dst);
+            break;
+
+        case Controller::Micro800:
+            protocol = "protocol=ab-eip";
+            plc = "plc=micro800";
+            result &= build_connection_string(protocol, plc, gateway.data, name.data, dst);
+            break;
+
+        case Controller::OmronNJNX:
+            protocol = "protocol=ab-eip";
+            plc = "plc=omron-njnx";
+            result &= build_connection_string(protocol, plc, gateway.data, name.data, dst);
             break;
 
         case Controller::Modbus:
@@ -263,24 +269,6 @@ namespace plctag
                 result &= build_connection_string(protocol, plc, gateway.data, name.data, dst);
             }
             break;
-
-        case Controller::LogixPccc:
-            protocol = "protocol=ab-eip";
-            plc = "plc=lgxpccc";
-            result &= build_connection_string(protocol, plc, gateway.data, name.data, dst);
-            break;
-
-        case Controller::Micro800:
-            protocol = "protocol=ab-eip";
-            plc = "plc=micro800";
-            result &= build_connection_string(protocol, plc, gateway.data, name.data, dst);
-            break;
-        
-        case Controller::OmronNJNX:
-            protocol = "protocol=ab-eip";
-            plc = "plc=omron-njnx";
-            result &= build_connection_string(protocol, plc, gateway.data, name.data, dst);
-            break;
         
         default:
             break;
@@ -288,9 +276,6 @@ namespace plctag
 
         return result;
     }
-
-
-
 }
 
 
@@ -314,7 +299,7 @@ namespace plctag
         if (!build_connection_string(attr, str))
         {
             result.status = Status::ERR_BAD_ATTRS;
-            result.error = "Invalid tag attributes";
+            result.error = "Could not build connection string";
             return result;
         }
 
@@ -384,8 +369,7 @@ namespace plctag
 
         if (data.tag_size == 0 || data.tag_size != data.elem_count * data.elem_size)
         {
-            result.status = Status::ERR_BAD_SIZE;
-            result.error = ERR_ELEM_SIZE;
+            decode_result(result, Status::ERR_BAD_SIZE);
             plc_tag_destroy(data.tag_handle);
             result.data.tag_handle = -1;            
             return result;
@@ -403,7 +387,7 @@ namespace plctag
     *
     * This is a function provided by the underlying protocol implementation.
     */
-    void destroy(i32 tag)
+    void disconnect(i32 tag)
     {
         plc_tag_destroy(tag);
     }
@@ -464,7 +448,7 @@ namespace plctag
     *
     * This is a function provided by the underlying protocol implementation.
     */
-    Result<int> receive(i32 tag, int timeout)
+    Result<int> read_tag(i32 tag, int timeout)
     {
         Result<int> result{};
 
@@ -728,6 +712,12 @@ namespace plctag
     }
 
 
+    cstr decode_status(int rc)
+    {
+        return decode_status(static_cast<Status>(rc));
+    }
+
+
     cstr decode_controller(Controller c)
     {
         switch (c)
@@ -808,7 +798,7 @@ namespace plctag
 }
 
 
-/* extra */
+/* enumerate_tags */
 
 namespace plctag
 {
@@ -816,21 +806,21 @@ namespace plctag
     constexpr auto UDT_KEY = "@udt";
 
     template <size_t N>
-    static bool fill_string_buffer(CharString<N>& buffer, i32 handle, int offset)
+    static bool fill_string_buffer(CharArray<N>& buffer, i32 handle, int offset)
     {
         reset_string_data(buffer);
 
         auto string_len = plc_tag_get_string_length(handle, offset);
         if (string_len <= 0 || string_len >= buffer.capacity)
         {
-            write_string_data(buffer, "ERROR plc_tag_get_string_length");
+            write_string_data(buffer, "ERROR plc_tag_get_string_length()");
             return false;
         }
 
         auto rc = plc_tag_get_string(handle, offset, buffer.data, string_len + 1);
         if (rc != PLCTAG_STATUS_OK)
         {
-            write_string_data(buffer, "ERROR plc_tag_get_string: %s", plc_tag_decode_error(rc));
+            write_string_data(buffer, "ERROR plc_tag_get_string(): %s", plc_tag_decode_error(rc));
             return false;
         }
 
@@ -868,9 +858,10 @@ namespace plctag
         offset += sz32;
 
         symbol_type = plc_tag_get_uint16(handle, offset);
-        entry.type_code = symbol_type;
-        entry.tag_type = get_tag_type(symbol_type);
         offset += sz16;
+
+        entry.type_code = symbol_type;
+        entry.tag_type = get_tag_type(symbol_type);        
 
         entry.elem_size = plc_tag_get_uint16(handle, offset);
         offset += sz16;
@@ -880,8 +871,9 @@ namespace plctag
         for (u32 i = 0; i < 3; ++i)
         {
             entry.dimensions[i] = (u16)plc_tag_get_uint32(handle, offset);
-            entry.elem_count *= std::max((u16)1, entry.dimensions[i]);
             offset += sz32;
+
+            entry.elem_count *= std::max((u16)1, entry.dimensions[i]);
         }
 
         get_entry_name(entry, handle, offset);
@@ -945,9 +937,10 @@ namespace plctag
             offset += sz16;
 
             symbol_type = plc_tag_get_uint16(handle, offset);
-            field.type_code = symbol_type;
-            field.tag_type = get_tag_type(symbol_type);
             offset += sz16;
+
+            field.type_code = symbol_type;
+            field.tag_type = get_tag_type(symbol_type);            
 
             field.offset = plc_tag_get_uint32(handle, offset);
             offset += sz32;
@@ -1007,14 +1000,14 @@ namespace plctag
     {
         auto handle = tag_info.tag_handle;
 
-        auto payload_size = plc_tag_get_size(tag_info.tag_handle);
+        auto payload_size = tag_info.tag_size;
         if (payload_size < 4)
         {
             return false;
         }
         
         int offset = 0;
-        while (offset < payload_size)
+        while ((u32)offset < payload_size)
         {
             Tag_Entry entry{};
             offset = build_tag_entry(entry, handle, offset);
@@ -1032,8 +1025,7 @@ namespace plctag
     {
         auto handle = tag_info.tag_handle;
 
-        auto payload_size = plc_tag_get_size(tag_info.tag_handle);
-        if (payload_size < 4)
+        if (tag_info.tag_size < 4)
         {
             return false;
         }
@@ -1062,7 +1054,7 @@ namespace plctag
         ConnectResult program_result{};
         ConnectResult udt_result{};
 
-        auto const close_connection = [](ConnectResult& res) { destroy(res.data.tag_handle); };
+        auto const close_connection = [](ConnectResult& res) { disconnect(res.data.tag_handle); };
 
         // constroller tags
         tag_info_attr.tag_name = TAG_LIST_KEY;        
@@ -1092,7 +1084,7 @@ namespace plctag
             program_result = attempt_connection(tag_info_attr, timeout);
             if (!program_result.is_ok())
             {
-                header.name += " < " + std::string(decode_status(program_result.status)) + " > ";
+                header.name += " < " + String(decode_status(program_result.status)) + " >";
                 continue;
             }
 
@@ -1113,7 +1105,7 @@ namespace plctag
             udt_result = attempt_connection(tag_info_attr, timeout);
             if (!udt_result.is_ok())
             {
-                header.name += " < " + std::string(decode_status(program_result.status)) + " >";
+                header.name += " < " + String(decode_status(program_result.status)) + " >";
                 continue;
             }
 
@@ -1124,62 +1116,7 @@ namespace plctag
         make_ok_result(result);
         return result;
     }
-
-
-    
-
-
-    
 }
-
-
-#ifndef PLCTAG_NO_WRITE
-
-namespace plctag
-{
-    
-
-
-
-    /*
-    * plc_tag_write
-    *
-    * Start a write.  If the timeout value is zero, then wait until the write_t
-    * returns or the timeout occurs, whichever is first.  Return the status.
-    * If the timeout value is zero, then plc_tag_write will usually return
-    * PLCTAG_STATUS_PENDING.  The write is considered done
-    * when it has been written to the socket.
-    *
-    * This is a function provided by the underlying protocol implementation.
-    */
-    Result<int> send(i32 tag, int timeout)
-    {
-        Result<int> result{};
-
-        auto rc = plc_tag_write(tag, timeout);
-        decode_result(result, rc);
-
-        return result;
-    }
-
-
-    int plc_tag_set_bit(i32 tag, int offset_bit, int val);
-    int plc_tag_set_uint64(i32 tag, int offset, u64  val);
-    int plc_tag_set_int64(i32, int offset, i64  val);
-    int plc_tag_set_uint32(i32 tag, int offset, u32 val);
-    int plc_tag_set_int32(i32, int offset, i32 val);
-    int plc_tag_set_uint16(i32 tag, int offset, u16 val);
-    int plc_tag_set_int16(i32, int offset, i16 val);
-    int plc_tag_set_uint8(i32 tag, int offset, u8 val);
-    int plc_tag_set_int8(i32, int offset, i8 val);
-    int plc_tag_set_float64(i32 tag, int offset, f64 val);
-    int plc_tag_set_float32(i32 tag, int offset, f32 val);
-    int plc_tag_set_raw_bytes(i32 id, int offset, u8 *buffer, int buffer_length);
-    int plc_tag_set_string(i32 tag_id, int string_start_offset, const char* string_val);
-}
-
-#endif
-
 
 
 /* debugging */

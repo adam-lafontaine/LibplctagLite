@@ -135,7 +135,7 @@ int main(int argc, char** argv)
             size = result.data.tag_size;
         }
         tag_print(OUT_CTL, "%20s: %5u bytes - %s\n", tag.name.c_str(), size, plc::decode_tag_type(tag.tag_type));
-        plc::destroy(result.data.tag_handle);
+        plc::disconnect(result.data.tag_handle);
     }
 
     printf("Done!\n");
@@ -161,6 +161,8 @@ int main(int argc, char** argv)
             tag_print(OUT_UDT, "  %20s: %s\n", field.name.c_str(), plc::decode_tag_type(field.tag_type));
         }        
     }
+
+    plc::shutdown();
 
     printf("Done!\n");   
 

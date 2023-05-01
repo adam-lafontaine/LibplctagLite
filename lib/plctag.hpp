@@ -254,16 +254,16 @@ namespace plctag
     inline ConnectResult connect(Tag_Attr attr) { return connect(attr, TIMEOUT_DEFAULT_MS); }
 
     
-    void destroy(i32 tag);
+    void disconnect(i32 tag);
     
     void shutdown();
     
     bool abort(i32 tag);
 
     
-    Result<int> receive(i32 tag, int timeout);
+    Result<int> read_tag(i32 tag, int timeout);
 
-    inline Result<int> receive(i32 tag) { return receive(tag, TIMEOUT_DEFAULT_MS); }
+    inline Result<int> read_tag(i32 tag) { return read_tag(tag, TIMEOUT_DEFAULT_MS); }
 
 
     Result<int> get_bit(i32 tag, int offset_bit);
@@ -303,6 +303,10 @@ namespace plctag
 
 namespace plctag
 {
+    cstr decode_status(Status s);
+
+    cstr decode_status(int rc);
+
     cstr decode_controller(Controller c);
 
     cstr decode_controller(int c);
@@ -311,7 +315,7 @@ namespace plctag
 }
 
 
-/* extra */
+/* enumerate_tags */
 
 namespace plctag
 {
@@ -319,19 +323,6 @@ namespace plctag
 
     inline Result<int> enumerate_tags(PLC_Desc& data) { return enumerate_tags(data, TIMEOUT_DEFAULT_MS); }
 }
-
-
-#ifndef PLCTAG_NO_WRITE
-
-namespace plctag
-{
-    
-    Result<int> send(i32 tag, int timeout);
-
-    inline Result<int> send(i32 tag) { return send(tag, TIMEOUT_DEFAULT_MS); }
-}
-
-#endif
 
 
 /* debugging */
