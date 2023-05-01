@@ -18,8 +18,16 @@ namespace plctag
     template <class T>
     static void decode_result(Result<T>& result, int rc)
     {
-        result.status = static_cast<Status>(rc);
-        result.error = decode_status(rc);
+        if (rc < 0)
+        {
+            result.status = static_cast<Status>(rc);
+            result.error = decode_status(rc);
+        }
+        else
+        {
+            result.status = Status::OK;
+            result.error = decode_status(result.status);
+        }
     }
 
 
@@ -73,7 +81,7 @@ namespace plctag
         case Controller::MicroLogix:
             result &= dhp_path_ok;
             break;
-        default:            
+        default:
             break;
         }
 
@@ -88,7 +96,7 @@ namespace plctag
 {
     // attribute max lengths
     constexpr size_t GATEWAY_SZ = sizeof("gateway=192.168.101.101");
-    constexpr size_t PATH_SZ    = sizeof("path=1,0");
+    constexpr size_t PATH_SZ = sizeof("path=1,0");
     constexpr size_t NAME_SZ = 256;
 
     constexpr size_t CONNECTION_STRING_SZ = GATEWAY_SZ + PATH_SZ + NAME_SZ + 50;
@@ -119,32 +127,6 @@ namespace plctag
     }
 
 
-    template <size_t N>
-    static void write_string_data(CharArray<N>& str, const char* format, ...)
-    {
-        va_list args;
-        va_start(args, format);
-
-        snprintf(str.data, str.capacity, format, args);
-
-        va_end(args);
-    }
-
-
-    template <size_t N>
-    static bool build_kv_string(cstr key, cstr value, CharArray<N>& dst)
-    {
-        auto len = strlen(key) + strlen(value) + 2;
-        if (dst.capacity < len)
-        {
-            return false;
-        }
-
-        write_string_data(dst, "%s=%s", key, value);
-        return true;
-    }
-
-
     static bool build_connection_string(cstr kv_1, cstr kv_2, cstr kv_3, cstr kv_4, cstr kv_5, ConnectionStr& dst)
     {
         auto len = strlen(kv_1) + strlen(kv_2) + strlen(kv_3) + strlen(kv_4) + strlen(kv_5) + 5;
@@ -153,7 +135,8 @@ namespace plctag
             return false;
         }
 
-        write_string_data(dst, "%s&%s&%s&%s&%s", kv_1, kv_2, kv_3, kv_4, kv_5);
+        snprintf(dst.data, dst.capacity, "%s&%s&%s&%s&%s", kv_1, kv_2, kv_3, kv_4, kv_5);
+
         return true;
     }
 
@@ -166,7 +149,8 @@ namespace plctag
             return false;
         }
 
-        write_string_data(dst, "%s&%s&%s&%s", kv_1, kv_2, kv_3, kv_4);
+        snprintf(dst.data, dst.capacity, "%s&%s&%s&%s", kv_1, kv_2, kv_3, kv_4);
+
         return true;
     }
 
@@ -184,24 +168,24 @@ namespace plctag
 
         bool result = true;
 
-        result &= build_kv_string("gateway", attr.gateway, gateway);
-        result &= build_kv_string("name", attr.tag_name, name);
+        snprintf(gateway.data, gateway.capacity, "%s=%s", "gateway", attr.gateway);
+        snprintf(name.data, name.capacity, "%s=%s", "name", attr.tag_name);
 
         if (has_path)
         {
-            result &= build_kv_string("path", attr.path, path);
+            snprintf(path.data, path.capacity, "%s=%s", "path", attr.path);
         }
 
         if (!result)
         {
             return false;
-        }        
+        }
 
         switch (attr.controller)
         {
         case Controller::ControlLogix:
             protocol = "protocol=ab-eip";
-            plc = "plc=controllogix";            
+            plc = "plc=controllogix";
             result &= build_connection_string(protocol, plc, gateway.data, path.data, name.data, dst);
             break;
 
@@ -230,7 +214,7 @@ namespace plctag
 
         case Controller::PLC5:
             protocol = "protocol=ab-eip";
-            plc = "plc=plc5"; 
+            plc = "plc=plc5";
 
             if (attr.has_dhp)
             {
@@ -269,7 +253,7 @@ namespace plctag
                 result &= build_connection_string(protocol, plc, gateway.data, name.data, dst);
             }
             break;
-        
+
         default:
             break;
         }
@@ -319,9 +303,9 @@ namespace plctag
             return result;
         }
 
-        auto size = std::max(plc_tag_get_size(rc), 0);
-        auto elem_size = std::max(plc_tag_get_int_attribute(rc, "elem_size", 0), 0);
-        auto elem_count = std::max(plc_tag_get_int_attribute(rc, "elem_count", 0), 0);
+        auto size = std::max(plc_tag_get_size(tag_id), 0);
+        auto elem_size = std::max(plc_tag_get_int_attribute(tag_id, "elem_size", 0), 0);
+        auto elem_count = std::max(plc_tag_get_int_attribute(tag_id, "elem_count", 0), 0);
 
         result.data.tag_handle = tag_id;
         result.data.tag_size = (u32)size;
@@ -340,14 +324,14 @@ namespace plctag
     * the debug level to the passed value.  Higher numbers output increasing amounts
     * of information.   Input values not defined below will be ignored.
     */
-   /*
-    #define PLCTAG_DEBUG_NONE      (0)
-    #define PLCTAG_DEBUG_ERROR     (1)
-    #define PLCTAG_DEBUG_WARN      (2)
-    #define PLCTAG_DEBUG_INFO      (3)
-    #define PLCTAG_DEBUG_DETAIL    (4)
-    #define PLCTAG_DEBUG_SPEW      (5)
-    */
+    /*
+     #define PLCTAG_DEBUG_NONE      (0)
+     #define PLCTAG_DEBUG_ERROR     (1)
+     #define PLCTAG_DEBUG_WARN      (2)
+     #define PLCTAG_DEBUG_INFO      (3)
+     #define PLCTAG_DEBUG_DETAIL    (4)
+     #define PLCTAG_DEBUG_SPEW      (5)
+     */
 
     void set_debug_level(DebugLevel debug_level)
     {
@@ -371,7 +355,7 @@ namespace plctag
         {
             decode_result(result, Status::ERR_BAD_SIZE);
             plc_tag_destroy(data.tag_handle);
-            result.data.tag_handle = -1;            
+            result.data.tag_handle = -1;
             return result;
         }
 
@@ -456,27 +440,27 @@ namespace plctag
         decode_result(result, rc);
         result.data = rc;
 
-        return result;        
+        return result;
     }
 
 
     /*
-    
+
     The following functions support getting and setting integer and floating point values from or in a tag.
 
     The getter functions return the value of the size in the function name from the tag at the byte offset in the tag's data.
     The setter functions do the opposite and put the passed value (using the appropriate number of bytes) at the passed byte offset in the tag's data.
 
-    Unsigned getters return the appropriate UINT_MAX value for the type size on error. I.e. plc_tag_get_uint16() returns 65535 (UINT16_MAX) if there is an error. 
+    Unsigned getters return the appropriate UINT_MAX value for the type size on error. I.e. plc_tag_get_uint16() returns 65535 (UINT16_MAX) if there is an error.
     You can check for this value and then call plc_tag_status to determine what went wrong. Signed getters return the appropriate INT_MIN value on error.
 
     Setters return one of the status codes above. If there is no error then PLCTAG_STATUS_OK will be returned.
 
     NOTE the implementation of the floating point getter and setter may not be totally portable. Please test before use on big-endian machines.
 
-    All getters and setters convert their data into the correct endian type. A setter will convert the host endian data into the target endian data. 
-    A getter will convert the target endian data it retrieves into the host endian format.    
-    
+    All getters and setters convert their data into the correct endian type. A setter will convert the host endian data into the target endian data.
+    A getter will convert the target endian data it retrieves into the host endian format.
+
     */
 
 
@@ -593,7 +577,7 @@ namespace plctag
     }
 
 
-    Result<int> get_bytes(i32 id, int offset, u8 *buffer, int buffer_length)
+    Result<int> get_bytes(i32 id, int offset, u8* buffer, int buffer_length)
     {
         Result<int> result{};
 
@@ -633,7 +617,7 @@ namespace plctag
     }
 
 
-    
+
 }
 
 
@@ -813,14 +797,14 @@ namespace plctag
         auto string_len = plc_tag_get_string_length(handle, offset);
         if (string_len <= 0 || string_len >= buffer.capacity)
         {
-            write_string_data(buffer, "ERROR plc_tag_get_string_length()");
+            snprintf(buffer.data, buffer.capacity, "ERROR plc_tag_get_string_length()");
             return false;
         }
 
         auto rc = plc_tag_get_string(handle, offset, buffer.data, string_len + 1);
         if (rc != PLCTAG_STATUS_OK)
         {
-            write_string_data(buffer, "ERROR plc_tag_get_string(): %s", plc_tag_decode_error(rc));
+            snprintf(buffer.data, buffer.capacity, "ERROR plc_tag_get_string(): %s", plc_tag_decode_error(rc));
             return false;
         }
 
@@ -861,7 +845,7 @@ namespace plctag
         offset += sz16;
 
         entry.type_code = symbol_type;
-        entry.tag_type = get_tag_type(symbol_type);        
+        entry.tag_type = get_tag_type(symbol_type);
 
         entry.elem_size = plc_tag_get_uint16(handle, offset);
         offset += sz16;
@@ -940,7 +924,7 @@ namespace plctag
             offset += sz16;
 
             field.type_code = symbol_type;
-            field.tag_type = get_tag_type(symbol_type);            
+            field.tag_type = get_tag_type(symbol_type);
 
             field.offset = plc_tag_get_uint32(handle, offset);
             offset += sz32;
@@ -1000,14 +984,14 @@ namespace plctag
     {
         auto handle = tag_info.tag_handle;
 
-        auto payload_size = tag_info.tag_size;
+        auto payload_size = plc_tag_get_size(handle);
         if (payload_size < 4)
         {
             return false;
         }
-        
+
         int offset = 0;
-        while ((u32)offset < payload_size)
+        while (offset < payload_size)
         {
             Tag_Entry entry{};
             offset = build_tag_entry(entry, handle, offset);
@@ -1024,11 +1008,6 @@ namespace plctag
     static bool append_udt_list(Tag_Desc const& tag_info, List<UDT_Entry>& udt_list, u16 udt_id)
     {
         auto handle = tag_info.tag_handle;
-
-        if (tag_info.tag_size < 4)
-        {
-            return false;
-        }
 
         UDT_Entry entry{};
 
@@ -1057,7 +1036,7 @@ namespace plctag
         auto const close_connection = [](ConnectResult& res) { disconnect(res.data.tag_handle); };
 
         // constroller tags
-        tag_info_attr.tag_name = TAG_LIST_KEY;        
+        tag_info_attr.tag_name = TAG_LIST_KEY;
         controller_result = attempt_connection(tag_info_attr, timeout);
         if (!controller_result.is_ok())
         {
@@ -1075,10 +1054,10 @@ namespace plctag
 
         // program tags        
         auto program_headers = rnv::filter(data.controller_tags, is_program_tag);
-        for(auto& header : program_headers)
+        for (auto& header : program_headers)
         {
             reset_string_data(name_str);
-            write_string_data(name_str, "%s.%s", header.name.c_str(), TAG_LIST_KEY);
+            snprintf(name_str.data, name_str.capacity, "%s.%s", header.name.c_str(), TAG_LIST_KEY);
 
             tag_info_attr.tag_name = name_str.data;
             program_result = attempt_connection(tag_info_attr, timeout);
@@ -1099,7 +1078,7 @@ namespace plctag
             auto udt_id = header.type_code & TYPE_UDT_ID_MASK;
 
             reset_string_data(name_str);
-            write_string_data(name_str, "%s/%u", UDT_KEY, (u32)udt_id);
+            snprintf(name_str.data, name_str.capacity, "%s/%u", UDT_KEY, (u32)udt_id);
 
             tag_info_attr.tag_name = name_str.data;
             udt_result = attempt_connection(tag_info_attr, timeout);
@@ -1123,25 +1102,25 @@ namespace plctag
 
 namespace plctag
 {
-namespace dbg
-{
-    bool build_attr_string(Tag_Attr attr, char* dst, size_t max_len)
+    namespace dbg
     {
-        ConnectionStr str{};
-
-        if (strlen(str.data) > max_len)
+        bool build_attr_string(Tag_Attr attr, char* dst, size_t max_len)
         {
-            return false;
+            ConnectionStr str{};
+
+            if (strlen(str.data) > max_len)
+            {
+                return false;
+            }
+
+            if (!build_connection_string(attr, str))
+            {
+                return false;
+            }
+
+            strcpy_s(dst, max_len, str.data);
+
+            return true;
         }
-
-        if (!build_connection_string(attr, str))
-        {
-            return false;
-        }
-
-        strcpy_s(dst, max_len, str.data);
-
-        return true;
     }
-}
 }

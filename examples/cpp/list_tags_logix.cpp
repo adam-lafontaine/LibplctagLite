@@ -134,7 +134,7 @@ int main(int argc, char** argv)
         {
             size = result.data.tag_size;
         }
-        tag_print(OUT_CTL, "%20s: %5u bytes - %s\n", tag.name.c_str(), size, plc::decode_tag_type(tag.tag_type));
+        tag_print(OUT_CTL, "%35s: %5u bytes - %s\n", tag.name.c_str(), size, plc::decode_tag_type(tag.tag_type));
         plc::disconnect(result.data.tag_handle);
     }
 
@@ -145,7 +145,7 @@ int main(int argc, char** argv)
     tag_print(OUT_PGM, "Program tags:\n");
     for (auto const& tag : plc.program_tags)
     {
-        tag_print(OUT_PGM, "%20s: %s\n", tag.name.c_str(), plc::decode_tag_type(tag.tag_type));
+        tag_print(OUT_PGM, "%35s: %s\n", tag.name.c_str(), plc::decode_tag_type(tag.tag_type));
     }
 
     printf("Done!\n");
@@ -155,14 +155,12 @@ int main(int argc, char** argv)
     tag_print(OUT_UDT, "UDT tags:\n");
     for (auto const& tag : plc.udt_tags)
     {
-        tag_print(OUT_UDT, "%s:\n", tag.name.c_str());
+        tag_print(OUT_UDT, "%35s:\n", tag.name.c_str());
         for (auto const& field : tag.fields)
         {
-            tag_print(OUT_UDT, "  %20s: %s\n", field.name.c_str(), plc::decode_tag_type(field.tag_type));
+            tag_print(OUT_UDT, "  %-35s: %s\n", field.name.c_str(), plc::decode_tag_type(field.tag_type));
         }        
     }
-
-    plc::shutdown();
 
     printf("Done!\n");   
 
