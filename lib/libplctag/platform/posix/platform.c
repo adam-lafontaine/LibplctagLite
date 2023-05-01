@@ -34,7 +34,8 @@
 
 #define _GNU_SOURCE
 
-#include <platform.h>
+#include "../../../libplctag_internal.h"
+
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -54,9 +55,6 @@
 #include <fcntl.h>
 #include <time.h>
 #include <inttypes.h>
-
-#include <lib/libplctag.h>
-#include <util/debug.h>
 
 
 

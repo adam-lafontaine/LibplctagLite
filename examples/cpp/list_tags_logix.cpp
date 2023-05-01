@@ -13,6 +13,9 @@ namespace plc = plctag;
 namespace plc = plctag;
 
 
+
+
+
 constexpr auto DEFAULT_IP = "192.168.19.230";
 constexpr auto DEFAULT_PATH = "1,0";
 
@@ -38,6 +41,12 @@ static void close_files()
 
 static bool open_files()
 {
+#ifndef _WIN32
+
+#define fopen_s(pFile,filename,mode) ((*(pFile))=fopen((filename),(mode)))==NULL
+
+#endif
+
     auto err = fopen_s(&out_files[OUT_CTL], "controller_tags.txt", "w");
     err     += fopen_s(&out_files[OUT_PGM], "program_tags.txt", "w");
     err     += fopen_s(&out_files[OUT_UDT], "udt_tags.txt", "w");

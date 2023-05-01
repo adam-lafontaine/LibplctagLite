@@ -6,7 +6,6 @@
 #include <cassert>
 #include <algorithm>
 #include <ranges>
-#include <stdarg.h>
 
 namespace rnv = std::views;
 
@@ -1118,8 +1117,11 @@ namespace plctag
                 return false;
             }
 
+#ifndef _WIN32
+            strncpy(dst, str.data, max_len);
+#else
             strcpy_s(dst, max_len, str.data);
-
+#endif
             return true;
         }
     }
