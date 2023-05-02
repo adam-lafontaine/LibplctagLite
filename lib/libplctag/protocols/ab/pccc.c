@@ -36,7 +36,7 @@
 #include <float.h>
 #include <string.h>
 
-#include "../../../libplctag_internal.h"
+#include "../../libplctag_internal.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -1,0 +1,1841 @@
+/***************************************************************************
+ *   Copyright (C) 2020 by Kyle Hayes                                      *
+ *   Author Kyle Hayes  kyle.hayes@gmail.com                               *
+ *                                                                         *
+ * This software is available under either the Mozilla Public License      *
+ * version 2.0 or the GNU LGPL version 2 (or later) license, whichever     *
+ * you choose.                                                             *
+ *                                                                         *
+ * MPL 2.0:                                                                *
+ *                                                                         *
+ *   This Source Code Form is subject to the terms of the Mozilla Public   *
+ *   License, v. 2.0. If a copy of the MPL was not distributed with this   *
+ *   file, You can obtain one at http://mozilla.org/MPL/2.0/.              *
+ *                                                                         *
+ *                                                                         *
+ * LGPL 2:                                                                 *
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU Library General Public License as       *
+ *   published by the Free Software Foundation; either version 2 of the    *
+ *   License, or (at your option) any later version.                       *
+ *                                                                         *
+ *   This program is distributed in the hope that it will be useful,       *
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
+ *   GNU General Public License for more details.                          *
+ *                                                                         *
+ *   You should have received a copy of the GNU Library General Public     *
+ *   License along with this program; if not, write to the                 *
+ *   Free Software Foundation, Inc.,                                       *
+ *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
+ ***************************************************************************/
+
+#include "libplctag_internal.h"
+
+
+#include <inttypes.h>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <time.h>
+#include <string.h>
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
+#ifndef __UTIL_ATOMIC_INT_C__
+#define __UTIL_ATOMIC_INT_C__
+
+
+void atomic_init(atomic_int *a, int new_val)
+{
+    a->lock = LOCK_INIT;
+    a->val = new_val;
+}
+
+
+
+int atomic_get(atomic_int *a)
+{
+    int val = 0;
+
+    pdebug(DEBUG_SPEW, "Starting.");
+
+    spin_block(&a->lock) {
+        val = a->val;
+    }
+
+    pdebug(DEBUG_SPEW, "Done.");
+
+    return val;
+}
+
+
+
+int atomic_set(atomic_int *a, int new_val)
+{
+    int old_val = 0;
+
+    pdebug(DEBUG_SPEW, "Starting.");
+
+    spin_block(&a->lock) {
+        old_val = a->val;
+        a->val = new_val;
+    }
+
+    pdebug(DEBUG_SPEW, "Done.");
+
+    return old_val;
+}
+
+
+
+int atomic_add(atomic_int *a, int other)
+{
+    int old_val = 0;
+
+    pdebug(DEBUG_SPEW, "Starting.");
+
+    spin_block(&a->lock) {
+        old_val = a->val;
+        a->val += other;
+    }
+
+    pdebug(DEBUG_SPEW, "Done.");
+
+    return old_val;
+}
+
+
+int atomic_compare_and_set(atomic_int *a, int old_val, int new_val)
+{
+    int ret_val = 0;
+
+    pdebug(DEBUG_SPEW, "Starting.");
+
+    spin_block(&a->lock) {
+        ret_val = a->val;
+
+        if(ret_val == old_val) {
+            a->val = new_val;
+        }
+    }
+
+    pdebug(DEBUG_SPEW, "Done.");
+
+    return ret_val;
+}
+
+#endif // __UTIL_ATOMIC_INT_C__
+
+
+#ifndef __UTIL_ATTR_C__
+#define __UTIL_ATTR_C__
+
+struct attr_entry_t {
+    attr_entry next;
+    char *name;
+    char *val;
+};
+
+struct attr_t {
+    attr_entry head;
+};
+
+
+
+
+
+/*
+ * find_entry
+ *
+ * A helper function to find the attr_entry that has the
+ * passed name.
+ */
+
+attr_entry find_entry(attr a, const char *name)
+{
+    attr_entry e;
+
+    if(!a)
+        return NULL;
+
+    e = a->head;
+
+    if(!e)
+        return NULL;
+
+    while(e) {
+        if(str_cmp(e->name, name) == 0) {
+            return e;
+        }
+
+        e = e->next;
+    }
+
+    return NULL;
+}
+
+
+/*
+ * attr_create
+ *
+ * Create a new attr structure and return a pointer to it.
+ */
+extern attr attr_create()
+{
+    return (attr)mem_alloc(sizeof(struct attr_t));
+}
+
+
+
+
+
+
+
+
+
+/*
+ * attr_create_from_str
+ *
+ * Parse the passed string into an attr structure and return a pointer to a list of
+ * attr_entry structs.
+ *
+ * Attribute strings are formatted much like URL arguments:
+ * foo=bar&blah=humbug&blorg=42&test=one
+ * You cannot, currently, have an "=" or "&" character in the value for an
+ * attribute.
+ */
+extern attr attr_create_from_str(const char *attr_str)
+{
+    attr res = NULL;
+    char **kv_pairs = NULL;
+
+    pdebug(DEBUG_DETAIL, "Starting.");
+
+    if(!str_length(attr_str)) {
+        pdebug(DEBUG_WARN, "Attribute string needs to be longer than zero characters!");
+        return NULL;
+    }
+
+    /* split the string on "&" */
+    kv_pairs = str_split(attr_str, "&");
+    if(!kv_pairs) {
+        pdebug(DEBUG_WARN, "No key-value pairs!");
+        return NULL;
+    }
+
+    /* set up the attribute list head */
+    res = attr_create();
+    if(!res) {
+        pdebug(DEBUG_ERROR, "Unable to allocate memory for attribute list!");
+        mem_free(kv_pairs);
+        return NULL;
+    }
+
+    /* loop over each key-value pair */
+    for(char **kv_pair = kv_pairs; *kv_pair; kv_pair++) {
+        /* find the position of the '=' character */
+        char *separator = strchr(*kv_pair, '=');
+        char *key = *kv_pair;
+        char *value = separator;
+
+        pdebug(DEBUG_DETAIL, "Key-value pair \"%s\".", *kv_pair);
+
+        if(separator == NULL) {
+            pdebug(DEBUG_WARN, "Attribute string \"%s\" has invalid key-value pair near \"%s\"!", attr_str, *kv_pair);
+            mem_free(kv_pairs);
+            attr_destroy(res);
+            return NULL;
+        }
+
+        /* value points to the '=' character.  Step past that for the value. */
+        value++;
+
+        /* cut the string at the separator. */
+        *separator = (char)0;
+
+        pdebug(DEBUG_DETAIL, "Key-value pair before trimming \"%s\":\"%s\".", key, value);
+
+        /* skip leading spaces in the key */
+        while(*key == ' ') {
+            key++;
+        }
+
+        /* zero out all trailing spaces in the key */
+        for(int i=str_length(key) - 1; i > 0 && key[i] == ' '; i--) {
+            key[i] = (char)0;
+        }
+
+        pdebug(DEBUG_DETAIL, "Key-value pair after trimming \"%s\":\"%s\".", key, value);
+
+        /* check the string lengths */
+
+        if(str_length(key) <= 0) {
+            pdebug(DEBUG_WARN, "Attribute string \"%s\" has invalid key-value pair near \"%s\"!  Key must not be zero length!", attr_str, *kv_pair);
+            mem_free(kv_pairs);
+            attr_destroy(res);
+            return NULL;
+        }
+
+        if(str_length(value) <= 0) {
+            pdebug(DEBUG_WARN, "Attribute string \"%s\" has invalid key-value pair near \"%s\"!  Value must not be zero length!", attr_str, *kv_pair);
+            mem_free(kv_pairs);
+            attr_destroy(res);
+            return NULL;
+        }
+
+        /* add the key-value pair to the attribute list */
+        if(attr_set_str(res, key, value)) {
+            pdebug(DEBUG_WARN, "Unable to add key-value pair \"%s\":\"%s\" to attribute list!", key, value);
+            mem_free(kv_pairs);
+            attr_destroy(res);
+            return NULL;
+        }
+    }
+
+    if(kv_pairs) {
+        mem_free(kv_pairs);
+    }
+
+    pdebug(DEBUG_DETAIL, "Done.");
+
+    return res;
+}
+
+
+
+
+
+/*
+ * attr_set
+ *
+ * Set/create a new string attribute
+ */
+extern int attr_set_str(attr attrs, const char *name, const char *val)
+{
+    attr_entry e;
+
+    if(!attrs) {
+        return 1;
+    }
+
+    /* does the entry exist? */
+    e = find_entry(attrs, name);
+
+    /* if we had a match, then delete the existing value and add in the
+     * new one.
+     *
+     * If we had no match, then e is NULL and we need to create a new one.
+     */
+    if(e) {
+        /* we had a match, free any existing value */
+        if(e->val) {
+            mem_free(e->val);
+        }
+
+        /* set up the new value */
+        e->val = str_dup(val);
+        if(!e->val) {
+            /* oops! */
+            return 1;
+        }
+    } else {
+        /* no match, need a new entry */
+        e = (attr_entry)mem_alloc(sizeof(struct attr_entry_t));
+
+        if(e) {
+            e->name = str_dup(name);
+
+            if(!e->name) {
+                mem_free(e);
+                return 1;
+            }
+
+            e->val = str_dup(val);
+
+            if(!e->val) {
+                mem_free(e->name);
+                mem_free(e);
+                return 1;
+            }
+
+            /* link it in the list */
+            e->next = attrs->head;
+            attrs->head = e;
+        } else {
+            /* allocation failed */
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+
+
+extern int attr_set_int(attr attrs, const char *name, int val)
+{
+    char buf[64];
+
+    snprintf_platform(buf, sizeof buf, "%d", val);
+
+    return attr_set_str(attrs, name, buf);
+}
+
+
+
+extern int attr_set_float(attr attrs, const char *name, float val)
+{
+    char buf[64];
+
+    snprintf_platform(buf, sizeof buf, "%f", val);
+
+    return attr_set_str(attrs, name, buf);
+}
+
+
+
+
+
+/*
+ * attr_get
+ *
+ * Walk the list of attrs and return the value found with the passed name.
+ * If the name is not found, return the passed default value.
+ */
+extern const char *attr_get_str(attr attrs, const char *name, const char *def)
+{
+    attr_entry e;
+
+    if(!attrs) {
+        return def;
+    }
+
+    e = find_entry(attrs, name);
+
+    /* only return a value if there is one. */
+    if(e) {
+        return e->val;
+    } else {
+        return def;
+    }
+}
+
+
+extern int attr_get_int(attr attrs, const char *name, int def)
+{
+    int res;
+    int rc;
+
+    const char *str_val = attr_get_str(attrs,name, NULL);
+
+    if(!str_val) {
+        return def;
+    }
+
+    rc = str_to_int(str_val, &res);
+
+    if(rc) {
+        /* format error? */
+        return def;
+    } else {
+        return res;
+    }
+}
+
+
+extern float attr_get_float(attr attrs, const char *name, float def)
+{
+    float res;
+    int rc;
+
+    const char *str_val = attr_get_str(attrs,name, NULL);
+
+    if(!str_val) {
+        return def;
+    }
+
+    rc = str_to_float(str_val, &res);
+
+    if(rc) {
+        /* format error? */
+        return def;
+    } else {
+        return res;
+    }
+}
+
+
+extern int attr_remove(attr attrs, const char *name)
+{
+    attr_entry e, p;
+
+    if(!attrs)
+        return 0;
+
+    e = attrs->head;
+
+    /* no such entry, return */
+    if(!e)
+        return 0;
+
+    /* loop to find the entry */
+    p = NULL;
+
+    while(e) {
+        if(str_cmp(e->name, name) == 0) {
+            break;
+        }
+
+        p = e;
+        e = e->next;
+    }
+
+    if(e) {
+        /* unlink the node */
+        if(!p) {
+            attrs->head = e->next;
+        } else {
+            p->next = e->next;
+        }
+
+        if(e->name) {
+            mem_free(e->name);
+        }
+
+        if(e->val) {
+            mem_free(e->val);
+        }
+
+        mem_free(e);
+    } /* else not found */
+
+    return 0;
+}
+
+
+/*
+ * attr_delete
+ *
+ * Destroy and free all memory for an attribute list.
+ */
+extern void attr_destroy(attr a)
+{
+    attr_entry e, p;
+
+    if(!a)
+        return;
+
+    e = a->head;
+
+    /* walk down the entry list and free as we go. */
+    while(e) {
+        if(e->name) {
+            mem_free(e->name);
+        }
+
+        if(e->val) {
+            mem_free(e->val);
+        }
+
+        p = e;
+        e = e->next;
+
+        mem_free(p);
+    }
+
+    mem_free(a);
+}
+
+#endif // __UTIL_ATTR_C__
+
+
+#ifndef __UTIL_DEBUG_C__
+#define __UTIL_DEBUG_C__
+
+/*
+ * Debugging support.
+ */
+
+
+static int global_debug_level = DEBUG_NONE;
+static lock_t thread_num_lock = LOCK_INIT;
+static volatile uint32_t thread_num = 1;
+static lock_t logger_callback_lock = LOCK_INIT;
+static void (* volatile log_callback_func)(int32_t tag_id, int debug_level, const char *message);
+
+
+/*
+ * Keep the thread ID and the tag ID thread local.
+ */
+
+static THREAD_LOCAL uint32_t this_thread_num = 0;
+static THREAD_LOCAL int32_t tag_id = 0;
+
+
+// /* only output the version once */
+// static lock_t printed_version = LOCK_INIT;
+
+
+
+int set_debug_level(int level)
+{
+    int old_level = global_debug_level;
+
+    global_debug_level = level;
+
+    return old_level;
+}
+
+
+int get_debug_level(void)
+{
+    return global_debug_level;
+}
+
+
+
+void debug_set_tag_id(int32_t t_id)
+{
+    tag_id = t_id;
+}
+
+
+
+static uint32_t get_thread_id()
+{
+    if(!this_thread_num) {
+        spin_block(&thread_num_lock) {
+            this_thread_num = thread_num;
+            thread_num++;
+        }
+    }
+
+    return this_thread_num;
+}
+
+// static int make_prefix(char *prefix_buf, int prefix_buf_size)
+// {
+//     struct tm t;
+//     time_t epoch;
+//     int64_t epoch_ms;
+//     int remainder_ms;
+//     int rc = PLCTAG_STATUS_OK;
+
+//     /* make sure we have room, MAGIC */
+//     if(prefix_buf_size < 37) {
+//         return PLCTAG_ERR_TOO_SMALL;
+//     }
+
+//     /* build the prefix */
+
+//     /* get the time parts */
+//     epoch_ms = time_ms();
+//     epoch = (time_t)(epoch_ms/1000);
+//     remainder_ms = (int)(epoch_ms % 1000);
+
+//     /* FIXME - should capture error return! */
+//     localtime_r(&epoch,&t);
+
+//     /* create the prefix and format for the file entry. */
+//     rc = snprintf(prefix_buf, (size_t)prefix_buf_size,"%04d-%02d-%02d %02d:%02d:%02d.%03d thread(%u) tag(%d)",
+//                   t.tm_year+1900,t.tm_mon,t.tm_mday,t.tm_hour,t.tm_min,t.tm_sec,remainder_ms, get_thread_id(), tag_id);
+
+//     /* enforce zero string termination */
+//     if(rc > 1 && rc < prefix_buf_size) {
+//         prefix_buf[rc] = 0;
+//     } else {
+//         prefix_buf[prefix_buf_size - 1] = 0;
+//     }
+
+//     return rc;
+// }
+
+
+static const char *debug_level_name[DEBUG_END] = {"NONE", "ERROR", "WARN", "INFO", "DETAIL", "SPEW"};
+
+extern void pdebug_impl(const char *func, int line_num, int debug_level, const char *templ, ...)
+{
+    va_list va;
+    struct tm t;
+    time_t epoch;
+    int64_t epoch_ms;
+    int remainder_ms;
+    char prefix[1000]; /* MAGIC */
+    int prefix_size = 0;
+    char output[1000];
+    //int output_size = 0;
+
+    /* build the prefix */
+    // prefix_size = make_prefix(prefix,(int)sizeof(prefix));  /* don't exceed a size that int can express! */
+    // if(prefix_size <= 0) {
+    //     return;
+    // }
+
+    /* get the time parts */
+    epoch_ms = time_ms();
+    epoch = (time_t)(epoch_ms/1000);
+    remainder_ms = (int)(epoch_ms % 1000);
+
+    /* FIXME - should capture error return! */
+    localtime_r(&epoch,&t);
+
+    /* print only once */
+    /* FIXME - this may not be safe. */
+    // if(!printed_version && debug_level >= DEBUG_INFO) {
+    //     if(lock_acquire_try((lock_t*)&printed_version)) {
+    //         /* create the output string template */
+    //         fprintf(stderr,"%s INFO libplctag version %s, debug level %d.\n",prefix, VERSION, get_debug_level());
+    //     }
+    // }
+
+    /* build the output string template */
+    prefix_size += snprintf(prefix, sizeof(prefix),"%04d-%02d-%02d %02d:%02d:%02d.%03d thread(%u) tag(%" PRId32 ") %s %s:%d %s\n",
+                                                    t.tm_year+1900,
+                                                    t.tm_mon + 1, /* month is 0-11? */
+                                                    t.tm_mday,
+                                                    t.tm_hour,
+                                                    t.tm_min,
+                                                    t.tm_sec,
+                                                    remainder_ms, 
+                                                    get_thread_id(), 
+                                                    tag_id, 
+                                                    debug_level_name[debug_level], 
+                                                    func, 
+                                                    line_num, 
+                                                    templ);
+
+    /* make sure it is zero terminated */
+    prefix[sizeof(prefix)-1] = 0;
+
+    /* print it out. */
+    va_start(va,templ);
+
+    /* FIXME - check the output size */
+    /*output_size = */vsnprintf(output, sizeof(output), prefix, va);
+    if(log_callback_func) {
+        log_callback_func(tag_id, debug_level, output);
+    } else {
+        fputs(output, stderr);
+    }
+
+    va_end(va);
+}
+
+
+
+
+#define COLUMNS (16)
+
+void pdebug_dump_bytes_impl(const char *func, int line_num, int debug_level, uint8_t *data,int count)
+{
+    int max_row, row, column;
+    char row_buf[(COLUMNS * 3) + 5 + 1]; 
+
+    /* determine the number of rows we will need to print. */
+    max_row = (count  + (COLUMNS - 1))/COLUMNS;
+
+    for(row = 0; row < max_row; row++) {
+        int offset = (row * COLUMNS);
+        int row_offset = 0;
+
+        /* print the offset in the packet */
+        row_offset = snprintf(&row_buf[0], sizeof(row_buf),"%05d", offset);
+
+        for(column = 0; column < COLUMNS && ((row * COLUMNS) + column) < count && row_offset < (int)sizeof(row_buf); column++) {
+            offset = (row * COLUMNS) + column;
+            row_offset += snprintf(&row_buf[row_offset], sizeof(row_buf) - (size_t)row_offset, " %02x", data[offset]);
+        }
+
+        /* terminate the row string*/
+        row_buf[sizeof(row_buf)-1] = 0; /* just in case */
+
+        /* output it, finally */
+        pdebug_impl(func, line_num, debug_level, row_buf);
+    }
+}
+
+
+int debug_register_logger(void (*log_callback_func_arg)(int32_t tag_id, int debug_level, const char *message))
+{
+    int rc = PLCTAG_STATUS_OK;
+
+    spin_block(&logger_callback_lock) {
+        if(!log_callback_func) {
+            log_callback_func = log_callback_func_arg;
+        } else {
+            rc = PLCTAG_ERR_DUPLICATE;
+        }
+    }
+
+    return rc;
+}
+
+
+int debug_unregister_logger(void)
+{
+    int rc = PLCTAG_STATUS_OK;
+
+    spin_block(&logger_callback_lock) {
+        if(log_callback_func) {
+            log_callback_func = NULL;
+        } else {
+            rc = PLCTAG_ERR_NOT_FOUND;
+        }
+    }
+
+    return rc;
+}
+
+#endif // __UTIL_DEBUG_C__
+
+
+#ifndef __UTIL_HASH_C__
+#define __UTIL_HASH_C__
+
+/*
+--------------------------------------------------------------------
+lookup2.c, by Bob Jenkins, December 1996, Public Domain.
+hash(), hash2(), hash3, and mix() are externally useful functions.
+Routines to test the hash are included if SELF_TEST is defined.
+You can use this free for any purpose.  It has no warranty.
+
+Obsolete.  Use lookup3.c instead, it is faster and more thorough.
+--------------------------------------------------------------------
+*/
+#define SELF_TEST
+
+#include <stdio.h>
+#include <stddef.h>
+#include <stdlib.h>
+typedef uint32_t ub4;   /* unsigned 4-byte quantities */
+typedef uint8_t ub1;
+
+#define hashsize(n) ((ub4)1<<(n))
+#define hashmask(n) (hashsize(n)-1)
+
+/*
+--------------------------------------------------------------------
+mix -- mix 3 32-bit values reversibly.
+For every delta with one or two bit set, and the deltas of all three
+  high bits or all three low bits, whether the original value of a,b,c
+  is almost all zero or is uniformly distributed,
+* If mix() is run forward or backward, at least 32 bits in a,b,c
+  have at least 1/4 probability of changing.
+* If mix() is run forward, every bit of c will change between 1/3 and
+  2/3 of the time.  (Well, 22/100 and 78/100 for some 2-bit deltas.)
+mix() was built out of 36 single-cycle latency instructions in a
+  structure that could supported 2x parallelism, like so:
+      a -= b;
+      a -= c; x = (c>>13);
+      b -= c; a ^= x;
+      b -= a; x = (a<<8);
+      c -= a; b ^= x;
+      c -= b; x = (b>>13);
+      ...
+  Unfortunately, superscalar Pentiums and Sparcs can't take advantage
+  of that parallelism.  They've also turned some of those single-cycle
+  latency instructions into multi-cycle latency instructions.  Still,
+  this is the fastest good hash I could find.  There were about 2^^68
+  to choose from.  I only looked at a billion or so.
+--------------------------------------------------------------------
+*/
+#define mix(a,b,c) \
+    { \
+        a -= b; a -= c; a ^= (c>>13); \
+        b -= c; b -= a; b ^= (a<<8); \
+        c -= a; c -= b; c ^= (b>>13); \
+        a -= b; a -= c; a ^= (c>>12);  \
+        b -= c; b -= a; b ^= (a<<16); \
+        c -= a; c -= b; c ^= (b>>5); \
+        a -= b; a -= c; a ^= (c>>3);  \
+        b -= c; b -= a; b ^= (a<<10); \
+        c -= a; c -= b; c ^= (b>>15); \
+    }
+
+/* same, but slower, works on systems that might have 8 byte ub4's */
+#define mix2(a,b,c) \
+    { \
+        a -= b; a -= c; a ^= (c>>13); \
+        b -= c; b -= a; b ^= (a<< 8); \
+        c -= a; c -= b; c ^= ((b&0xffffffff)>>13); \
+        a -= b; a -= c; a ^= ((c&0xffffffff)>>12); \
+        b -= c; b -= a; b = (b ^ (a<<16)) & 0xffffffff; \
+        c -= a; c -= b; c = (c ^ (b>> 5)) & 0xffffffff; \
+        a -= b; a -= c; a = (a ^ (c>> 3)) & 0xffffffff; \
+        b -= c; b -= a; b = (b ^ (a<<10)) & 0xffffffff; \
+        c -= a; c -= b; c = (c ^ (b>>15)) & 0xffffffff; \
+    }
+
+/*
+--------------------------------------------------------------------
+hash() -- hash a variable-length key into a 32-bit value
+  k     : the key (the unaligned variable-length array of bytes)
+  len   : the length of the key, counting by bytes
+  level : can be any 4-byte value
+Returns a 32-bit value.  Every bit of the key affects every bit of
+the return value.  Every 1-bit and 2-bit delta achieves avalanche.
+About 36+6len instructions.
+
+The best hash table sizes are powers of 2.  There is no need to do
+mod a prime (mod is sooo slow!).  If you need less than 32 bits,
+use a bitmask.  For example, if you need only 10 bits, do
+  h = (h & hashmask(10));
+In which case, the hash table should have hashsize(10) elements.
+
+If you are hashing n strings (ub1 **)k, do it like this:
+  for (i=0, h=0; i<n; ++i) h = hash( k[i], len[i], h);
+
+By Bob Jenkins, 1996.  bob_jenkins@burtleburtle.net.  You may use this
+code any way you wish, private, educational, or commercial.  It's free.
+
+See http://burtleburtle.net/bob/hash/evahash.html
+Use for hash table lookup, or anything where one collision in 2^32 is
+acceptable.  Do NOT use for cryptographic purposes.
+--------------------------------------------------------------------
+*/
+
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4061)
+#endif
+
+uint32_t hash( uint8_t *k, size_t length, uint32_t initval)
+{
+    uint32_t a,b,c,len;
+
+    /* Set up the internal state */
+    len = (uint32_t)length;
+    a = b = 0x9e3779b9;  /* the golden ratio; an arbitrary value */
+    c = initval;           /* the previous hash value */
+
+    /*---------------------------------------- handle most of the key */
+    while (len >= 12) {
+        a += (uint32_t)((k[0] +((ub4)k[1]<<8) +((ub4)k[2]<<16) +((ub4)k[3]<<24)));
+        b += (uint32_t)((k[4] +((ub4)k[5]<<8) +((ub4)k[6]<<16) +((ub4)k[7]<<24)));
+        c += (uint32_t)((k[8] +((ub4)k[9]<<8) +((ub4)k[10]<<16)+((ub4)k[11]<<24)));
+        mix(a,b,c);
+        k += 12;
+        len -= 12;
+    }
+
+    /*------------------------------------- handle the last 11 bytes */
+    c += (uint32_t)length;
+    switch(len) {            /* all the case statements fall through */
+    case 11:
+        c += ((ub4)k[10]<<24);
+        /* Falls through. */
+    case 10:
+        c+=((ub4)k[9]<<16);
+        /* Falls through. */
+    case 9 :
+        c+=((ub4)k[8]<<8);
+        /* the first byte of c is reserved for the length */
+        /* Falls through. */
+    case 8 :
+        b+=((ub4)k[7]<<24);
+        /* Falls through. */
+    case 7 :
+        b+=((ub4)k[6]<<16);
+        /* Falls through. */
+    case 6 :
+        b+=((ub4)k[5]<<8);
+        /* Falls through. */
+    case 5 :
+        b+=k[4];
+        /* Falls through. */
+    case 4 :
+        a+=((ub4)k[3]<<24);
+        /* Falls through. */
+    case 3 :
+        a+=((ub4)k[2]<<16);
+        /* Falls through. */
+    case 2 :
+        a+=((ub4)k[1]<<8);
+        /* Falls through. */
+    case 1 :
+        a+=k[0];
+        /* case 0: nothing left to add */
+        /* Falls through. */
+    }
+    mix(a,b,c);
+    /*-------------------------------------------- report the result */
+    return c;
+}
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+
+#endif // __UTIL_HASH_C__
+
+
+#ifndef __UTIL_HASHTABLE_C__
+#define __UTIL_HASHTABLE_C__
+
+/*
+ * This implements a simple linear probing hash table.
+ *
+ * Note that it will readjust its size if enough entries are made.
+ */
+
+#define MAX_ITERATIONS  (10)
+#define MAX_INCREMENT (10000)
+
+struct hashtable_entry_t {
+    void *data;
+    int64_t key;
+};
+
+struct hashtable_t {
+    int total_entries;
+    int used_entries;
+    uint32_t hash_salt;
+    struct hashtable_entry_t *entries;
+};
+
+
+typedef struct hashtable_entry_t *hashtable_entry_p;
+
+//static int next_highest_prime(int x);
+static int find_key(hashtable_p table, int64_t key);
+static int find_empty(hashtable_p table, int64_t key);
+static int expand_table(hashtable_p table);
+
+
+hashtable_p hashtable_create(int initial_capacity)
+{
+    hashtable_p tab = NULL;
+
+    pdebug(DEBUG_INFO,"Starting");
+
+    if(initial_capacity <= 0) {
+        pdebug(DEBUG_WARN,"Size is less than or equal to zero!");
+        return NULL;
+    }
+
+    tab = mem_alloc(sizeof(struct hashtable_t));
+    if(!tab) {
+        pdebug(DEBUG_ERROR,"Unable to allocate memory for hash table!");
+        return NULL;
+    }
+
+    tab->total_entries = initial_capacity;
+    tab->used_entries = 0;
+    tab->hash_salt = (uint32_t)(time_ms()) + (uint32_t)(intptr_t)(tab);
+
+    tab->entries = mem_alloc(initial_capacity * (int)sizeof(struct hashtable_entry_t));
+    if(!tab->entries) {
+        pdebug(DEBUG_ERROR,"Unable to allocate entry array!");
+        hashtable_destroy(tab);
+        return NULL;
+    }
+
+    pdebug(DEBUG_INFO,"Done");
+
+    return tab;
+}
+
+
+void *hashtable_get(hashtable_p table, int64_t key)
+{
+    int index = 0;
+    void *result = NULL;
+
+    pdebug(DEBUG_SPEW,"Starting");
+
+    if(!table) {
+        pdebug(DEBUG_WARN,"Hashtable pointer null or invalid.");
+        return NULL;
+    }
+
+    index = find_key(table, key);
+    if(index != PLCTAG_ERR_NOT_FOUND) {
+        result = table->entries[index].data;
+        pdebug(DEBUG_SPEW,"found data %p", result);
+    } else {
+        pdebug(DEBUG_SPEW, "key not found!");
+    }
+
+    pdebug(DEBUG_SPEW,"Done");
+
+    return result;
+}
+
+
+int hashtable_put(hashtable_p table, int64_t key, void  *data)
+{
+    int rc = PLCTAG_STATUS_OK;
+    int index = 0;
+
+    pdebug(DEBUG_SPEW,"Starting");
+
+    if(!table) {
+        pdebug(DEBUG_WARN,"Hashtable pointer null or invalid.");
+        return PLCTAG_ERR_NULL_PTR;
+    }
+
+    /* try to find a slot to put the new entry */
+    index = find_empty(table, key);
+    while(index == PLCTAG_ERR_NOT_FOUND) {
+        rc = expand_table(table);
+        if(rc != PLCTAG_STATUS_OK) {
+            pdebug(DEBUG_WARN, "Unable to expand table to make entry unique!");
+            return rc;
+        }
+
+        index = find_empty(table, key);
+    }
+
+    pdebug(DEBUG_SPEW, "Putting value at index %d", index);
+
+    table->entries[index].key = key;
+    table->entries[index].data = data;
+    table->used_entries++;
+
+    pdebug(DEBUG_SPEW, "Done.");
+
+    return PLCTAG_STATUS_OK;
+}
+
+
+void *hashtable_get_index(hashtable_p table, int index)
+{
+    if(!table) {
+        pdebug(DEBUG_WARN,"Hashtable pointer null or invalid");
+        return NULL;
+    }
+
+    if(index < 0 || index >= table->total_entries) {
+        pdebug(DEBUG_WARN, "Out of bounds index!");
+        return NULL;
+    }
+
+    return table->entries[index].data;
+}
+
+
+
+int hashtable_capacity(hashtable_p table)
+{
+    if(!table) {
+        pdebug(DEBUG_WARN,"Hashtable pointer null or invalid");
+        return PLCTAG_ERR_NULL_PTR;
+    }
+
+    return table->total_entries;
+}
+
+
+
+int hashtable_entries(hashtable_p table)
+{
+    if(!table) {
+        pdebug(DEBUG_WARN,"Hashtable pointer null or invalid");
+        return PLCTAG_ERR_NULL_PTR;
+    }
+
+    return table->used_entries;
+}
+
+
+
+int hashtable_on_each(hashtable_p table, int (*callback_func)(hashtable_p table, int64_t key, void *data, void *context), void *context_arg)
+{
+    int rc = PLCTAG_STATUS_OK;
+
+    if(!table) {
+        pdebug(DEBUG_WARN,"Hashtable pointer null or invalid");
+    }
+
+    for(int i=0; i < table->total_entries && rc == PLCTAG_STATUS_OK; i++) {
+        if(table->entries[i].data) {
+            rc = callback_func(table, table->entries[i].key, table->entries[i].data, context_arg);
+        }
+    }
+
+    return rc;
+}
+
+
+
+void *hashtable_remove(hashtable_p table, int64_t key)
+{
+    int index = 0;
+    void *result = NULL;
+
+    pdebug(DEBUG_DETAIL,"Starting");
+
+    if(!table) {
+        pdebug(DEBUG_WARN,"Hashtable pointer null or invalid.");
+        return result;
+    }
+
+    index = find_key(table, key);
+    if(index == PLCTAG_ERR_NOT_FOUND) {
+        pdebug(DEBUG_SPEW,"Not found.");
+        return result;
+    }
+
+    result = table->entries[index].data;
+    table->entries[index].key = 0;
+    table->entries[index].data = NULL;
+    table->used_entries--;
+
+    pdebug(DEBUG_DETAIL,"Done");
+
+    return result;
+}
+
+
+
+
+int hashtable_destroy(hashtable_p table)
+{
+    pdebug(DEBUG_INFO,"Starting");
+
+    if(!table) {
+        pdebug(DEBUG_WARN,"Called with null pointer!");
+        return PLCTAG_ERR_NULL_PTR;
+    }
+
+    mem_free(table->entries);
+    table->entries = NULL;
+
+    mem_free(table);
+
+    pdebug(DEBUG_INFO,"Done");
+
+    return PLCTAG_STATUS_OK;
+}
+
+
+
+
+
+/***********************************************************************
+ *************************** Helper Functions **************************
+ **********************************************************************/
+
+
+#define KEY_TO_INDEX(t, k) (uint32_t)((hash((uint8_t*)&k, sizeof(k), t->hash_salt)) % (uint32_t)(t->total_entries))
+
+
+int find_key(hashtable_p table, int64_t key)
+{
+    uint32_t initial_index = KEY_TO_INDEX(table, key);
+    int index = 0;
+    int iteration = 0;
+
+    pdebug(DEBUG_SPEW, "Starting.");
+
+    /*
+     * search for the hash value.
+     *
+     * Note: do NOT stop if we find a NULL entry.  That might be the result
+     * of a removed entry and there could still be entries past that point
+     * that are for the initial slot.
+     */
+    for(iteration=0; iteration < MAX_ITERATIONS; iteration++) {
+        index = ((int)initial_index + iteration) % table->total_entries;
+
+        if(table->entries[index].key == key) {
+            break;
+        }
+    }
+
+    if(iteration >= MAX_ITERATIONS) {
+        /* FIXME - does not work on Windows. */
+        //pdebug(DEBUG_SPEW, "Key %ld not found.", key);
+        return PLCTAG_ERR_NOT_FOUND;
+    } else {
+        //pdebug(DEBUG_SPEW, "Key %d found at index %d.", (int)table->entries[index].key, index);
+    }
+
+    pdebug(DEBUG_SPEW, "Done.");
+
+    return index;
+}
+
+
+
+
+int find_empty(hashtable_p table, int64_t key)
+{
+    uint32_t initial_index = KEY_TO_INDEX(table, key);
+    int index = 0;
+    int iteration = 0;
+
+    pdebug(DEBUG_SPEW, "Starting.");
+
+    /* search for the hash value. */
+    for(iteration=0; iteration < MAX_ITERATIONS; iteration++) {
+        index = ((int)initial_index + iteration) % table->total_entries;
+
+        pdebug(DEBUG_SPEW, "Trying index %d for key %ld.", index, key);
+        if(table->entries[index].data == NULL) {
+            break;
+        }
+    }
+
+    if(iteration >= MAX_ITERATIONS) {
+        pdebug(DEBUG_SPEW,"No empty entry found in %d iterations!", MAX_ITERATIONS);
+        return PLCTAG_ERR_NOT_FOUND;
+    }
+
+    pdebug(DEBUG_SPEW, "Done.");
+
+    return index;
+}
+
+
+
+
+int expand_table(hashtable_p table)
+{
+    struct hashtable_t new_table;
+    int total_entries = table->total_entries;
+    int index = PLCTAG_ERR_NOT_FOUND;
+
+    pdebug(DEBUG_SPEW, "Starting.");
+
+    pdebug(DEBUG_SPEW, "Table using %d entries of %d.", table->used_entries, table->total_entries);
+
+    do {
+        /* double entries unless already at max doubling, then increment. */
+        total_entries += (total_entries < MAX_INCREMENT ? total_entries : MAX_INCREMENT);
+
+        new_table.total_entries = total_entries;
+        new_table.used_entries = 0;
+        new_table.hash_salt = table->hash_salt;
+
+        pdebug(DEBUG_SPEW, "trying new size = %d", total_entries);
+
+        new_table.entries = mem_alloc(total_entries * (int)sizeof(struct hashtable_entry_t));
+        if(!new_table.entries) {
+            pdebug(DEBUG_ERROR, "Unable to allocate new entry array!");
+            return PLCTAG_ERR_NO_MEM;
+        }
+
+        /* copy the old entries.  Only copy ones that are used. */
+        for(int i=0; i < table->total_entries; i++) {
+            if(table->entries[i].data) {
+                index = find_empty(&new_table, table->entries[i].key);
+                if(index == PLCTAG_ERR_NOT_FOUND) {
+                    /* oops, still cannot insert all the entries! Try again. */
+                    pdebug(DEBUG_DETAIL, "Unable to insert existing entry into expanded table. Retrying.");
+                    mem_free(new_table.entries);
+                    break;
+                } else {
+                    /* store the entry into the new table. */
+                    new_table.entries[index] = table->entries[i];
+                    new_table.used_entries++;
+                }
+            }
+        }
+    } while(index == PLCTAG_ERR_NOT_FOUND);
+
+    /* success! */
+    mem_free(table->entries);
+    table->entries = new_table.entries;
+    table->total_entries = new_table.total_entries;
+    table->used_entries = new_table.used_entries;
+
+    pdebug(DEBUG_SPEW, "Done.");
+
+    return PLCTAG_STATUS_OK;
+}
+
+#endif // __UTIL_HASHTABLE_C__
+
+
+#ifndef __UTIL_RC_C__
+#define __UTIL_RC_C__
+
+//~ #ifndef container_of
+//~ #define container_of(ptr, type, member) ((type *)((char *)(1 ? (ptr) : &((type *)0)->member) - offsetof(type, member)))
+//~ #endif
+
+
+
+
+/*
+ * Handle clean up functions.
+ */
+
+//typedef struct cleanup_t *cleanup_p;
+//
+//struct cleanup_t {
+//    cleanup_p next;
+//    const char *function_name;
+//    int line_num;
+//    int extra_arg_count;
+//    void **extra_args;
+//    rc_cleanup_func cleanup_func;
+//    void *dummy[]; /* force alignment */
+//};
+
+
+/*
+ * This is a rc struct that we use to make sure that we are able to align
+ * the remaining part of the allocated block.
+ */
+
+struct refcount_t {
+    lock_t lock;
+    int count;
+    const char *function_name;
+    int line_num;
+    //cleanup_p cleaners;
+    rc_cleanup_func cleanup_func;
+
+    /* FIXME - needed for alignment, this is a hack! */
+    union {
+        uint8_t dummy_u8;
+        uint16_t dummy_u16;
+        uint32_t dummy_u32;
+        uint64_t dummy_u64;
+        double dummy_double;
+        void *dummy_ptr;
+        void (*dummy_func)(void);
+    } dummy_align[];
+};
+
+
+typedef struct refcount_t *refcount_p;
+
+static void refcount_cleanup(refcount_p rc);
+//static cleanup_p cleanup_entry_create(const char *func, int line_num, rc_cleanup_func cleaner, int extra_arg_count, va_list extra_args);
+//static void cleanup_entry_destroy(cleanup_p entry);
+
+
+
+/*
+ * rc_alloc
+ *
+ * Create a reference counted control for the requested data size.  Return a strong
+ * reference to the data.
+ */
+//void *rc_alloc_impl(const char *func, int line_num, int data_size, int extra_arg_count, rc_cleanup_func cleaner_func, ...)
+void *rc_alloc_impl(const char *func, int line_num, int data_size, rc_cleanup_func cleaner_func)
+{
+    refcount_p rc = NULL;
+    //cleanup_p cleanup = NULL;
+    //va_list extra_args;
+
+    pdebug(DEBUG_INFO,"Starting, called from %s:%d",func, line_num);
+
+    pdebug(DEBUG_SPEW,"Allocating %d-byte refcount struct",(int)sizeof(struct refcount_t));
+
+    rc = mem_alloc((int)sizeof(struct refcount_t) + data_size);
+    if(!rc) {
+        pdebug(DEBUG_WARN,"Unable to allocate refcount struct!");
+        return NULL;
+    }
+
+    rc->count = 1;  /* start with a reference count. */
+    rc->lock = LOCK_INIT;
+
+    rc->cleanup_func = cleaner_func;
+
+    /* store where we were called from for later. */
+    rc->function_name = func;
+    rc->line_num = line_num;
+
+    pdebug(DEBUG_INFO, "Done");
+
+    /* return the original address if successful otherwise NULL. */
+
+    /* DEBUG */
+    pdebug(DEBUG_DETAIL,"Returning memory pointer %p",(char *)(rc + 1));
+
+    return (char *)(rc + 1);
+}
+
+
+
+
+
+
+
+
+/*
+ * Increments the ref count if the reference is valid.
+ *
+ * It returns the original poiner if the passed pointer was valid.  It returns
+ * NULL if the passed pointer was invalid.
+ *
+ * This is for usage like:
+ * my_struct->some_field_ref = rc_inc(ref);
+ */
+
+void *rc_inc_impl(const char *func, int line_num, void *data)
+{
+    int count = 0;
+    refcount_p rc = NULL;
+    char *result = NULL;
+
+    pdebug(DEBUG_SPEW,"Starting, called from %s:%d for %p",func, line_num, data);
+
+    if(!data) {
+        pdebug(DEBUG_SPEW,"Invalid pointer passed from %s:%d!", func, line_num);
+        return result;
+    }
+
+    /* get the refcount structure. */
+    rc = ((refcount_p)data) - 1;
+
+    /* spin until we have ownership */
+    spin_block(&rc->lock) {
+        if(rc->count > 0) {
+            rc->count++;
+            count = rc->count;
+            result = data;
+        } else {
+            count = rc->count;
+            result = NULL;
+        }
+    }
+
+    if(!result) {
+        pdebug(DEBUG_SPEW,"Invalid ref count (%d) from call at %s line %d!  Unable to take strong reference.", count, func, line_num);
+    } else {
+        pdebug(DEBUG_SPEW,"Ref count is %d for %p.", count, data);
+    }
+
+    /* return the result pointer. */
+    return result;
+}
+
+
+
+/*
+ * Decrement the ref count.
+ *
+ * This is for usage like:
+ * my_struct->some_field = rc_dec(rc_obj);
+ *
+ * Note that the final clean up function _MUST_ free the data pointer
+ * passed to it.   It must clean up anything referenced by that data,
+ * and the block itself using mem_free() or the appropriate function;
+ */
+
+void *rc_dec_impl(const char *func, int line_num, void *data)
+{
+    int count = 0;
+    int invalid = 0;
+    refcount_p rc = NULL;
+
+    pdebug(DEBUG_SPEW,"Starting, called from %s:%d for %p",func, line_num, data);
+
+    if(!data) {
+        pdebug(DEBUG_SPEW,"Null reference passed from %s:%d!", func, line_num);
+        return NULL;
+    }
+
+    /* get the refcount structure. */
+    rc = ((refcount_p)data) - 1;
+
+    /* do this sorta atomically */
+    spin_block(&rc->lock) {
+        if(rc->count > 0) {
+            rc->count--;
+            count = rc->count;
+        } else {
+            count = rc->count;
+            invalid = 1;
+        }
+    }
+
+    if(invalid) {
+        pdebug(DEBUG_WARN,"Reference has invalid count %d!", count);
+    } else {
+        pdebug(DEBUG_SPEW,"Ref count is %d for %p.", count, data);
+
+        /* clean up only if count is zero. */
+        if(rc && count <= 0) {
+            pdebug(DEBUG_DETAIL,"Calling cleanup functions due to call at %s:%d for %p.", func, line_num, data);
+
+            refcount_cleanup(rc);
+        }
+    }
+
+    return NULL;
+}
+
+
+
+
+void refcount_cleanup(refcount_p rc)
+{
+    pdebug(DEBUG_INFO,"Starting");
+    if(!rc) {
+        pdebug(DEBUG_WARN,"Refcount is NULL!");
+        return;
+    }
+
+    /* call the clean up function */
+    rc->cleanup_func((void *)(rc+1));
+
+    /* finally done. */
+    mem_free(rc);
+
+    pdebug(DEBUG_INFO,"Done.");
+}
+
+#endif // __UTIL_RC_C__
+
+
+#ifndef __UTIL_VECTOR_C__
+#define __UTIL_VECTOR_C__
+
+struct vector_t {
+    int len;
+    int capacity;
+    int max_inc;
+    void **data;
+};
+
+
+
+static int ensure_capacity(vector_p vec, int capacity);
+
+
+vector_p vector_create(int capacity, int max_inc)
+{
+    vector_p vec = NULL;
+
+    pdebug(DEBUG_SPEW,"Starting");
+
+    if(capacity <= 0) {
+        pdebug(DEBUG_WARN, "Called with negative capacity!");
+        return NULL;
+    }
+
+    if(max_inc <= 0) {
+        pdebug(DEBUG_WARN, "Called with negative maximum size increment!");
+        return NULL;
+    }
+
+    vec = mem_alloc((int)sizeof(struct vector_t));
+    if(!vec) {
+        pdebug(DEBUG_ERROR,"Unable to allocate memory for vector!");
+        return NULL;
+    }
+
+    vec->len = 0;
+    vec->capacity = capacity;
+    vec->max_inc = max_inc;
+
+    vec->data = mem_alloc(capacity * (int)sizeof(void *));
+    if(!vec->data) {
+        pdebug(DEBUG_ERROR,"Unable to allocate memory for vector data!");
+        vector_destroy(vec);
+        return NULL;
+    }
+
+    pdebug(DEBUG_SPEW,"Done");
+
+    return vec;
+}
+
+
+
+int vector_length(vector_p vec)
+{
+    pdebug(DEBUG_SPEW,"Starting");
+
+    /* check to see if the vector ref is valid */
+    if(!vec) {
+        pdebug(DEBUG_WARN,"Null pointer or invalid pointer to vector passed!");
+        return PLCTAG_ERR_NULL_PTR;
+    }
+
+    pdebug(DEBUG_SPEW,"Done");
+
+    return vec->len;
+}
+
+
+
+int vector_put(vector_p vec, int index, void * data)
+{
+    int rc = PLCTAG_STATUS_OK;
+
+    pdebug(DEBUG_SPEW,"Starting");
+
+    /* check to see if the vector ref is valid */
+    if(!vec) {
+       pdebug(DEBUG_WARN,"Null pointer or invalid pointer to vector passed!");
+        return PLCTAG_ERR_NULL_PTR;
+    }
+
+    if(index < 0) {
+        pdebug(DEBUG_WARN,"Index is negative!");
+        return PLCTAG_ERR_OUT_OF_BOUNDS;
+    }
+
+    rc = ensure_capacity(vec, index+1);
+    if(rc != PLCTAG_STATUS_OK) {
+        pdebug(DEBUG_WARN,"Unable to ensure capacity!");
+        return rc;
+    }
+
+    /* reference the new data. */
+    vec->data[index] = data;
+
+    /* adjust the length, if needed */
+    if(index >= vec->len) {
+        vec->len = index+1;
+    }
+
+    pdebug(DEBUG_SPEW,"Done");
+
+    return rc;
+}
+
+
+void * vector_get(vector_p vec, int index)
+{
+    pdebug(DEBUG_SPEW,"Starting");
+
+    /* check to see if the vector ref is valid */
+    if(!vec) {
+        pdebug(DEBUG_WARN,"Null pointer or invalid pointer to vector passed!");
+        return NULL;
+    }
+
+    if(index < 0 || index >= vec->len) {
+        pdebug(DEBUG_WARN,"Index is out of bounds!");
+        return NULL;
+    }
+
+    pdebug(DEBUG_SPEW,"Done");
+
+    return vec->data[index];
+}
+
+
+void * vector_remove(vector_p vec, int index)
+{
+    void * result = NULL;
+
+    pdebug(DEBUG_SPEW,"Starting");
+
+    /* check to see if the vector ref is valid */
+    if(!vec) {
+        pdebug(DEBUG_WARN,"Null pointer or invalid pointer to vector passed!");
+        return NULL;
+    }
+
+    if(index < 0 || index >= vec->len) {
+        pdebug(DEBUG_WARN,"Index is out of bounds!");
+        return NULL;
+    }
+
+    /* get the value in this slot before we overwrite it. */
+    result = vec->data[index];
+
+    /* move the rest of the data over this. */
+    mem_move(&vec->data[index], &vec->data[index+1], (int)((sizeof(void *) * (size_t)(vec->len - index - 1))));
+
+    /* make sure that we do not have old data hanging around. */
+    vec->data[vec->len - 1] = NULL;
+
+    /* adjust the length to the new size */
+    vec->len--;
+
+    pdebug(DEBUG_SPEW,"Done");
+
+    return result;
+}
+
+
+
+int vector_destroy(vector_p vec)
+{
+    pdebug(DEBUG_SPEW,"Starting.");
+
+    if(!vec) {
+        pdebug(DEBUG_WARN,"Null pointer passed!");
+        return PLCTAG_ERR_NULL_PTR;
+    }
+
+    mem_free(vec->data);
+    mem_free(vec);
+
+    pdebug(DEBUG_SPEW,"Done.");
+
+    return PLCTAG_STATUS_OK;
+}
+
+
+
+/***********************************************************************
+ *************** Private Helper Functions ******************************
+ **********************************************************************/
+
+
+
+int ensure_capacity(vector_p vec, int capacity)
+{
+    int new_inc = 0;
+    void * *new_data = NULL;
+
+    if(!vec) {
+        pdebug(DEBUG_WARN,"Null pointer or invalid pointer to vector passed!");
+        return PLCTAG_ERR_NULL_PTR;
+    }
+
+    /* is there anything to do? */
+    if(capacity <= vec->capacity) {
+        /* release the reference */
+        return PLCTAG_STATUS_OK;
+    }
+
+    /* calculate the new capacity
+     *
+     * Start by guessing 50% larger.  Clamp that against 1 at the
+     * low end and the max increment passed when the vector was created.
+     */
+    new_inc = vec->capacity / 2;
+
+    if(new_inc > vec->max_inc) {
+        new_inc = vec->max_inc;
+    }
+
+    if(new_inc < 1) {
+        new_inc = 1;
+    }
+
+    /* allocate the new data area */
+    new_data = (void * *)mem_alloc((int)((sizeof(void *) * (size_t)(vec->capacity + new_inc))));
+    if(!new_data) {
+        pdebug(DEBUG_ERROR,"Unable to allocate new data area!");
+        return PLCTAG_ERR_NO_MEM;
+    }
+
+    mem_copy(new_data, vec->data, (int)((size_t)(vec->capacity) * sizeof(void *)));
+
+    mem_free(vec->data);
+
+    vec->data = new_data;
+
+    vec->capacity += new_inc;
+
+    return PLCTAG_STATUS_OK;
+}
+
+#endif // __UTIL_VECTOR_C__
+
+
+
+#ifdef __cplusplus
+}
+#endif

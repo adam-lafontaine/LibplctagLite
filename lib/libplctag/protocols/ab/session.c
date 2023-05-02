@@ -37,7 +37,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "../../../libplctag_internal.h"
+#include "../../libplctag_internal.h"
 
 #ifdef __cplusplus
 extern "C" {
