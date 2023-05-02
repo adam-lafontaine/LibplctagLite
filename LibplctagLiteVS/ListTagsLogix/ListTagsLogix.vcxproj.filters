@@ -80,10 +80,10 @@
     <ClCompile Include="..\..\examples\cpp\list_tags_logix.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\lib\libplctag\libplctag_platform_windows.c">
+    <ClCompile Include="..\..\lib\libplctag\platform_windows.c">
       <Filter>Source Files\libplctag</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\lib\libplctag\libplctag_lib.c">
+    <ClCompile Include="..\..\lib\libplctag\libplctag.c">
       <Filter>Source Files\libplctag</Filter>
     </ClCompile>
     <ClCompile Include="..\..\lib\libplctag\protocols\modbus.c">
