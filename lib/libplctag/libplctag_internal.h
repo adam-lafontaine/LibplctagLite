@@ -1117,10 +1117,10 @@ Version manually added - Adam Lafontaine
 
 */
 
-const char* VERSION;
-const uint64_t version_major;
-const uint64_t version_minor;
-const uint64_t version_patch;
+const char* VERSION = "LIBPLCTAG 2.5.0";
+const uint64_t version_major = 2;
+const uint64_t version_minor = 5;
+const uint64_t version_patch = 0;
 
 #endif // __LIB_VERSION_H__
 

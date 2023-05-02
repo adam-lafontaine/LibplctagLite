@@ -51,17 +51,6 @@ extern "C" {
 #ifndef __LIB_LIB_C__
 #define __LIB_LIB_C__
 
-/*
-
-Version manually added - Adam Lafontaine
-
-*/
-
-const char* VERSION = "LIBPLCTAG 2.5.0";
-const uint64_t version_major = 2;
-const uint64_t version_minor = 5;
-const uint64_t version_patch = 0;
-
 #define INITIAL_TAG_TABLE_SIZE (201)
 
 #define TAG_ID_MASK (0xFFFFFFF)
@@ -539,11 +528,11 @@ THREAD_FUNC(tag_tickler_func)
                 max_index = hashtable_capacity(tags);
 
                 if(i < max_index) {
-                    tag = hashtable_get_index(tags, i);
+                    tag = (plc_tag_p)hashtable_get_index(tags, i);
 
                     if(tag) {
                         debug_set_tag_id(tag->tag_id);
-                        tag = rc_inc(tag);
+                        tag = (plc_tag_p) rc_inc(tag);
                     }
                 } else {
                     debug_set_tag_id(0);
@@ -1119,12 +1108,12 @@ LIB_EXPORT void plc_tag_shutdown(void)
             tag_table_entries = hashtable_capacity(tags);
 
             if(i<tag_table_entries && tag_table_entries >= 0) {
-                tag = hashtable_get_index(tags, i);
+                tag = (plc_tag_p)hashtable_get_index(tags, i);
 
                 /* make sure the tag does not go away while we are using the pointer. */
                 if(tag) {
                     /* this returns NULL if the existing ref-count is zero. */
-                    tag = rc_inc(tag);
+                    tag = (plc_tag_p) rc_inc(tag);
                 }
             }
         }
@@ -1554,7 +1543,7 @@ LIB_EXPORT int plc_tag_destroy(int32_t tag_id)
     }
 
     critical_block(tag_lookup_mutex) {
-        tag = hashtable_remove(tags, tag_id);
+        tag = (plc_tag_p)hashtable_remove(tags, tag_id);
     }
 
     if(!tag) {
@@ -2178,7 +2167,7 @@ LIB_EXPORT int plc_tag_set_size(int32_t id, int new_size)
     }
 
     critical_block(tag->api_mutex) {
-        uint8_t *new_data = mem_realloc(tag->data, new_size);
+        uint8_t *new_data = (uint8_t*)mem_realloc(tag->data, new_size);
 
         if(new_data) {
             /* return the old size */
@@ -3993,7 +3982,7 @@ int set_tag_byte_order(plc_tag_p tag, attr attribs)
         const char *byte_order_str = NULL;
         int str_param = 0;
         int rc = PLCTAG_STATUS_OK;
-        tag_byte_order_t *new_byte_order = mem_alloc((int)(unsigned int)sizeof(*(tag->byte_order)));
+        tag_byte_order_t *new_byte_order = (tag_byte_order_t*)mem_alloc((int)(unsigned int)sizeof(*(tag->byte_order)));
 
         if(!new_byte_order) {
             pdebug(DEBUG_WARN, "Unable to allocate byte order struct for tag!");
@@ -4288,7 +4277,7 @@ plc_tag_p lookup_tag(int32_t tag_id)
     plc_tag_p tag = NULL;
 
     critical_block(tag_lookup_mutex) {
-        tag = hashtable_get(tags, (int64_t)tag_id);
+        tag = (plc_tag_p)hashtable_get(tags, (int64_t)tag_id);
 
         if(tag) {
             debug_set_tag_id(tag->tag_id);
@@ -4299,7 +4288,7 @@ plc_tag_p lookup_tag(int32_t tag_id)
 
         if(tag && tag->tag_id == tag_id) {
             pdebug(DEBUG_SPEW, "Found tag %p with id %d.", tag, tag->tag_id);
-            tag = rc_inc(tag);
+            tag = (plc_tag_p)rc_inc(tag);
         } else {
             debug_set_tag_id(0);
             tag = NULL;

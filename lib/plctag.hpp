@@ -1,7 +1,5 @@
 #pragma once
 
-#define PLCTAG_NO_WRITE
-
 
 #include <cstdint>
 #include <vector>

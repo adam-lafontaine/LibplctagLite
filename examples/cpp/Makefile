@@ -2,23 +2,22 @@ GPP := g++-11
 
 build := ./build_files
 
-src := ../lib # TODO: rename
+# TODO: rename
+src := ../../lib
+
 libplctag := $(src)/libplctag
-lib := $(libplctag)/lib
-platform := $(libplctag)/platform/posix
 protocols := $(libplctag)/protocols
+ab := $(protocols)/ab
 
-util := 
+exe := list_tags_logix
 
 
-libplctag_h := $(src)/libplctag.h
+libplctag_h := $(libplctag)/libplctag.h
 
-libplctag_internal_h := $(src)/libplctag_internal.hpp
+libplctag_internal_h := $(libplctag)/libplctag_internal.h
 libplctag_internal_h += $(libplctag_h)
 
 plctag_h := $(src)/plctag.hpp
-
-
 
 
 
@@ -36,14 +35,34 @@ plctag_dep += $(libplctag_h)
 
 plctag_c := $(src)/plctag.cpp
 plctag_o := $(build)/plctag.o
-object_files := $(plctag_o)
+object_files += $(plctag_o)
+
+
+# libplctag
+libplctag_dep := $(libplctag_internal_h)
+
+libplctag_c := $(libplctag)/libplctag_lib.c
+libplctag_c += $(libplctag)/libplctag_platform_posix.c
+libplctag_c += $(libplctag)/libplctag_util.c
+libplctag_c += $(protocols)/modbus.c
+libplctag_c += $(protocols)/system.c
+libplctag_c += $(ab)/ab_common.c
+libplctag_c += $(ab)/cip.c
+libplctag_c += $(ab)/eip_cip.c
+libplctag_c += $(ab)/eip_cip_special.c
+libplctag_c += $(ab)/eip_lgx_pccc.c
+libplctag_c += $(ab)/eip_slc_dhp.c
+libplctag_c += $(ab)/eip_slc_pccc.c
+libplctag_c += $(ab)/error_codes.c
+libplctag_c += $(ab)/pccc.c
+libplctag_c += $(ab)/session.c
+
+libplctag_o := $(build)/libplctag.o
+object_files += $(libplctag_o)
 
 
 
-
-
-
- flags
+# flags
 INCLUDES  := 
 
 LIBRARIES := -pthread
@@ -63,6 +82,15 @@ $(plctag_o): $(plctag_c) $(plctag_dep)
 	@echo "\n plctag"
 	$(GPP) $(CCFLAGS) -o $@ -c $< $(LIBRARIES)
 
+
+$(libplctag_o): $(libplctag_c) $(libplctag_dep)
+	@echo "\n libplctag"
+	$(GPP) $(CCFLAGS) -o $@ -c $< $(LIBRARIES)
+
+
+$(exe): $(object_files)
+	@echo "\n exe"
+	$(GPP) $(CCFLAGS) -o $@ $+ $(LIBRARIES)
 
 
 build: $(exe)
