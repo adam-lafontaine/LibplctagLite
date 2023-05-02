@@ -26,7 +26,6 @@
   <ItemGroup>
     <ClCompile Include="..\..\examples\cpp\list_tags_logix.cpp" />
     <ClCompile Include="..\..\lib\libplctag\libplctag_lib.c" />
-    <ClCompile Include="..\..\lib\libplctag\libplctag_util.c" />
     <ClCompile Include="..\..\lib\libplctag\libplctag_platform_windows.c" />
     <ClCompile Include="..\..\lib\libplctag\protocols\ab\ab_common.c" />
     <ClCompile Include="..\..\lib\libplctag\protocols\ab\cip.c" />

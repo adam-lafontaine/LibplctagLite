@@ -86,9 +86,6 @@
     <ClCompile Include="..\..\lib\libplctag\libplctag_lib.c">
       <Filter>Source Files\libplctag</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\lib\libplctag\libplctag_util.c">
-      <Filter>Source Files\libplctag</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\lib\libplctag\protocols\modbus.c">
       <Filter>Source Files\libplctag\protocols</Filter>
     </ClCompile>
