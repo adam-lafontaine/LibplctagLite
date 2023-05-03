@@ -35,7 +35,8 @@
 #include <limits.h>
 #include <float.h>
 
-#include "../../libplctag_internal.h"
+#include "../../tag_vtable.h"
+#include "../../tag_byte_order.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -513,7 +514,7 @@ int get_tag_data_type(ab_tag_p tag, attr attribs)
     int rc = PLCTAG_STATUS_OK;
     const char *elem_type = NULL;
     const char *tag_name = NULL;
-    pccc_addr_t file_addr =  {0};
+    pccc_addr_t file_addr =  {};
 
     pdebug(DEBUG_DETAIL, "Starting.");
 
@@ -531,7 +532,7 @@ int get_tag_data_type(ab_tag_p tag, attr attribs)
         }
 
         tag->elem_size = file_addr.element_size_bytes;
-        tag->file_type = (int)file_addr.file_type;
+        tag->file_type = file_addr.file_type;
 
         break;
 
@@ -722,7 +723,7 @@ int ab_tag_abort(ab_tag_p tag)
             tag->req->abort_request = 1;
         }
 
-        tag->req = rc_dec(tag->req);
+        tag->req = (ab_request_p)rc_dec(tag->req);
     } else {
         pdebug(DEBUG_DETAIL, "Called without a request in flight.");
     }

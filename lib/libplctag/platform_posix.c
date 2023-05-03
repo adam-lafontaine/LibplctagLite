@@ -31,10 +31,11 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 
-
+#ifndef  _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
-#include "../libplctag_internal.h"
+#include "libplctag_internal.h"
 
 #include <unistd.h>
 #include <stdlib.h>
@@ -394,7 +395,7 @@ extern char *str_str_cmp_i(const char *haystack, const char *needle)
         return NULL;
     }
 
-    return strcasestr(haystack, needle);
+    return (char*)strcasestr(haystack, needle);
 }
 
 
@@ -542,7 +543,7 @@ extern char **str_split(const char *str, const char *sep)
     size = ((int)sizeof(char *)*(sub_str_count+1)+str_length(str)+1);
 
     /* allocate enough memory */
-    res = mem_alloc(size);
+    res = (char**)mem_alloc(size);
 
     if(!res)
         return NULL;
@@ -606,7 +607,7 @@ char *str_concat_impl(int num_args, ...)
     /* make a buffer big enough */
     total_length += 1;
 
-    result = mem_alloc(total_length);
+    result = (char*)mem_alloc(total_length);
     if(!result) {
         pdebug(DEBUG_ERROR,"Unable to allocate new string buffer!");
         return NULL;
@@ -1000,7 +1001,7 @@ int cond_create(cond_p *c)
     /* clear the output first. */
     *c = NULL;
 
-    tmp_cond = mem_alloc((int)(unsigned int)sizeof(*tmp_cond));
+    tmp_cond = (cond_p)mem_alloc((int)(unsigned int)sizeof(*tmp_cond));
     if(!tmp_cond) {
         pdebug(DEBUG_WARN, "Unable to allocate new condition var!");
         return PLCTAG_ERR_NO_MEM;

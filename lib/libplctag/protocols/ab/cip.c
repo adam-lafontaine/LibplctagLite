@@ -165,7 +165,7 @@ int cip_encode_path(const char *path, int *needs_connection, plc_type_t plc_type
 
     if(conn_path_index > 0) {
         /* allocate space for the connection path */
-        *conn_path = mem_alloc((int)(unsigned int)conn_path_index);
+        *conn_path = (uint8_t*)mem_alloc((int)(unsigned int)conn_path_index);
         if(! *conn_path) {
             pdebug(DEBUG_WARN, "Unable to allocate connection path!");
             return PLCTAG_ERR_NO_MEM;

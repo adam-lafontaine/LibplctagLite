@@ -44,7 +44,7 @@
 #include <time.h>
 #include <string.h>
 
-#include "libplctag_internal.h"
+#include "tag_vtable.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -5624,7 +5624,7 @@ hashtable_p hashtable_create(int initial_capacity)
         return NULL;
     }
 
-    tab = mem_alloc(sizeof(struct hashtable_t));
+    tab = (hashtable_p)mem_alloc(sizeof(struct hashtable_t));
     if (!tab) {
         pdebug(DEBUG_ERROR, "Unable to allocate memory for hash table!");
         return NULL;
@@ -5634,7 +5634,7 @@ hashtable_p hashtable_create(int initial_capacity)
     tab->used_entries = 0;
     tab->hash_salt = (uint32_t)(time_ms()) + (uint32_t)(intptr_t)(tab);
 
-    tab->entries = mem_alloc(initial_capacity * (int)sizeof(struct hashtable_entry_t));
+    tab->entries = (struct hashtable_entry_t*)mem_alloc(initial_capacity * (int)sizeof(struct hashtable_entry_t));
     if (!tab->entries) {
         pdebug(DEBUG_ERROR, "Unable to allocate entry array!");
         hashtable_destroy(tab);
@@ -5923,7 +5923,7 @@ int expand_table(hashtable_p table)
 
         pdebug(DEBUG_SPEW, "trying new size = %d", total_entries);
 
-        new_table.entries = mem_alloc(total_entries * (int)sizeof(struct hashtable_entry_t));
+        new_table.entries = (hashtable_entry_t*)mem_alloc(total_entries * (int)sizeof(struct hashtable_entry_t));
         if (!new_table.entries) {
             pdebug(DEBUG_ERROR, "Unable to allocate new entry array!");
             return PLCTAG_ERR_NO_MEM;
@@ -6040,7 +6040,7 @@ void* rc_alloc_impl(const char* func, int line_num, int data_size, rc_cleanup_fu
 
     pdebug(DEBUG_SPEW, "Allocating %d-byte refcount struct", (int)sizeof(struct refcount_t));
 
-    rc = mem_alloc((int)sizeof(struct refcount_t) + data_size);
+    rc = (refcount_p)mem_alloc((int)sizeof(struct refcount_t) + data_size);
     if (!rc) {
         pdebug(DEBUG_WARN, "Unable to allocate refcount struct!");
         return NULL;
@@ -6103,7 +6103,7 @@ void* rc_inc_impl(const char* func, int line_num, void* data)
         if (rc->count > 0) {
             rc->count++;
             count = rc->count;
-            result = data;
+            result = (char*)data;
         }
         else {
             count = rc->count;
@@ -6234,7 +6234,7 @@ vector_p vector_create(int capacity, int max_inc)
         return NULL;
     }
 
-    vec = mem_alloc((int)sizeof(struct vector_t));
+    vec = (vector_p)mem_alloc((int)sizeof(struct vector_t));
     if (!vec) {
         pdebug(DEBUG_ERROR, "Unable to allocate memory for vector!");
         return NULL;
@@ -6244,7 +6244,7 @@ vector_p vector_create(int capacity, int max_inc)
     vec->capacity = capacity;
     vec->max_inc = max_inc;
 
-    vec->data = mem_alloc(capacity * (int)sizeof(void*));
+    vec->data = (void**)mem_alloc(capacity * (int)sizeof(void*));
     if (!vec->data) {
         pdebug(DEBUG_ERROR, "Unable to allocate memory for vector data!");
         vector_destroy(vec);

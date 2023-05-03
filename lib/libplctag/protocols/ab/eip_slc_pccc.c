@@ -57,27 +57,7 @@ struct tag_vtable_t slc_vtable = {
 };
 
 
-/* default string types used for PLC-5 PLCs. */
-tag_byte_order_t slc_tag_byte_order = {
-    .is_allocated = 0,
 
-    .int16_order = {0,1},
-    .int32_order = {0,1,2,3},
-    .int64_order = {0,1,2,3,4,5,6,7},
-    .float32_order = {0,1,2,3},
-    .float64_order = {0,1,2,3,4,5,6,7},
-
-    .str_is_defined = 1,
-    .str_is_counted = 1,
-    .str_is_fixed_length = 1,
-    .str_is_zero_terminated = 0,
-    .str_is_byte_swapped = 1,
-
-    .str_count_word_bytes = 2,
-    .str_max_capacity = 82,
-    .str_total_length = 84,
-    .str_pad_bytes = 0
-};
 
 
 
@@ -324,7 +304,7 @@ int tag_read_start(ab_tag_p tag)
         req->abort_request = 1;
         tag->read_in_progress = 0;
 
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
 
         return rc;
     }
@@ -366,7 +346,7 @@ static int check_read_status(ab_tag_p tag)
     }
 
     /* guard against the request being deleted out from underneath us. */
-    request = rc_inc(tag->req);
+    request = (ab_request_p)rc_inc(tag->req);
     rc = check_read_request_status(tag, request);
     if(rc != PLCTAG_STATUS_OK)  {
         pdebug(DEBUG_DETAIL, "Read request status is not OK.");
@@ -429,7 +409,7 @@ static int check_read_status(ab_tag_p tag)
 
     /* clean up the request. */
     request->abort_request = 1;
-    tag->req = rc_dec(request);
+    tag->req = (ab_request_p)rc_dec(request);
 
     /*
      * huh?  Yes, we do it a second time because we already had
@@ -586,7 +566,7 @@ int tag_write_start(ab_tag_p tag)
         req->abort_request = 1;
         tag->write_in_progress =0;
 
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
 
         return rc;
     }
@@ -628,7 +608,7 @@ static int check_write_status(ab_tag_p tag)
     }
 
     /* guard against the request being deleted out from underneath us. */
-    request = rc_inc(tag->req);
+    request = (ab_request_p)rc_inc(tag->req);
     rc = check_write_request_status(tag, request);
     if(rc != PLCTAG_STATUS_OK)  {
         pdebug(DEBUG_DETAIL, "Write request status is not OK.");
@@ -672,7 +652,7 @@ static int check_write_status(ab_tag_p tag)
 
     /* clean up the request. */
     request->abort_request = 1;
-    tag->req = rc_dec(request);
+    tag->req = (ab_request_p)rc_dec(request);
 
     /*
      * huh?  Yes, we do it a second time because we already had

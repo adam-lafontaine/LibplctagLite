@@ -374,7 +374,7 @@ int remove_session_unsafe(ab_session_p session)
     }
 
     for(int i=0; i < vector_length(sessions); i++) {
-        ab_session_p tmp = vector_get(sessions, i);
+        ab_session_p tmp = (ab_session_p)vector_get(sessions, i);
 
         if(tmp == session) {
             vector_remove(sessions, i);
@@ -441,10 +441,10 @@ int session_match_valid(const char *host, const char *path, ab_session_p session
 ab_session_p find_session_by_host_unsafe(const char *host, const char *path, int connection_group_id)
 {
     for(int i=0; i < vector_length(sessions); i++) {
-        ab_session_p session = vector_get(sessions, i);
+        ab_session_p session = (ab_session_p)vector_get(sessions, i);
 
         /* is this session in the process of destruction? */
-        session = rc_inc(session);
+        session = (ab_session_p)rc_inc(session);
         if(session) {
             if(session->connection_group_id == connection_group_id && session_match_valid(host, path, session)) {
                 return session;
@@ -804,7 +804,7 @@ int session_close_socket(ab_session_p session)
 
 void session_destroy(void *session_arg)
 {
-    ab_session_p session = session_arg;
+    ab_session_p session = (ab_session_p)session_arg;
 
     pdebug(DEBUG_INFO, "Starting.");
 
@@ -929,7 +929,7 @@ int session_add_request_unsafe(ab_session_p session, ab_request_p req)
         return PLCTAG_ERR_NULL_PTR;
     }
 
-    req = rc_inc(req);
+    req = (ab_request_p)rc_inc(req);
 
     if(!req) {
         pdebug(DEBUG_WARN, "Request is either null or in the process of being deleted.");
@@ -1020,7 +1020,7 @@ typedef enum { SESSION_OPEN_SOCKET_START, SESSION_OPEN_SOCKET_WAIT, SESSION_REGI
 
 THREAD_FUNC(session_handler)
 {
-    ab_session_p session = arg;
+    ab_session_p session = (ab_session_p)arg;
     int rc = PLCTAG_STATUS_OK;
     session_state_t state = SESSION_OPEN_SOCKET_START;
     int64_t timeout_time = 0;
@@ -1338,7 +1338,7 @@ int purge_aborted_requests_unsafe(ab_session_p session)
 
     /* remove the aborted requests. */
     for(int i=0; i < vector_length(session->requests); i++) {
-        request = vector_get(session->requests, i);
+        request = (ab_request_p)vector_get(session->requests, i);
 
         /* filter out the aborts. */
         if(request && request->abort_request) {
@@ -1357,7 +1357,7 @@ int purge_aborted_requests_unsafe(ab_session_p session)
             request->resp_received = 1;
 
             /* release our hold on it. */
-            request = rc_dec(request);
+            request = (ab_request_p)rc_dec(request);
 
             /* vector size has changed, back up one. */
             i--;
@@ -1412,7 +1412,7 @@ int process_requests(ab_session_p session)
 
             if(vector_length(session->requests)) {
                 do {
-                    request = vector_get(session->requests, 0);
+                    request = (ab_request_p)vector_get(session->requests, 0);
 
                     remaining_space = remaining_space - get_payload_size(request);
 
@@ -1509,7 +1509,7 @@ int process_requests(ab_session_p session)
                 }
 
                 /* release our reference */
-                bundled_requests[i] = rc_dec(bundled_requests[i]);
+                bundled_requests[i] = (ab_request_p)rc_dec(bundled_requests[i]);
             }
 
             rc = PLCTAG_STATUS_OK;
@@ -1523,7 +1523,7 @@ int process_requests(ab_session_p session)
                     bundled_requests[i]->request_size = 0;
                     bundled_requests[i]->resp_received = 1;
 
-                    bundled_requests[i] = rc_dec(bundled_requests[i]);
+                    bundled_requests[i] = (ab_request_p)rc_dec(bundled_requests[i]);
                 }
             }
         }
@@ -2554,7 +2554,7 @@ int session_create_request(ab_session_p session, int tag_id, ab_request_p *req)
 
 void request_destroy(void *req_arg)
 {
-    ab_request_p req = req_arg;
+    ab_request_p req = (ab_request_p)req_arg;
 
     pdebug(DEBUG_DETAIL, "Starting.");
 

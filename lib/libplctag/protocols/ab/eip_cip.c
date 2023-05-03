@@ -140,83 +140,19 @@ static int tag_write_start(ab_tag_p tag);
 
 /* define the exported vtable for this tag type. */
 struct tag_vtable_t eip_cip_vtable = {
-    (tag_vtable_func)ab_tag_abort, /* shared */
-    (tag_vtable_func)tag_read_start,
-    (tag_vtable_func)ab_tag_status, /* shared */
-    (tag_vtable_func)tag_tickler,
-    (tag_vtable_func)tag_write_start,
-    (tag_vtable_func)NULL, /* wake_plc */
+    .abort = (tag_vtable_func)ab_tag_abort, /* shared */
+    .read = (tag_vtable_func)tag_read_start,
+    .status = (tag_vtable_func)ab_tag_status, /* shared */
+    .tickler = (tag_vtable_func)tag_tickler,
+    .write = (tag_vtable_func)tag_write_start,
+    .wake_plc = (tag_vtable_func)NULL, /* wake_plc */
 
     /* attribute accessors */
-    ab_get_int_attrib,
-    ab_set_int_attrib
-};
-
-/* default string types used for ControlLogix-class PLCs. */
-tag_byte_order_t logix_tag_byte_order = {
-    .is_allocated = 0,
-
-    .int16_order = {0,1},
-    .int32_order = {0,1,2,3},
-    .int64_order = {0,1,2,3,4,5,6,7},
-    .float32_order = {0,1,2,3},
-    .float64_order = {0,1,2,3,4,5,6,7},
-
-    .str_is_defined = 1,
-    .str_is_counted = 1,
-    .str_is_fixed_length = 1,
-    .str_is_zero_terminated = 0,
-    .str_is_byte_swapped = 0,
-
-    .str_count_word_bytes = 4,
-    .str_max_capacity = 82,
-    .str_total_length = 88,
-    .str_pad_bytes = 2
+    .get_int_attrib = ab_get_int_attrib,
+    .set_int_attrib = ab_set_int_attrib
 };
 
 
-/* default string types used for Omron-NJ/NX PLCs. */
-tag_byte_order_t omron_njnx_tag_byte_order = {
-    .is_allocated = 0,
-
-    .int16_order = {0,1},
-    .int32_order = {0,1,2,3},
-    .int64_order = {0,1,2,3,4,5,6,7},
-    .float32_order = {0,1,2,3},
-    .float64_order = {0,1,2,3,4,5,6,7},
-
-    .str_is_defined = 1,
-    .str_is_counted = 1,
-    .str_is_fixed_length = 0,
-    .str_is_zero_terminated = 1,
-    .str_is_byte_swapped = 0,
-
-    .str_count_word_bytes = 2,
-    .str_max_capacity = 0,
-    .str_total_length = 0,
-    .str_pad_bytes = 0
-};
-
-tag_byte_order_t logix_tag_listing_byte_order = {
-    .is_allocated = 0,
-
-    .int16_order = {0,1},
-    .int32_order = {0,1,2,3},
-    .int64_order = {0,1,2,3,4,5,6,7},
-    .float32_order = {0,1,2,3},
-    .float64_order = {0,1,2,3,4,5,6,7},
-
-    .str_is_defined = 1,
-    .str_is_counted = 1,
-    .str_is_fixed_length = 0,
-    .str_is_zero_terminated = 0,
-    .str_is_byte_swapped = 0,
-
-    .str_count_word_bytes = 2,
-    .str_max_capacity = 0,
-    .str_total_length = 0,
-    .str_pad_bytes = 0
-};
 
 
 
@@ -486,7 +422,7 @@ int build_read_request_connected(ab_tag_p tag, int byte_offset)
 
     if (rc != PLCTAG_STATUS_OK) {
         pdebug(DEBUG_ERROR, "Unable to add request to session! rc=%d", rc);
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
         return rc;
     }
 
@@ -625,7 +561,7 @@ int build_read_request_unconnected(ab_tag_p tag, int byte_offset)
 
     if (rc != PLCTAG_STATUS_OK) {
         pdebug(DEBUG_ERROR, "Unable to add request to session! rc=%d", rc);
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
         return rc;
     }
 
@@ -775,7 +711,7 @@ int build_write_bit_request_connected(ab_tag_p tag)
 
     if (rc != PLCTAG_STATUS_OK) {
         pdebug(DEBUG_ERROR, "Unable to add request to session! rc=%d", rc);
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
         return rc;
     }
 
@@ -963,7 +899,7 @@ int build_write_bit_request_unconnected(ab_tag_p tag)
 
     if (rc != PLCTAG_STATUS_OK) {
         pdebug(DEBUG_ERROR, "Unable to add request to session! rc=%d", rc);
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
         return rc;
     }
 
@@ -1111,7 +1047,7 @@ int build_write_request_connected(ab_tag_p tag, int byte_offset)
 
     if (rc != PLCTAG_STATUS_OK) {
         pdebug(DEBUG_ERROR, "Unable to add request to session! rc=%d", rc);
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
         return rc;
     }
 
@@ -1292,7 +1228,7 @@ int build_write_request_unconnected(ab_tag_p tag, int byte_offset)
 
     if (rc != PLCTAG_STATUS_OK) {
         pdebug(DEBUG_ERROR, "Unable to add request to session! rc=%d", rc);
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
         return rc;
     }
 
@@ -1332,7 +1268,7 @@ static int check_read_status_connected(ab_tag_p tag)
     }
 
     /* guard against the request being deleted out from underneath us. */
-    request = rc_inc(tag->req);
+    request = (ab_request_p)rc_inc(tag->req);
     rc = check_read_request_status(tag, request);
     if(rc != PLCTAG_STATUS_OK)  {
         pdebug(DEBUG_DETAIL, "Read request status is not OK.");
@@ -1485,7 +1421,7 @@ static int check_read_status_connected(ab_tag_p tag)
 
     /* clean up the request */
     request->abort_request = 1;
-    tag->req = rc_dec(request);
+    tag->req = (ab_request_p)rc_dec(request);
 
     /*
      * huh?  Yes, we do it a second time because we already had
@@ -1551,7 +1487,7 @@ static int check_read_status_unconnected(ab_tag_p tag)
     }
 
     /* guard against the request being deleted out from underneath us. */
-    request = rc_inc(tag->req);
+    request = (ab_request_p)rc_inc(tag->req);
     rc = check_read_request_status(tag, request);
     if(rc != PLCTAG_STATUS_OK)  {
         pdebug(DEBUG_DETAIL, "Read request status is not OK.");
@@ -1699,7 +1635,7 @@ static int check_read_status_unconnected(ab_tag_p tag)
 
     /* clean up the request */
     request->abort_request = 1;
-    tag->req = rc_dec(request);
+    tag->req = (ab_request_p)rc_dec(request);
 
     /*
      * huh?  Yes, we do it a second time because we already had
@@ -1774,7 +1710,7 @@ static int check_write_status_connected(ab_tag_p tag)
     }
 
     /* guard against the request being deleted out from underneath us. */
-    request = rc_inc(tag->req);
+    request = (ab_request_p)rc_inc(tag->req);
     rc = check_write_request_status(tag, request);
     if(rc != PLCTAG_STATUS_OK)  {
         pdebug(DEBUG_DETAIL, "Write request status is not OK.");
@@ -1818,7 +1754,7 @@ static int check_write_status_connected(ab_tag_p tag)
 
     /* clean up the request. */
     request->abort_request = 1;
-    tag->req = rc_dec(request);
+    tag->req = (ab_request_p)rc_dec(request);
 
     /*
      * huh?  Yes, we do it a second time because we already had
@@ -1870,7 +1806,7 @@ static int check_write_status_unconnected(ab_tag_p tag)
     }
 
     /* guard against the request being deleted out from underneath us. */
-    request = rc_inc(tag->req);
+    request = (ab_request_p)rc_inc(tag->req);
     rc = check_write_request_status(tag, request);
     if(rc != PLCTAG_STATUS_OK)  {
         pdebug(DEBUG_DETAIL, "Write request status is not OK.");
@@ -1915,7 +1851,7 @@ static int check_write_status_unconnected(ab_tag_p tag)
 
     /* clean up the request. */
     request->abort_request = 1;
-    tag->req = rc_dec(request);
+    tag->req = (ab_request_p)rc_dec(request);
 
     /*
      * huh?  Yes, we do it a second time because we already had

@@ -33,7 +33,8 @@
 
 #include <ctype.h>
 
-#include "../../libplctag_internal.h"
+#include "../../tag_vtable.h"
+#include "../../tag_byte_order.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -195,48 +196,7 @@ struct tag_vtable_t udt_tag_vtable = {
 
 
 
-tag_byte_order_t listing_tag_logix_byte_order = {
-    .is_allocated = 0,
 
-    .int16_order = {0,1},
-    .int32_order = {0,1,2,3},
-    .int64_order = {0,1,2,3,4,5,6,7},
-    .float32_order = {0,1,2,3},
-    .float64_order = {0,1,2,3,4,5,6,7},
-
-    .str_is_defined = 1,
-    .str_is_counted = 1,
-    .str_is_fixed_length = 0,
-    .str_is_zero_terminated = 0,
-    .str_is_byte_swapped = 0,
-
-    .str_count_word_bytes = 2,
-    .str_max_capacity = 0,
-    .str_total_length = 0,
-    .str_pad_bytes = 0
-};
-
-/* strings are zero terminated. */
-tag_byte_order_t udt_tag_logix_byte_order = {
-    .is_allocated = 0,
-
-    .int16_order = {0,1},
-    .int32_order = {0,1,2,3},
-    .int64_order = {0,1,2,3,4,5,6,7},
-    .float32_order = {0,1,2,3},
-    .float64_order = {0,1,2,3,4,5,6,7},
-
-    .str_is_defined = 1,
-    .str_is_counted = 0,
-    .str_is_fixed_length = 0,
-    .str_is_zero_terminated = 1,
-    .str_is_byte_swapped = 0,
-
-    .str_count_word_bytes = 0,
-    .str_max_capacity = 0,
-    .str_total_length = 0,
-    .str_pad_bytes = 0
-};
 
 
 
@@ -384,7 +344,7 @@ static int raw_tag_check_write_status_connected(ab_tag_p tag)
     }
 
     /* guard against the request being deleted out from underneath us. */
-    request = rc_inc(tag->req);
+    request = (ab_request_p)rc_inc(tag->req);
     rc = check_write_request_status(tag, request);
     if(rc != PLCTAG_STATUS_OK)  {
         pdebug(DEBUG_DETAIL, "Write request status is not OK.");
@@ -436,7 +396,7 @@ static int raw_tag_check_write_status_connected(ab_tag_p tag)
         uint8_t *data_start = (uint8_t *)(&cip_resp->reply_service);
         uint8_t *data_end = request->data + (request->request_size);
         int data_size = (int)(unsigned int)(data_end - data_start);
-        uint8_t *tag_data_buffer = mem_realloc(tag->data, data_size);
+        uint8_t *tag_data_buffer = (uint8_t *)mem_realloc(tag->data, data_size);
 
         if(tag_data_buffer) {
             tag->data = tag_data_buffer;
@@ -455,7 +415,7 @@ static int raw_tag_check_write_status_connected(ab_tag_p tag)
 
     /* clean up the request. */
     request->abort_request = 1;
-    tag->req = rc_dec(request);
+    tag->req = (ab_request_p)rc_dec(request);
 
     /*
      * huh?  Yes, we do it a second time because we already had
@@ -491,7 +451,7 @@ static int raw_tag_check_write_status_unconnected(ab_tag_p tag)
     pdebug(DEBUG_SPEW, "Starting.");
 
     /* guard against the request being deleted out from underneath us. */
-    request = rc_inc(tag->req);
+    request = (ab_request_p)rc_inc(tag->req);
     rc = check_write_request_status(tag, request);
     if(rc != PLCTAG_STATUS_OK)  {
         pdebug(DEBUG_DETAIL, "Write request status is not OK.");
@@ -543,7 +503,7 @@ static int raw_tag_check_write_status_unconnected(ab_tag_p tag)
         uint8_t *data_start = (uint8_t *)(&cip_resp->reply_service);
         uint8_t *data_end = data_start + le2h16(cip_resp->cpf_udi_item_length);
         int data_size = (int)(unsigned int)(data_end - data_start);
-        uint8_t *tag_data_buffer = mem_realloc(tag->data, data_size);
+        uint8_t *tag_data_buffer = (uint8_t *)mem_realloc(tag->data, data_size);
 
         if(tag_data_buffer) {
             tag->data = tag_data_buffer;
@@ -562,7 +522,7 @@ static int raw_tag_check_write_status_unconnected(ab_tag_p tag)
 
     /* clean up the request. */
     request->abort_request = 1;
-    tag->req = rc_dec(request);
+    tag->req = (ab_request_p)rc_dec(request);
 
     /*
      * huh?  Yes, we do it a second time because we already had
@@ -647,7 +607,7 @@ int raw_tag_build_write_request_connected(ab_tag_p tag)
 
     if (rc != PLCTAG_STATUS_OK) {
         pdebug(DEBUG_ERROR, "Unable to add request to session! rc=%d", rc);
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
         return rc;
     }
 
@@ -767,7 +727,7 @@ int raw_tag_build_write_request_unconnected(ab_tag_p tag)
 
     if (rc != PLCTAG_STATUS_OK) {
         pdebug(DEBUG_ERROR, "Unable to add request to session! rc=%d", rc);
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
         return rc;
     }
 
@@ -1010,7 +970,7 @@ static int listing_tag_check_read_status_connected(ab_tag_p tag)
     }
 
     /* guard against the request being deleted out from underneath us. */
-    request = rc_inc(tag->req);
+    request = (ab_request_p)rc_inc(tag->req);
     rc = check_read_request_status(tag, request);
     if(rc != PLCTAG_STATUS_OK)  {
         pdebug(DEBUG_DETAIL, "Read request status is not OK.");
@@ -1120,7 +1080,7 @@ static int listing_tag_check_read_status_connected(ab_tag_p tag)
 
     /* clean up the request */
     request->abort_request = 1;
-    tag->req = rc_dec(request);
+    tag->req = (ab_request_p)rc_dec(request);
 
     /*
      * huh?  Yes, we do it a second time because we already had
@@ -1297,7 +1257,7 @@ int listing_tag_build_read_request_connected(ab_tag_p tag)
 
     if (rc != PLCTAG_STATUS_OK) {
         pdebug(DEBUG_ERROR, "Unable to add request to session! rc=%d", rc);
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
         return rc;
     }
 
@@ -1487,7 +1447,7 @@ static int udt_tag_check_read_metadata_status_connected(ab_tag_p tag)
     }
 
     /* guard against the request being deleted out from underneath us. */
-    request = rc_inc(tag->req);
+    request = (ab_request_p)rc_inc(tag->req);
     rc = check_read_request_status(tag, request);
     if(rc != PLCTAG_STATUS_OK)  {
         pdebug(DEBUG_DETAIL, "Read request status is not OK.");
@@ -1604,7 +1564,7 @@ static int udt_tag_check_read_metadata_status_connected(ab_tag_p tag)
 
     /* clean up the request */
     request->abort_request = 1;
-    tag->req = rc_dec(request);
+    tag->req = (ab_request_p)rc_dec(request);
 
     /*
      * huh?  Yes, we do it a second time because we already had
@@ -1771,7 +1731,7 @@ int udt_tag_build_read_metadata_request_connected(ab_tag_p tag)
 
     if (rc != PLCTAG_STATUS_OK) {
         pdebug(DEBUG_ERROR, "Unable to add request to session! rc=%d", rc);
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
         return rc;
     }
 
@@ -1817,7 +1777,7 @@ int udt_tag_check_read_fields_status_connected(ab_tag_p tag)
     }
 
     /* guard against the request being deleted out from underneath us. */
-    request = rc_inc(tag->req);
+    request = (ab_request_p)rc_inc(tag->req);
     rc = check_read_request_status(tag, request);
     if(rc != PLCTAG_STATUS_OK)  {
         pdebug(DEBUG_DETAIL, "Read request status is not OK.");
@@ -1905,7 +1865,7 @@ int udt_tag_check_read_fields_status_connected(ab_tag_p tag)
 
     /* clean up the request */
     request->abort_request = 1;
-    tag->req = rc_dec(request);
+    tag->req = (ab_request_p)rc_dec(request);
 
     /*
      * huh?  Yes, we do it a second time because we already had
@@ -2065,7 +2025,7 @@ int udt_tag_build_read_fields_request_connected(ab_tag_p tag)
 
     if (rc != PLCTAG_STATUS_OK) {
         pdebug(DEBUG_ERROR, "Unable to add request to session! rc=%d", rc);
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
         return rc;
     }
 

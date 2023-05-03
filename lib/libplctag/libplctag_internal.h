@@ -2284,82 +2284,6 @@ int cip_encode_tag_name(ab_tag_p tag,const char *name);
 #endif // __PROTOCOLS_AB_CIP_H__
 
 
-#ifndef __PROTOCOLS_AB_EIP_CIP_SPECIAL_H__
-#define __PROTOCOLS_AB_EIP_CIP_SPECIAL_H__
-
-struct tag_vtable_t eip_cip_raw_tag_vtable;
-tag_byte_order_t listing_tag_logix_byte_order;
-
-/* tag creation helpers */
-//int setup_special_cip_tag(ab_tag_p tag, const char *name);
-int setup_raw_tag(ab_tag_p tag);
-int setup_tag_listing_tag(ab_tag_p tag, const char *name);
-int setup_udt_tag(ab_tag_p tag, const char *name);
-
-#endif // __PROTOCOLS_AB_EIP_CIP_SPECIAL_H__
-
-
-#ifndef __PROTOCOLS_AB_EIP_CIP_H__
-#define __PROTOCOLS_AB_EIP_CIP_H__
-
-struct tag_vtable_t eip_cip_vtable;
-tag_byte_order_t logix_tag_byte_order;
-tag_byte_order_t omron_njnx_tag_byte_order;
-tag_byte_order_t logix_tag_listing_byte_order;
-
-/* tag listing helpers */
-int setup_tag_listing(ab_tag_p tag, const char *name);
-
-#endif // __PROTOCOLS_AB_EIP_CIP_H__
-
-
-#ifndef __PROTOCOLS_AB_EIP_LGX_PCCC_H__
-#define __PROTOCOLS_AB_EIP_LGX_PCCC_H__
-
-/* PLC-5  */
-struct tag_vtable_t lgx_pccc_vtable;
-
-#endif // __PROTOCOLS_AB_EIP_LGX_PCCC_H__
-
-
-#ifndef __PROTOCOLS_AB_EIP_PLC5_DHP_H__
-#define __PROTOCOLS_AB_EIP_PLC5_DHP_H__
-
-/* PCCC with DH+ last hop */
-struct tag_vtable_t eip_plc5_dhp_vtable;
-
-#endif // __PROTOCOLS_AB_EIP_PLC5_DHP_H__
-
-
-#ifndef __PROTOCOLS_AB_EIP_PLC5_PCCC_H__
-#define __PROTOCOLS_AB_EIP_PLC5_PCCC_H__
-
-/* PLC-5  */
-struct tag_vtable_t plc5_vtable;
-tag_byte_order_t plc5_tag_byte_order;
-
-#endif // __PROTOCOLS_AB_EIP_PLC5_PCCC_H__
-
-
-#ifndef __PROTOCOLS_AB_EIP_SLC_DHP_H__
-#define __PROTOCOLS_AB_EIP_SLC_DHP_H__
-
-/* SLC/MicroLogix with DH+ last hop */
-struct tag_vtable_t eip_slc_dhp_vtable;
-
-#endif // __PROTOCOLS_AB_EIP_SLC_DHP_H__
-
-
-#ifndef __PROTOCOLS_AB_EIP_SLC_PCCC_H__
-#define __PROTOCOLS_AB_EIP_SLC_PCCC_H__
-
-/* SLC */
-struct tag_vtable_t slc_vtable;
-tag_byte_order_t slc_tag_byte_order;
-
-#endif // __PROTOCOLS_AB_EIP_SLC_PCCC_H__
-
-
 #ifndef __PROTOCOLS_AB_ERROR_CODES_H__
 #define __PROTOCOLS_AB_ERROR_CODES_H__
 
@@ -2617,6 +2541,28 @@ struct ab_tag_t {
 };
 
 #endif // __PROTOCOLS_AB_TAG_H__
+
+
+#ifndef __PROTOCOLS_AB_EIP_CIP_SPECIAL_H__
+#define __PROTOCOLS_AB_EIP_CIP_SPECIAL_H__
+
+/* tag creation helpers */
+//int setup_special_cip_tag(ab_tag_p tag, const char *name);
+int setup_raw_tag(ab_tag_p tag);
+int setup_tag_listing_tag(ab_tag_p tag, const char *name);
+int setup_udt_tag(ab_tag_p tag, const char *name);
+
+#endif // __PROTOCOLS_AB_EIP_CIP_SPECIAL_H__
+
+
+#ifndef __PROTOCOLS_AB_EIP_CIP_H__
+#define __PROTOCOLS_AB_EIP_CIP_H__
+
+/* tag listing helpers */
+int setup_tag_listing(ab_tag_p tag, const char *name);
+
+#endif // __PROTOCOLS_AB_EIP_CIP_H__
+
 
 #ifdef __cplusplus
 }

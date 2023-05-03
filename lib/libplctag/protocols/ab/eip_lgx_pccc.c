@@ -323,7 +323,7 @@ int tag_read_start(ab_tag_p tag)
 
     if(rc != PLCTAG_STATUS_OK) {
         pdebug(DEBUG_ERROR, "Unable to add request to session! rc=%d", rc);
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
         tag->read_in_progress = 0;
 
         return rc;
@@ -362,7 +362,7 @@ static int check_read_status(ab_tag_p tag)
     }
 
     /* guard against the request being deleted out from underneath us. */
-    request = rc_inc(tag->req);
+    request = (ab_request_p)rc_inc(tag->req);
     rc = check_read_request_status(tag, request);
     if(rc != PLCTAG_STATUS_OK)  {
         pdebug(DEBUG_DETAIL, "Read request status is not OK.");
@@ -464,7 +464,7 @@ static int check_read_status(ab_tag_p tag)
 
     /* clean up the request */
     request->abort_request = 1;
-    tag->req = rc_dec(request);
+    tag->req = (ab_request_p)rc_dec(request);
 
     /*
      * huh?  Yes, we do it a second time because we already had
@@ -664,7 +664,7 @@ int tag_write_start(ab_tag_p tag)
     if(rc != PLCTAG_STATUS_OK) {
         pdebug(DEBUG_ERROR, "Unable to add request to session! rc=%d", rc);
         tag->write_in_progress = 0;
-        tag->req = rc_dec(req);
+        tag->req = (ab_request_p)rc_dec(req);
         return rc;
     }
 
@@ -724,7 +724,7 @@ static int check_write_status(ab_tag_p tag)
     if(rc != PLCTAG_STATUS_OK) {
         if(rc_is_error(rc)) {
             /* the request is dead, from session side. */
-            tag->req = rc_dec(tag->req);
+            tag->req = (ab_request_p)rc_dec(tag->req);
         }
 
         return rc;
@@ -773,7 +773,7 @@ static int check_write_status(ab_tag_p tag)
     } while(0);
 
     /* clean up the request */
-    tag->req = rc_dec(req);
+    tag->req = (ab_request_p)rc_dec(req);
 
     tag->write_in_progress = 0;
 
