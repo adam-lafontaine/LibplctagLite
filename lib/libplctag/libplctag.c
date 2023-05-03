@@ -44,7 +44,7 @@
 #include <time.h>
 #include <string.h>
 
-#include "tag_vtable.h"
+#include "libplctag_internal.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -5923,7 +5923,7 @@ int expand_table(hashtable_p table)
 
         pdebug(DEBUG_SPEW, "trying new size = %d", total_entries);
 
-        new_table.entries = (hashtable_entry_t*)mem_alloc(total_entries * (int)sizeof(struct hashtable_entry_t));
+        new_table.entries = (struct hashtable_entry_t*)mem_alloc(total_entries * (int)sizeof(struct hashtable_entry_t));
         if (!new_table.entries) {
             pdebug(DEBUG_ERROR, "Unable to allocate new entry array!");
             return PLCTAG_ERR_NO_MEM;

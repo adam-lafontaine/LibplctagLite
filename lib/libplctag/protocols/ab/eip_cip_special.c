@@ -33,8 +33,8 @@
 
 #include <ctype.h>
 
-#include "../../tag_vtable.h"
-#include "../../tag_byte_order.h"
+#include "ab_vtable.h"
+#include "ab_byte_order.h"
 
 #ifdef __cplusplus
 extern "C" {

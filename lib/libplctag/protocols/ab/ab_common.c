@@ -35,8 +35,8 @@
 #include <limits.h>
 #include <float.h>
 
-#include "../../tag_vtable.h"
-#include "../../tag_byte_order.h"
+#include "ab_vtable.h"
+#include "ab_byte_order.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -292,11 +292,13 @@ plc_tag_p ab_tag_create(attr attribs, void (*tag_callback_func)(int32_t tag_id, 
             }
 
             tag->use_connected_msg = 0;
-            tag->vtable = &plc5_vtable;
+            //tag->vtable = &plc5_vtable;
+            tag->vtable = plc5_vtable();
         } else {
             pdebug(DEBUG_DETAIL, "Setting up PLC/5 via DH+ bridge tag.");
             tag->use_connected_msg = 1;
-            tag->vtable = &eip_plc5_dhp_vtable;
+            //tag->vtable = &eip_plc5_dhp_vtable;
+            tag->vtable = eip_plc5_dhp_vtable();
         }
 
         tag->byte_order = &plc5_tag_byte_order;
@@ -314,11 +316,13 @@ plc_tag_p ab_tag_create(attr attribs, void (*tag_callback_func)(int32_t tag_id, 
 
             pdebug(DEBUG_DETAIL, "Setting up SLC/MicroLogix tag.");
             tag->use_connected_msg = 0;
-            tag->vtable = &slc_vtable;
+            //tag->vtable = &slc_vtable;
+            tag->vtable = slc_vtable();
         } else {
             pdebug(DEBUG_DETAIL, "Setting up SLC/MicroLogix via DH+ bridge tag.");
             tag->use_connected_msg = 1;
-            tag->vtable = &eip_slc_dhp_vtable;
+            //tag->vtable = &eip_slc_dhp_vtable;
+            tag->vtable = eip_slc_dhp_vtable();
         }
 
         tag->byte_order = &slc_tag_byte_order;
@@ -330,7 +334,8 @@ plc_tag_p ab_tag_create(attr attribs, void (*tag_callback_func)(int32_t tag_id, 
         pdebug(DEBUG_DETAIL, "Setting up PCCC-mapped Logix tag.");
         tag->use_connected_msg = 0;
         tag->allow_packing = 0;
-        tag->vtable = &lgx_pccc_vtable;
+        //tag->vtable = &lgx_pccc_vtable;
+        tag->vtable = lgx_pccc_vtable();
 
         tag->byte_order = &slc_tag_byte_order;
 
@@ -355,7 +360,8 @@ plc_tag_p ab_tag_create(attr attribs, void (*tag_callback_func)(int32_t tag_id, 
         /* if this was not filled in elsewhere default to Logix */
         if(tag->vtable == &default_vtable || !tag->vtable) {
             pdebug(DEBUG_DETAIL, "Setting default Logix vtable.");
-            tag->vtable = &eip_cip_vtable;
+            //tag->vtable = &eip_cip_vtable;
+            tag->vtable = eip_cip_vtable();
         }
 
         /* default to requiring a connection. */
@@ -380,7 +386,8 @@ plc_tag_p ab_tag_create(attr attribs, void (*tag_callback_func)(int32_t tag_id, 
         /* if this was not filled in elsewhere default to generic *Logix */
         if(tag->vtable == &default_vtable || !tag->vtable) {
             pdebug(DEBUG_DETAIL, "Setting default Logix vtable.");
-            tag->vtable = &eip_cip_vtable;
+            //tag->vtable = &eip_cip_vtable;
+            tag->vtable = eip_cip_vtable();
         }
 
         tag->use_connected_msg = 1;
@@ -406,7 +413,8 @@ plc_tag_p ab_tag_create(attr attribs, void (*tag_callback_func)(int32_t tag_id, 
         /* if this was not filled in elsewhere default to generic *Logix */
         if(tag->vtable == &default_vtable || !tag->vtable) {
             pdebug(DEBUG_DETAIL, "Setting default Logix vtable.");
-            tag->vtable = &eip_cip_vtable;
+            //tag->vtable = &eip_cip_vtable;
+            tag->vtable = eip_cip_vtable();
         }
 
         tag->use_connected_msg = 1;

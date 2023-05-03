@@ -44,7 +44,23 @@ static int tag_status(ab_tag_p tag);
 static int tag_tickler(ab_tag_p tag);
 static int tag_write_start(ab_tag_p tag);
 
+#if 0
 struct tag_vtable_t plc5_vtable = {
+    (tag_vtable_func)ab_tag_abort, /* shared */
+    (tag_vtable_func)tag_read_start,
+    (tag_vtable_func)tag_status,
+    (tag_vtable_func)tag_tickler,
+    (tag_vtable_func)tag_write_start,
+    (tag_vtable_func)NULL, /* wake_plc */
+
+    /* data accessors */
+    ab_get_int_attrib,
+    ab_set_int_attrib
+};
+#endif
+
+
+static tag_vtable plc5_vtable_def = {
     (tag_vtable_func)ab_tag_abort, /* shared */
     (tag_vtable_func)tag_read_start,
     (tag_vtable_func)tag_status,
@@ -58,6 +74,10 @@ struct tag_vtable_t plc5_vtable = {
 };
 
 
+tag_vtable_p plc5_vtable()
+{
+    return &plc5_vtable_def;
+}
 
 
 

@@ -17,8 +17,11 @@ libplctag_h := $(libplctag)/libplctag.h
 libplctag_internal_h := $(libplctag)/libplctag_internal.h
 libplctag_internal_h += $(libplctag_h)
 
-tag_vtable_h := $(libplctag)/tag_vtable.h
-tag_vtable_h += $(libplctag_internal_h)
+ab_vtable_h := $(ab)/ab_vtable.h
+ab_vtable_h += $(libplctag_internal_h)
+
+ab_byte_order_h := $(ab)/ab_byte_order.h
+ab_byte_order_h += $(libplctag_internal_h)
 
 
 plctag_h := $(src)/plctag.hpp
@@ -131,7 +134,7 @@ $(system_o): $(system_c) $(libplctag_internal_h)
 	$(GPP) $(CCFLAGS) -o $@ -c $< $(LIBRARIES)
 
 
-$(ab_common_o): $(ab_common_c) $(tag_vtable_h)
+$(ab_common_o): $(ab_common_c) $(ab_vtable_h) $(ab_byte_order_h)
 	@echo "\n ab_common"
 	$(GPP) $(CCFLAGS) -o $@ -c $< $(LIBRARIES)
 
@@ -146,7 +149,7 @@ $(ab_eip_cip_o): $(ab_eip_cip_c) $(libplctag_internal_h)
 	$(GPP) $(CCFLAGS) -o $@ -c $< $(LIBRARIES)
 
 
-$(ab_eip_cip_special_o): $(ab_eip_cip_special_c) $(tag_vtable_h)
+$(ab_eip_cip_special_o): $(ab_eip_cip_special_c) $(ab_vtable_h) $(ab_byte_order_h)
 	@echo "\n ab_eip_cip_special"
 	$(GPP) $(CCFLAGS) -o $@ -c $< $(LIBRARIES)
 

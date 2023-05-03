@@ -2564,6 +2564,8 @@ int setup_tag_listing(ab_tag_p tag, const char *name);
 #endif // __PROTOCOLS_AB_EIP_CIP_H__
 
 
+typedef struct tag_vtable_t tag_vtable;
+
 #ifdef __cplusplus
 }
 #endif

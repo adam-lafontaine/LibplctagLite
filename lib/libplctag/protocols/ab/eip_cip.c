@@ -138,6 +138,7 @@ static int tag_read_start(ab_tag_p tag);
 static int tag_tickler(ab_tag_p tag);
 static int tag_write_start(ab_tag_p tag);
 
+#if 0
 /* define the exported vtable for this tag type. */
 struct tag_vtable_t eip_cip_vtable = {
     .abort = (tag_vtable_func)ab_tag_abort, /* shared */
@@ -151,9 +152,26 @@ struct tag_vtable_t eip_cip_vtable = {
     .get_int_attrib = ab_get_int_attrib,
     .set_int_attrib = ab_set_int_attrib
 };
+#endif
+
+static tag_vtable eip_cip_vtable_def = {
+    .abort = (tag_vtable_func)ab_tag_abort, /* shared */
+    .read = (tag_vtable_func)tag_read_start,
+    .status = (tag_vtable_func)ab_tag_status, /* shared */
+    .tickler = (tag_vtable_func)tag_tickler,
+    .write = (tag_vtable_func)tag_write_start,
+    .wake_plc = (tag_vtable_func)NULL, /* wake_plc */
+
+    /* attribute accessors */
+    .get_int_attrib = ab_get_int_attrib,
+    .set_int_attrib = ab_set_int_attrib
+};
 
 
-
+tag_vtable_p eip_cip_vtable()
+{
+    return &eip_cip_vtable_def;
+}
 
 
 /*************************************************************************

@@ -1,7 +1,7 @@
-#ifndef __TAG_BYTE_ORDER_H__
-#define __TAG_BYTE_ORDER_H__
+#ifndef _AB_BYTE_ORDER_H__
+#define __AB_BYTE_ORDER_H__
 
-#include "libplctag_internal.h"
+#include "../../libplctag_internal.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -170,4 +170,4 @@ tag_byte_order_t slc_tag_byte_order = {
 }
 #endif
 
-#endif // __TAG_BYTE_ORDER_H__
+#endif // __AB_BYTE_ORDER_H__
