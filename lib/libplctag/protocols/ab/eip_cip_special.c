@@ -33,9 +33,6 @@
 
 #include <ctype.h>
 
-//#include "../../libplctag_internal.h"
-
-#include "ab_vtable.h"
 #include "ab_byte_order.h"
 
 #ifdef __cplusplus

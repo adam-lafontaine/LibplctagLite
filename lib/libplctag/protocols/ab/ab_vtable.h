@@ -8,9 +8,6 @@
 extern "C" {
 #endif
 
-
-//tag_vtable raw_tag_vtable();
-
 tag_vtable_p eip_cip_vtable();
 
 tag_vtable_p lgx_pccc_vtable();
