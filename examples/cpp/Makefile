@@ -55,6 +55,8 @@ ab_cip_c             := $(ab)/cip.c
 ab_eip_cip_c         := $(ab)/eip_cip.c
 ab_eip_cip_special_c := $(ab)/eip_cip_special.c
 ab_eip_lgx_pccc_c    := $(ab)/eip_lgx_pccc.c
+ab_eip_plc5_dhp_c    := $(ab)/eip_plc5_dhp.c
+ab_eip_plc5_pccc_c   := $(ab)/eip_plc5_pccc.c
 ab_eip_slc_dhp_c     := $(ab)/eip_slc_dhp.c
 ab_eip_slc_pccc_c    := $(ab)/eip_slc_pccc.c
 ab_error_codes_c     := $(ab)/error_codes.c
@@ -72,6 +74,8 @@ ab_eip_cip_special_o := $(build)/ab_eip_cip_special.o
 ab_eip_lgx_pccc_o    := $(build)/ab_eip_lgx_pcccc.o
 ab_eip_slc_dhp_o     := $(build)/ab_eip_slc_dhp.o
 ab_eip_slc_pccc_o    := $(build)/ab_eip_slc_pccc.o
+ab_eip_plc5_dhp_o    := $(build)/ab_eip_plc5_dhp.o
+ab_eip_plc5_pccc_o   := $(build)/ab_eip_plc5_pccc.o
 ab_error_codes_o     := $(build)/ab_error_codes.o
 ab_pccc_o            := $(build)/ab_pccc.o
 ab_session_o         := $(build)/ab_session.o
@@ -87,6 +91,8 @@ object_files += $(ab_eip_cip_special_o)
 object_files += $(ab_eip_lgx_pccc_o)
 object_files += $(ab_eip_slc_dhp_o)
 object_files += $(ab_eip_slc_pccc_o)
+object_files += $(ab_eip_plc5_dhp_o)
+object_files += $(ab_eip_plc5_pccc_o)
 object_files += $(ab_error_codes_o)
 object_files += $(ab_pccc_o)
 object_files += $(ab_session_o)
@@ -156,6 +162,16 @@ $(ab_eip_cip_special_o): $(ab_eip_cip_special_c) $(ab_vtable_h) $(ab_byte_order_
 
 $(ab_eip_lgx_pccc_o): $(ab_eip_lgx_pccc_c) $(libplctag_internal_h)
 	@echo "\n ab_eip_lgx_pccc"
+	$(GPP) $(CCFLAGS) -o $@ -c $< $(LIBRARIES)
+
+
+$(ab_eip_plc5_dhp_o): $(ab_eip_plc5_dhp_c) $(libplctag_internal_h)
+	@echo "\n ab_eip_plc5_dhp"
+	$(GPP) $(CCFLAGS) -o $@ -c $< $(LIBRARIES)
+
+
+$(ab_eip_plc5_pccc_o): $(ab_eip_plc5_pccc_c) $(libplctag_internal_h)
+	@echo "\n ab_eip_plc5c_pccc"
 	$(GPP) $(CCFLAGS) -o $@ -c $< $(LIBRARIES)
 
 

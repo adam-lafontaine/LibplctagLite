@@ -301,7 +301,8 @@ plc_tag_p ab_tag_create(attr attribs, void (*tag_callback_func)(int32_t tag_id, 
             tag->vtable = eip_plc5_dhp_vtable();
         }
 
-        tag->byte_order = &plc5_tag_byte_order;
+        //tag->byte_order = &plc5_tag_byte_order;
+        tag->byte_order = plc5_tag_byte_order();
 
         tag->allow_packing = 0;
         break;
@@ -325,7 +326,8 @@ plc_tag_p ab_tag_create(attr attribs, void (*tag_callback_func)(int32_t tag_id, 
             tag->vtable = eip_slc_dhp_vtable();
         }
 
-        tag->byte_order = &slc_tag_byte_order;
+        //tag->byte_order = &slc_tag_byte_order;
+        tag->byte_order = slc_tag_byte_order();
 
         tag->allow_packing = 0;
         break;
@@ -337,7 +339,8 @@ plc_tag_p ab_tag_create(attr attribs, void (*tag_callback_func)(int32_t tag_id, 
         //tag->vtable = &lgx_pccc_vtable;
         tag->vtable = lgx_pccc_vtable();
 
-        tag->byte_order = &slc_tag_byte_order;
+        //tag->byte_order = &slc_tag_byte_order;
+        tag->byte_order = slc_tag_byte_order();
 
         break;
 
@@ -354,7 +357,8 @@ plc_tag_p ab_tag_create(attr attribs, void (*tag_callback_func)(int32_t tag_id, 
         /* if we did not fill in the byte order elsewhere, fill it in now. */
         if(!tag->byte_order) {
             pdebug(DEBUG_DETAIL, "Using default Logix byte order.");
-            tag->byte_order = &logix_tag_byte_order;
+            //tag->byte_order = &logix_tag_byte_order;
+            tag->byte_order = logix_tag_byte_order();
         }
 
         /* if this was not filled in elsewhere default to Logix */
@@ -380,7 +384,8 @@ plc_tag_p ab_tag_create(attr attribs, void (*tag_callback_func)(int32_t tag_id, 
         /* if we did not fill in the byte order elsewhere, fill it in now. */
         if(!tag->byte_order) {
             pdebug(DEBUG_DETAIL, "Using default Micro8x0 byte order.");
-            tag->byte_order = &logix_tag_byte_order;
+            //tag->byte_order = &logix_tag_byte_order;
+            tag->byte_order = logix_tag_byte_order();
         }
 
         /* if this was not filled in elsewhere default to generic *Logix */
@@ -407,7 +412,8 @@ plc_tag_p ab_tag_create(attr attribs, void (*tag_callback_func)(int32_t tag_id, 
         /* if we did not fill in the byte order elsewhere, fill it in now. */
         if(!tag->byte_order) {
             pdebug(DEBUG_DETAIL, "Using default Omron byte order.");
-            tag->byte_order = &omron_njnx_tag_byte_order;
+            //tag->byte_order = &omron_njnx_tag_byte_order;
+            tag->byte_order = omron_njnx_tag_byte_order();
         }
 
         /* if this was not filled in elsewhere default to generic *Logix */

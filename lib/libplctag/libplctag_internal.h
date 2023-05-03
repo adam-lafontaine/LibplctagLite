@@ -2566,6 +2566,8 @@ int setup_tag_listing(ab_tag_p tag, const char *name);
 
 typedef struct tag_vtable_t tag_vtable;
 
+typedef tag_byte_order_t* tag_byte_order_p;
+
 #ifdef __cplusplus
 }
 #endif
