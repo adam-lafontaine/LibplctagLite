@@ -25,6 +25,9 @@
     <Filter Include="Header Files\libplctag">
       <UniqueIdentifier>{8f07bfb1-7a0d-4799-a8af-e6b247f24378}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\libplctag\ab">
+      <UniqueIdentifier>{64fadd0a-adf1-4064-95d0-d0d3d230c0d2}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\lib\plctag.hpp">
@@ -35,6 +38,12 @@
     </ClInclude>
     <ClInclude Include="..\..\lib\libplctag\libplctag_internal.h">
       <Filter>Header Files\libplctag</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\libplctag\protocols\ab\ab_byte_order.h">
+      <Filter>Header Files\libplctag\ab</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\libplctag\protocols\ab\ab_vtable.h">
+      <Filter>Header Files\libplctag\ab</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

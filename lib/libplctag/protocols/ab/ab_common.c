@@ -528,7 +528,7 @@ int get_tag_data_type(ab_tag_p tag, attr attribs)
     int rc = PLCTAG_STATUS_OK;
     const char *elem_type = NULL;
     const char *tag_name = NULL;
-    pccc_addr_t file_addr =  {};
+    pccc_addr_t file_addr;
 
     pdebug(DEBUG_DETAIL, "Starting.");
 

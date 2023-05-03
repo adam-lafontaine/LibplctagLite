@@ -21,6 +21,8 @@
   <ItemGroup>
     <ClInclude Include="..\..\lib\libplctag\libplctag.h" />
     <ClInclude Include="..\..\lib\libplctag\libplctag_internal.h" />
+    <ClInclude Include="..\..\lib\libplctag\protocols\ab\ab_byte_order.h" />
+    <ClInclude Include="..\..\lib\libplctag\protocols\ab\ab_vtable.h" />
     <ClInclude Include="..\..\lib\plctag.hpp" />
   </ItemGroup>
   <ItemGroup>
