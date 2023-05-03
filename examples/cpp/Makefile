@@ -9,7 +9,7 @@ libplctag := $(src)/libplctag
 protocols := $(libplctag)/protocols
 ab := $(protocols)/ab
 
-exe := list_tags_logix
+exe := $(build)/list_tags_logix
 
 
 libplctag_h := $(libplctag)/libplctag.h
