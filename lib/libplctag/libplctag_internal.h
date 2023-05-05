@@ -34,6 +34,14 @@
 #ifndef __LIBPLCTAG_INTERNAL_H__
 #define __LIBPLCTAG_INTERNAL_H__
 
+#include "libplctag.h"
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 #include <stddef.h>
 #include <math.h>
 
@@ -134,39 +142,39 @@ typedef SSIZE_T ssize_t;
 
 
 /* memory functions/defs */
-extern void *mem_alloc(int size);
-extern void *mem_realloc(void *orig, int size);
-extern void mem_free(const void *mem);
-extern void mem_set(void *d1, int c, int size);
-extern void mem_copy(void *dest, void *src, int size);
-extern void mem_move(void *dest, void *src, int size);
-extern int mem_cmp(void *src1, int src1_size, void *src2, int src2_size);
+void *mem_alloc(int size);
+void *mem_realloc(void *orig, int size);
+void mem_free(const void *mem);
+void mem_set(void *d1, int c, int size);
+void mem_copy(void *dest, void *src, int size);
+void mem_move(void *dest, void *src, int size);
+int mem_cmp(void *src1, int src1_size, void *src2, int src2_size);
 
 /* string functions/defs */
-extern int str_cmp(const char *first, const char *second);
-extern int str_cmp_i(const char *first, const char *second);
-extern int str_cmp_i_n(const char *first, const char *second, int num_chars);
-extern char* str_str_cmp_i(const char* haystack, const char* needle);
-extern int str_copy(char *dst, int dst_size, const char *src);
-extern int str_length(const char *str);
-extern char *str_dup(const char *str);
-extern int str_to_int(const char *str, int *val);
-extern int str_to_float(const char *str, float *val);
-extern char **str_split(const char *str, const char *sep);
+int str_cmp(const char *first, const char *second);
+int str_cmp_i(const char *first, const char *second);
+int str_cmp_i_n(const char *first, const char *second, int num_chars);
+char* str_str_cmp_i(const char* haystack, const char* needle);
+int str_copy(char *dst, int dst_size, const char *src);
+int str_length(const char *str);
+char *str_dup(const char *str);
+int str_to_int(const char *str, int *val);
+int str_to_float(const char *str, float *val);
+char **str_split(const char *str, const char *sep);
 #define str_concat(s1, ...) str_concat_impl(COUNT_NARG(__VA_ARGS__)+1, s1, __VA_ARGS__)
-extern char *str_concat_impl(int num_args, ...);
+char *str_concat_impl(int num_args, ...);
 
 /* mutex functions/defs */
 typedef struct mutex_t *mutex_p;
-extern int mutex_create(mutex_p *m);
-// extern int mutex_lock(mutex_p m);
-// extern int mutex_try_lock(mutex_p m);
-// extern int mutex_unlock(mutex_p m);
-extern int mutex_destroy(mutex_p *m);
+int mutex_create(mutex_p *m);
+// int mutex_lock(mutex_p m);
+// int mutex_try_lock(mutex_p m);
+// int mutex_unlock(mutex_p m);
+int mutex_destroy(mutex_p *m);
 
-extern int mutex_lock_impl(const char *func, int line_num, mutex_p m);
-extern int mutex_try_lock_impl(const char *func, int line_num, mutex_p m);
-extern int mutex_unlock_impl(const char *func, int line_num, mutex_p m);
+int mutex_lock_impl(const char *func, int line_num, mutex_p m);
+int mutex_try_lock_impl(const char *func, int line_num, mutex_p m);
+int mutex_unlock_impl(const char *func, int line_num, mutex_p m);
 
 #if defined(_WIN32) && defined(_MSC_VER)
     /* MinGW on Windows does not need this. */
@@ -208,12 +216,12 @@ for(int LINE_ID(__sync_flag_nargle_) = 1; LINE_ID(__sync_flag_nargle_); LINE_ID(
 typedef struct thread_t *thread_p;
 //typedef PTHREAD_START_ROUTINE thread_func_t;
 //typedef DWORD /*WINAPI*/ (*thread_func_t)(void *lpParam );
-extern int thread_create(thread_p *t, LPTHREAD_START_ROUTINE func, int stacksize, void *arg);
-extern void thread_stop(void);
-extern void thread_kill(thread_p t);
-extern int thread_join(thread_p t);
-extern int thread_detach();
-extern int thread_destroy(thread_p *t);
+int thread_create(thread_p *t, LPTHREAD_START_ROUTINE func, int stacksize, void *arg);
+void thread_stop(void);
+void thread_kill(thread_p t);
+int thread_join(thread_p t);
+int thread_detach();
+int thread_destroy(thread_p *t);
 
 #define THREAD_FUNC(func) DWORD __stdcall func(LPVOID arg)
 #define THREAD_RETURN(val) return (DWORD)val;
@@ -229,18 +237,18 @@ typedef volatile long int lock_t;
 #define LOCK_INIT (0)
 
 /* returns non-zero when lock acquired, zero when lock operation failed */
-extern int lock_acquire_try(lock_t *lock);
-extern int lock_acquire(lock_t *lock);
-extern void lock_release(lock_t *lock);
+int lock_acquire_try(lock_t *lock);
+int lock_acquire(lock_t *lock);
+void lock_release(lock_t *lock);
 
 
 /* condition variables */
 typedef struct cond_t* cond_p;
-extern int cond_create(cond_p * c);
-extern int cond_wait_impl(const char *func, int line_num, cond_p c, int timeout_ms);
-extern int cond_signal_impl(const char *func, int line_num, cond_p c);
-extern int cond_clear_impl(const char *func, int line_num, cond_p c);
-extern int cond_destroy(cond_p *c);
+int cond_create(cond_p * c);
+int cond_wait_impl(const char *func, int line_num, cond_p c, int timeout_ms);
+int cond_signal_impl(const char *func, int line_num, cond_p c);
+int cond_clear_impl(const char *func, int line_num, cond_p c);
+int cond_destroy(cond_p *c);
 
 #define cond_wait(c, t) cond_wait_impl(__func__, __LINE__, c, t)
 #define cond_signal(c) cond_signal_impl(__func__, __LINE__, c)
@@ -260,30 +268,30 @@ typedef enum {
 
     SOCK_EVENT_DEFAULT_MASK = (SOCK_EVENT_TIMEOUT | SOCK_EVENT_DISCONNECT | SOCK_EVENT_ERROR | SOCK_EVENT_WAKE_UP)
 } sock_event_t;
-extern int socket_create(sock_p *s);
-extern int socket_connect_tcp_start(sock_p s, const char *host, int port);
-extern int socket_connect_tcp_check(sock_p s, int timeout_ms);
-extern int socket_wait_event(sock_p sock, int events, int timeout_ms);
-extern int socket_wake(sock_p sock);
-extern int socket_read(sock_p s, uint8_t *buf, int size, int timeout_ms);
-extern int socket_write(sock_p s, uint8_t *buf, int size, int timeout_ms);
-extern int socket_close(sock_p s);
-extern int socket_destroy(sock_p *s);
+int socket_create(sock_p *s);
+int socket_connect_tcp_start(sock_p s, const char *host, int port);
+int socket_connect_tcp_check(sock_p s, int timeout_ms);
+int socket_wait_event(sock_p sock, int events, int timeout_ms);
+int socket_wake(sock_p sock);
+int socket_read(sock_p s, uint8_t *buf, int size, int timeout_ms);
+int socket_write(sock_p s, uint8_t *buf, int size, int timeout_ms);
+int socket_close(sock_p s);
+int socket_destroy(sock_p *s);
 
 
 /* serial handling */
 typedef struct serial_port_t *serial_port_p;
 #define PLC_SERIAL_PORT_NULL ((plc_serial_port)NULL)
-extern serial_port_p plc_lib_open_serial_port(const char *path, int baud_rate, int data_bits, int stop_bits, int parity_type);
-extern int plc_lib_close_serial_port(serial_port_p serial_port);
-extern int plc_lib_serial_port_read(serial_port_p serial_port, uint8_t *data, int size);
-extern int plc_lib_serial_port_write(serial_port_p serial_port, uint8_t *data, int size);
+serial_port_p plc_lib_open_serial_port(const char *path, int baud_rate, int data_bits, int stop_bits, int parity_type);
+int plc_lib_close_serial_port(serial_port_p serial_port);
+int plc_lib_serial_port_read(serial_port_p serial_port, uint8_t *data, int size);
+int plc_lib_serial_port_write(serial_port_p serial_port, uint8_t *data, int size);
 
 
 /* time functions */
-extern int sleep_ms(int ms);
-extern int64_t time_ms(void);
-extern struct tm *localtime_r(const time_t *timep, struct tm *result);
+int sleep_ms(int ms);
+int64_t time_ms(void);
+struct tm *localtime_r(const time_t *timep, struct tm *result);
 
 /* some functions can be simply replaced */
 #define snprintf_platform sprintf_s
@@ -337,39 +345,39 @@ extern struct tm *localtime_r(const time_t *timep, struct tm *result);
 
 
 /* memory functions/defs */
-extern void *mem_alloc(int size);
-extern void *mem_realloc(void *orig, int size);
-extern void mem_free(const void *mem);
-extern void mem_set(void *dest, int c, int size);
-extern void mem_copy(void *dest, void *src, int size);
-extern void mem_move(void *dest, void *src, int size);
-extern int mem_cmp(void *src1, int src1_size, void *src2, int src2_size);
+void *mem_alloc(int size);
+void *mem_realloc(void *orig, int size);
+void mem_free(const void *mem);
+void mem_set(void *dest, int c, int size);
+void mem_copy(void *dest, void *src, int size);
+void mem_move(void *dest, void *src, int size);
+int mem_cmp(void *src1, int src1_size, void *src2, int src2_size);
 
 /* string functions/defs */
-extern int str_cmp(const char *first, const char *second);
-extern int str_cmp_i(const char *first, const char *second);
-extern int str_cmp_i_n(const char *first, const char *second, int num_chars);
-extern char *str_str_cmp_i(const char *haystack, const char *needle);
-extern int str_copy(char *dst, int dst_size, const char *src);
-extern int str_length(const char *str);
-extern char *str_dup(const char *str);
-extern int str_to_int(const char *str, int *val);
-extern int str_to_float(const char *str, float *val);
-extern char **str_split(const char *str, const char *sep);
+int str_cmp(const char *first, const char *second);
+int str_cmp_i(const char *first, const char *second);
+int str_cmp_i_n(const char *first, const char *second, int num_chars);
+char *str_str_cmp_i(const char *haystack, const char *needle);
+int str_copy(char *dst, int dst_size, const char *src);
+int str_length(const char *str);
+char *str_dup(const char *str);
+int str_to_int(const char *str, int *val);
+int str_to_float(const char *str, float *val);
+char **str_split(const char *str, const char *sep);
 #define str_concat(s1, ...) str_concat_impl(COUNT_NARG(__VA_ARGS__)+1, s1, __VA_ARGS__)
-extern char *str_concat_impl(int num_args, ...);
+char *str_concat_impl(int num_args, ...);
 
 /* mutex functions/defs */
 typedef struct mutex_t *mutex_p;
-extern int mutex_create(mutex_p *m);
-// extern int mutex_lock(mutex_p m);
-// extern int mutex_try_lock(mutex_p m);
-// extern int mutex_unlock(mutex_p m);
-extern int mutex_destroy(mutex_p *m);
+int mutex_create(mutex_p *m);
+// int mutex_lock(mutex_p m);
+// int mutex_try_lock(mutex_p m);
+// int mutex_unlock(mutex_p m);
+int mutex_destroy(mutex_p *m);
 
-extern int mutex_lock_impl(const char *func, int line_num, mutex_p m);
-extern int mutex_try_lock_impl(const char *func, int line_num, mutex_p m);
-extern int mutex_unlock_impl(const char *func, int line_num, mutex_p m);
+int mutex_lock_impl(const char *func, int line_num, mutex_p m);
+int mutex_try_lock_impl(const char *func, int line_num, mutex_p m);
+int mutex_unlock_impl(const char *func, int line_num, mutex_p m);
 
 #if defined(_WIN32) && defined(_MSC_VER)
     /* MinGW on Windows does not need this. */
@@ -405,12 +413,12 @@ for(int __sync_flag_nargle_##__LINE__ = 1; __sync_flag_nargle_##__LINE__ ; __syn
 /* thread functions/defs */
 typedef struct thread_t *thread_p;
 typedef void *(*thread_func_t)(void *arg);
-extern int thread_create(thread_p *t, thread_func_t func, int stacksize, void *arg);
-extern void thread_stop(void) __attribute__((noreturn));
-extern void thread_kill(thread_p t);
-extern int thread_join(thread_p t);
-extern int thread_detach();
-extern int thread_destroy(thread_p *t);
+int thread_create(thread_p *t, thread_func_t func, int stacksize, void *arg);
+void thread_stop(void) __attribute__((noreturn));
+void thread_kill(thread_p t);
+int thread_join(thread_p t);
+int thread_detach();
+int thread_destroy(thread_p *t);
 
 #define THREAD_FUNC(func) void *func(void *arg)
 #define THREAD_RETURN(val) return (void *)val;
@@ -426,18 +434,18 @@ typedef int lock_t;
 #define LOCK_INIT (0)
 
 /* returns non-zero when lock acquired, zero when lock operation failed */
-extern int lock_acquire_try(lock_t *lock);
-extern int lock_acquire(lock_t *lock);
-extern void lock_release(lock_t *lock);
+int lock_acquire_try(lock_t *lock);
+int lock_acquire(lock_t *lock);
+void lock_release(lock_t *lock);
 
 
 /* condition variables */
 typedef struct cond_t *cond_p;
-extern int cond_create(cond_p *c);
-extern int cond_wait_impl(const char *func, int line_num, cond_p c, int timeout_ms);
-extern int cond_signal_impl(const char *func, int line_num, cond_p c);
-extern int cond_clear_impl(const char *func, int line_num, cond_p c);
-extern int cond_destroy(cond_p *c);
+int cond_create(cond_p *c);
+int cond_wait_impl(const char *func, int line_num, cond_p c, int timeout_ms);
+int cond_signal_impl(const char *func, int line_num, cond_p c);
+int cond_clear_impl(const char *func, int line_num, cond_p c);
+int cond_destroy(cond_p *c);
 
 #define cond_wait(c, t) cond_wait_impl(__func__, __LINE__, c, t)
 #define cond_signal(c) cond_signal_impl(__func__, __LINE__, c)
@@ -458,28 +466,28 @@ typedef enum {
 
     SOCK_EVENT_DEFAULT_MASK = (SOCK_EVENT_TIMEOUT | SOCK_EVENT_DISCONNECT | SOCK_EVENT_ERROR | SOCK_EVENT_WAKE_UP )
 } sock_event_t;
-extern int socket_create(sock_p *s);
-extern int socket_connect_tcp_start(sock_p s, const char *host, int port);
-extern int socket_connect_tcp_check(sock_p s, int timeout_ms);
-extern int socket_wait_event(sock_p sock, int events, int timeout_ms);
-extern int socket_wake(sock_p sock);
-extern int socket_read(sock_p s, uint8_t *buf, int size, int timeout_ms);
-extern int socket_write(sock_p s, uint8_t *buf, int size, int timeout_ms);
-extern int socket_close(sock_p s);
-extern int socket_destroy(sock_p *s);
+int socket_create(sock_p *s);
+int socket_connect_tcp_start(sock_p s, const char *host, int port);
+int socket_connect_tcp_check(sock_p s, int timeout_ms);
+int socket_wait_event(sock_p sock, int events, int timeout_ms);
+int socket_wake(sock_p sock);
+int socket_read(sock_p s, uint8_t *buf, int size, int timeout_ms);
+int socket_write(sock_p s, uint8_t *buf, int size, int timeout_ms);
+int socket_close(sock_p s);
+int socket_destroy(sock_p *s);
 
 /* serial handling */
 /* FIXME - either implement this or remove it. */
 typedef struct serial_port_t *serial_port_p;
 #define PLC_SERIAL_PORT_NULL ((plc_serial_port)NULL)
-extern serial_port_p plc_lib_open_serial_port(const char *path, int baud_rate, int data_bits, int stop_bits, int parity_type);
-extern int plc_lib_close_serial_port(serial_port_p serial_port);
-extern int plc_lib_serial_port_read(serial_port_p serial_port, uint8_t *data, int size);
-extern int plc_lib_serial_port_write(serial_port_p serial_port, uint8_t *data, int size);
+serial_port_p plc_lib_open_serial_port(const char *path, int baud_rate, int data_bits, int stop_bits, int parity_type);
+int plc_lib_close_serial_port(serial_port_p serial_port);
+int plc_lib_serial_port_read(serial_port_p serial_port, uint8_t *data, int size);
+int plc_lib_serial_port_write(serial_port_p serial_port, uint8_t *data, int size);
 
 /* misc functions */
-extern int sleep_ms(int ms);
-extern int64_t time_ms(void);
+int sleep_ms(int ms);
+int64_t time_ms(void);
 
 #define snprintf_platform snprintf
 
@@ -493,11 +501,11 @@ extern int64_t time_ms(void);
 
 typedef struct { lock_t lock; volatile int val; } atomic_int;
 
-extern void atomic_init(atomic_int *a, int new_val);
-extern int atomic_get(atomic_int *a);
-extern int atomic_set(atomic_int *a, int new_val);
-extern int atomic_add(atomic_int *a, int other);
-extern int atomic_compare_and_set(atomic_int *a, int old_val, int new_val);
+void atomic_init(atomic_int *a, int new_val);
+int atomic_get(atomic_int *a);
+int atomic_set(atomic_int *a, int new_val);
+int atomic_add(atomic_int *a, int other);
+int atomic_compare_and_set(atomic_int *a, int old_val, int new_val);
 
 #endif // __UTIL_ATOMIC_H__
 
@@ -509,16 +517,16 @@ typedef struct attr_entry_t *attr_entry;
 typedef struct attr_t *attr;
 
 attr_entry find_entry(attr a, const char *name);
-extern attr attr_create(void);
-extern attr attr_create_from_str(const char *attr_str);
-extern int attr_set_str(attr attrs, const char *name, const char *val);
-extern int attr_set_int(attr attrs, const char *name, int val);
-extern int attr_set_float(attr attrs, const char *name, float val);
-extern const char *attr_get_str(attr attrs, const char *name, const char *def);
-extern int attr_get_int(attr attrs, const char *name, int def);
-extern float attr_get_float(attr attrs, const char *name, float def);
-extern int attr_remove(attr attrs, const char *name);
-extern void attr_destroy(attr attrs);
+attr attr_create(void);
+attr attr_create_from_str(const char *attr_str);
+int attr_set_str(attr attrs, const char *name, const char *val);
+int attr_set_int(attr attrs, const char *name, int val);
+int attr_set_float(attr attrs, const char *name, float val);
+const char *attr_get_str(attr attrs, const char *name, const char *def);
+int attr_get_int(attr attrs, const char *name, int def);
+float attr_get_float(attr attrs, const char *name, float def);
+int attr_remove(attr attrs, const char *name);
+void attr_destroy(attr attrs);
 
 #endif // __UTIL_ATTR_H__
 
@@ -681,11 +689,11 @@ uint32_t read32le(const uint8_t * p) {
 #define DEBUG_SPEW      (5)
 #define DEBUG_END       (6)
 
-extern int set_debug_level(int debug_level);
-extern int get_debug_level(void);
-extern void debug_set_tag_id(int32_t tag_id);
+int set_debug_level(int debug_level);
+int get_debug_level(void);
+void debug_set_tag_id(int32_t tag_id);
 
-extern void pdebug_impl(const char *func, int line_num, int debug_level, const char *templ, ...);
+void pdebug_impl(const char *func, int line_num, int debug_level, const char *templ, ...);
 
 #if defined(_WIN32) && defined(_MSC_VER)
     /* MinGW on Windows does not need this. */
@@ -696,11 +704,11 @@ extern void pdebug_impl(const char *func, int line_num, int debug_level, const c
 #define pdebug(dbg,...)                                                \
    do { if((dbg) != DEBUG_NONE && (dbg) <= get_debug_level()) pdebug_impl(__func__, __LINE__, dbg, __VA_ARGS__); } while(0)
 
-extern void pdebug_dump_bytes_impl(const char *func, int line_num, int debug_level, uint8_t *data,int count);
+void pdebug_dump_bytes_impl(const char *func, int line_num, int debug_level, uint8_t *data,int count);
 #define pdebug_dump_bytes(dbg, d,c)  do { if((dbg) != DEBUG_NONE && (dbg) <= get_debug_level()) pdebug_dump_bytes_impl(__func__, __LINE__,dbg,d,c); } while(0)
 
-extern int debug_register_logger(void (*log_callback_func)(int32_t tag_id, int debug_level, const char *message));
-extern int debug_unregister_logger(void);
+int debug_register_logger(void (*log_callback_func)(int32_t tag_id, int debug_level, const char *message));
+int debug_unregister_logger(void);
 
 #endif // __UTIL_DEBUG_H__
 
@@ -708,7 +716,7 @@ extern int debug_unregister_logger(void);
 #ifndef __UTIL_HASH_H__
 #define __UTIL_HASH_H__
 
-extern uint32_t hash(uint8_t *k, size_t length, uint32_t initval);
+uint32_t hash(uint8_t *k, size_t length, uint32_t initval);
 
 #endif // __UTIL_HASH_H__
 
@@ -718,15 +726,15 @@ extern uint32_t hash(uint8_t *k, size_t length, uint32_t initval);
 
 typedef struct hashtable_t *hashtable_p;
 
-extern hashtable_p hashtable_create(int size);
-extern void *hashtable_get(hashtable_p table, int64_t key);
-extern int hashtable_put(hashtable_p table, int64_t key, void *arg);
-extern void *hashtable_get_index(hashtable_p table, int index);
-extern int hashtable_capacity(hashtable_p table);
-extern int hashtable_entries(hashtable_p table);
-extern int hashtable_on_each(hashtable_p table, int (*callback_func)(hashtable_p table, int64_t key, void *data, void *context), void *context);
-extern void *hashtable_remove(hashtable_p table, int64_t key);
-extern int hashtable_destroy(hashtable_p table);
+hashtable_p hashtable_create(int size);
+void *hashtable_get(hashtable_p table, int64_t key);
+int hashtable_put(hashtable_p table, int64_t key, void *arg);
+void *hashtable_get_index(hashtable_p table, int index);
+int hashtable_capacity(hashtable_p table);
+int hashtable_entries(hashtable_p table);
+int hashtable_on_each(hashtable_p table, int (*callback_func)(hashtable_p table, int64_t key, void *data, void *context), void *context);
+void *hashtable_remove(hashtable_p table, int64_t key);
+int hashtable_destroy(hashtable_p table);
 
 #endif // __UTIL_HASHTABLE_H__
 
@@ -822,13 +830,13 @@ extern int hashtable_destroy(hashtable_p table);
 typedef void (*rc_cleanup_func)(void *);
 
 #define rc_alloc(size, cleaner) rc_alloc_impl(__func__, __LINE__, size, cleaner)
-extern void *rc_alloc_impl(const char *func, int line_num, int size, rc_cleanup_func cleaner);
+void *rc_alloc_impl(const char *func, int line_num, int size, rc_cleanup_func cleaner);
 
 #define rc_inc(ref) rc_inc_impl(__func__, __LINE__, ref)
-extern void *rc_inc_impl(const char *func, int line_num, void *ref);
+void *rc_inc_impl(const char *func, int line_num, void *ref);
 
 #define rc_dec(ref) rc_dec_impl(__func__, __LINE__, ref)
-extern void *rc_dec_impl(const char *func, int line_num, void *ref);
+void *rc_dec_impl(const char *func, int line_num, void *ref);
 
 #endif // __UTIL_RC_H__
 
@@ -838,26 +846,15 @@ extern void *rc_dec_impl(const char *func, int line_num, void *ref);
 
 typedef struct vector_t *vector_p;
 
-extern vector_p vector_create(int capacity, int max_inc);
-extern int vector_length(vector_p vec);
-extern int vector_put(vector_p vec, int index, void * ref);
-extern void *vector_get(vector_p vec, int index);
-extern int vector_on_each(vector_p vec, int (*callback_func)(vector_p vec, int index, void **data, int arg_count, void **args), int num_args, ...);
-extern void *vector_remove(vector_p vec, int index);
-extern int vector_destroy(vector_p vec);
+vector_p vector_create(int capacity, int max_inc);
+int vector_length(vector_p vec);
+int vector_put(vector_p vec, int index, void * ref);
+void *vector_get(vector_p vec, int index);
+//int vector_on_each(vector_p vec, int (*callback_func)(vector_p vec, int index, void **data, int arg_count, void **args), int num_args, ...);
+void *vector_remove(vector_p vec, int index);
+int vector_destroy(vector_p vec);
 
 #endif // __UTIL_VECTOR_H__
-
-
-#ifndef __LIB_INIT_H__
-#define __LIB_INIT_H__
-
-extern int initialize_modules(void);
-typedef plc_tag_p (*tag_create_function)(attr attributes, void (*tag_callback_func)(int32_t tag_id, int event, int status, void *userdata), void *userdata);
-extern tag_create_function find_tag_create_func(attr attributes);
-extern void destroy_modules(void);
-
-#endif // __LIB_INIT_H__
 
 
 #ifndef __LIB_TAG_H__
@@ -985,17 +982,17 @@ struct plc_tag_t {
 
 
 /* the following may need to be used where the tag is already mapped or is not yet mapped */
-extern int lib_init(void);
-extern void lib_teardown(void);
-extern void plc_tag_generic_tickler(plc_tag_p tag);
+int lib_init(void);
+void lib_teardown(void);
+void plc_tag_generic_tickler(plc_tag_p tag);
 #define plc_tag_generic_raise_event(t, e, s) plc_tag_generic_raise_event_impl(__func__, __LINE__, t, e, s)
-extern int plc_tag_generic_raise_event_impl(const char *func, int line_num, plc_tag_p tag, int8_t event_val, int8_t status);
-extern void plc_tag_generic_handle_event_callbacks(plc_tag_p tag);
+int plc_tag_generic_raise_event_impl(const char *func, int line_num, plc_tag_p tag, int8_t event_val, int8_t status);
+void plc_tag_generic_handle_event_callbacks(plc_tag_p tag);
 #define plc_tag_tickler_wake()  plc_tag_tickler_wake_impl(__func__, __LINE__)
-extern int plc_tag_tickler_wake_impl(const char *func, int line_num);
+int plc_tag_tickler_wake_impl(const char *func, int line_num);
 #define plc_tag_generic_wake_tag(tag) plc_tag_generic_wake_tag_impl(__func__, __LINE__, tag)
-extern int plc_tag_generic_wake_tag_impl(const char *func, int line_num, plc_tag_p tag);
-extern int plc_tag_generic_init_tag(plc_tag_p tag, attr attributes, void (*tag_callback_func)(int32_t tag_id, int event, int status, void *userdata), void *userdata);
+int plc_tag_generic_wake_tag_impl(const char *func, int line_num, plc_tag_p tag);
+int plc_tag_generic_init_tag(plc_tag_p tag, attr attributes, void (*tag_callback_func)(int32_t tag_id, int event, int status, void *userdata), void *userdata);
 
 static inline void tag_raise_event(plc_tag_p tag, int event, int8_t status)
 {
@@ -1093,6 +1090,17 @@ static inline void tag_raise_event(plc_tag_p tag, int event, int8_t status)
 #endif // __LIB_TAG_H__
 
 
+#ifndef __LIB_INIT_H__
+#define __LIB_INIT_H__
+
+int initialize_modules(void);
+typedef plc_tag_p(*tag_create_function)(attr attributes, void (*tag_callback_func)(int32_t tag_id, int event, int status, void* userdata), void* userdata);
+tag_create_function find_tag_create_func(attr attributes);
+void destroy_modules(void);
+
+#endif // __LIB_INIT_H__
+
+
 #ifndef __LIB_VERSION_H__
 #define __LIB_VERSION_H__
 
@@ -1109,10 +1117,10 @@ Version manually added - Adam Lafontaine
 
 */
 
-const char *VERSION = "LIBPLCTAG 2.5.0";
-const uint64_t version_major = 2;
-const uint64_t version_minor = 5;
-const uint64_t version_patch = 0;
+#define VERSION "LIBPLCTAG 2.5.0"
+#define version_major ((uint64_t)2)
+#define version_minor ((uint64_t)5)
+#define version_patch ((uint64_t)0)
 
 #endif // __LIB_VERSION_H__
 
@@ -1120,9 +1128,9 @@ const uint64_t version_patch = 0;
 #ifndef __PROTOCOLS_MB_MODBUS_H__
 #define __PROTOCOLS_MB_MODBUS_H__
 
-extern void mb_teardown(void);
-extern int mb_init();
-extern plc_tag_p mb_tag_create(attr attribs, void (*tag_callback_func)(int32_t tag_id, int event, int status, void *userdata), void *userdata);
+void mb_teardown(void);
+int mb_init();
+plc_tag_p mb_tag_create(attr attribs, void (*tag_callback_func)(int32_t tag_id, int event, int status, void *userdata), void *userdata);
 
 #endif // __PROTOCOLS_MB_MODBUS_H__
 
@@ -1130,7 +1138,7 @@ extern plc_tag_p mb_tag_create(attr attribs, void (*tag_callback_func)(int32_t t
 #ifndef __PROTOCOLS_SYSTEM_SYSTEM_H__
 #define __PROTOCOLS_SYSTEM_SYSTEM_H__
 
-extern plc_tag_p system_tag_create(attr attribs, void (*tag_callback_func)(int32_t tag_id, int event, int status, void *userdata), void *userdata);
+plc_tag_p system_tag_create(attr attribs, void (*tag_callback_func)(int32_t tag_id, int event, int status, void *userdata), void *userdata);
 
 #endif // __PROTOCOLS_SYSTEM_SYSTEM_H__
 
@@ -2191,63 +2199,63 @@ typedef struct ab_request_t *ab_request_p;
 #define AB_REQUEST_NULL ((ab_request_p)NULL)
 
 
-extern int ab_tag_abort(ab_tag_p tag);
-extern int ab_tag_status(ab_tag_p tag);
+int ab_tag_abort(ab_tag_p tag);
+int ab_tag_status(ab_tag_p tag);
 
 
-extern int ab_get_int_attrib(plc_tag_p tag, const char *attrib_name, int default_value);
-extern int ab_set_int_attrib(plc_tag_p tag, const char *attrib_name, int new_value);
+int ab_get_int_attrib(plc_tag_p tag, const char *attrib_name, int default_value);
+int ab_set_int_attrib(plc_tag_p tag, const char *attrib_name, int new_value);
 
-extern int ab_get_bit(plc_tag_p tag, int offset_bit);
-extern int ab_set_bit(plc_tag_p tag, int offset_bit, int val);
+int ab_get_bit(plc_tag_p tag, int offset_bit);
+int ab_set_bit(plc_tag_p tag, int offset_bit, int val);
 
-extern uint64_t ab_get_uint64(plc_tag_p tag, int offset);
-extern int ab_set_uint64(plc_tag_p tag, int offset, uint64_t val);
+uint64_t ab_get_uint64(plc_tag_p tag, int offset);
+int ab_set_uint64(plc_tag_p tag, int offset, uint64_t val);
 
-extern int64_t ab_get_int64(plc_tag_p tag, int offset);
-extern int ab_set_int64(plc_tag_p tag, int offset, int64_t val);
-
-
-extern uint32_t ab_get_uint32(plc_tag_p tag, int offset);
-extern int ab_set_uint32(plc_tag_p tag, int offset, uint32_t val);
-
-extern int32_t ab_get_int32(plc_tag_p tag, int offset);
-extern int ab_set_int32(plc_tag_p tag, int offset, int32_t val);
+int64_t ab_get_int64(plc_tag_p tag, int offset);
+int ab_set_int64(plc_tag_p tag, int offset, int64_t val);
 
 
-extern uint16_t ab_get_uint16(plc_tag_p tag, int offset);
-extern int ab_set_uint16(plc_tag_p tag, int offset, uint16_t val);
+uint32_t ab_get_uint32(plc_tag_p tag, int offset);
+int ab_set_uint32(plc_tag_p tag, int offset, uint32_t val);
 
-extern int16_t ab_get_int16(plc_tag_p tag, int offset);
-extern int ab_set_int16(plc_tag_p tag, int offset, int16_t val);
-
-
-extern uint8_t ab_get_uint8(plc_tag_p tag, int offset);
-extern int ab_set_uint8(plc_tag_p tag, int offset, uint8_t val);
-
-extern int8_t ab_get_int8(plc_tag_p tag, int offset);
-extern int ab_set_int8(plc_tag_p tag, int offset, int8_t val);
+int32_t ab_get_int32(plc_tag_p tag, int offset);
+int ab_set_int32(plc_tag_p tag, int offset, int32_t val);
 
 
-extern double ab_get_float64(plc_tag_p tag, int offset);
-extern int ab_set_float64(plc_tag_p tag, int offset, double val);
+uint16_t ab_get_uint16(plc_tag_p tag, int offset);
+int ab_set_uint16(plc_tag_p tag, int offset, uint16_t val);
 
-extern float ab_get_float32(plc_tag_p tag, int offset);
-extern int ab_set_float32(plc_tag_p tag, int offset, float val);
+int16_t ab_get_int16(plc_tag_p tag, int offset);
+int ab_set_int16(plc_tag_p tag, int offset, int16_t val);
+
+
+uint8_t ab_get_uint8(plc_tag_p tag, int offset);
+int ab_set_uint8(plc_tag_p tag, int offset, uint8_t val);
+
+int8_t ab_get_int8(plc_tag_p tag, int offset);
+int ab_set_int8(plc_tag_p tag, int offset, int8_t val);
+
+
+double ab_get_float64(plc_tag_p tag, int offset);
+int ab_set_float64(plc_tag_p tag, int offset, double val);
+
+float ab_get_float32(plc_tag_p tag, int offset);
+int ab_set_float32(plc_tag_p tag, int offset, float val);
 
 
 //int ab_tag_destroy(ab_tag_p p_tag);
-extern plc_type_t get_plc_type(attr attribs);
-extern int check_cpu(ab_tag_p tag, attr attribs);
-extern int check_tag_name(ab_tag_p tag, const char *name);
-extern int check_mutex(int debug);
-extern vector_p find_read_group_tags(ab_tag_p tag);
+plc_type_t get_plc_type(attr attribs);
+int check_cpu(ab_tag_p tag, attr attribs);
+int check_tag_name(ab_tag_p tag, const char *name);
+int check_mutex(int debug);
+vector_p find_read_group_tags(ab_tag_p tag);
 
 THREAD_FUNC(request_handler_func);
 
 /* helpers for checking request status. */
-extern int check_read_request_status(ab_tag_p tag, ab_request_p request);
-extern int check_write_request_status(ab_tag_p tag, ab_request_p request);
+int check_read_request_status(ab_tag_p tag, ab_request_p request);
+int check_write_request_status(ab_tag_p tag, ab_request_p request);
 
 #define rc_is_error(rc) (rc < PLCTAG_STATUS_OK)
 
@@ -2268,96 +2276,20 @@ plc_tag_p ab_tag_create(attr attribs, void (*tag_callback_func)(int32_t tag_id, 
 #define __PROTOCOLS_AB_CIP_H__
 
 //int cip_encode_path(ab_tag_p tag, const char *path);
-extern int cip_encode_path(const char *path, int *needs_connection, plc_type_t plc_type, uint8_t **conn_path, uint8_t *conn_path_size, int *is_dhp, uint16_t *dhp_dest);
+int cip_encode_path(const char *path, int *needs_connection, plc_type_t plc_type, uint8_t **conn_path, uint8_t *conn_path_size, int *is_dhp, uint16_t *dhp_dest);
 
 //~ char *cip_decode_status(int status);
-extern int cip_encode_tag_name(ab_tag_p tag,const char *name);
+int cip_encode_tag_name(ab_tag_p tag,const char *name);
 
 #endif // __PROTOCOLS_AB_CIP_H__
-
-
-#ifndef __PROTOCOLS_AB_EIP_CIP_SPECIAL_H__
-#define __PROTOCOLS_AB_EIP_CIP_SPECIAL_H__
-
-extern struct tag_vtable_t eip_cip_raw_tag_vtable;
-extern tag_byte_order_t listing_tag_logix_byte_order;
-
-/* tag creation helpers */
-//extern int setup_special_cip_tag(ab_tag_p tag, const char *name);
-extern int setup_raw_tag(ab_tag_p tag);
-extern int setup_tag_listing_tag(ab_tag_p tag, const char *name);
-extern int setup_udt_tag(ab_tag_p tag, const char *name);
-
-#endif // __PROTOCOLS_AB_EIP_CIP_SPECIAL_H__
-
-
-#ifndef __PROTOCOLS_AB_EIP_CIP_H__
-#define __PROTOCOLS_AB_EIP_CIP_H__
-
-extern struct tag_vtable_t eip_cip_vtable;
-extern tag_byte_order_t logix_tag_byte_order;
-extern tag_byte_order_t omron_njnx_tag_byte_order;
-extern tag_byte_order_t logix_tag_listing_byte_order;
-
-/* tag listing helpers */
-extern int setup_tag_listing(ab_tag_p tag, const char *name);
-
-#endif // __PROTOCOLS_AB_EIP_CIP_H__
-
-
-#ifndef __PROTOCOLS_AB_EIP_LGX_PCCC_H__
-#define __PROTOCOLS_AB_EIP_LGX_PCCC_H__
-
-/* PLC-5  */
-extern struct tag_vtable_t lgx_pccc_vtable;
-
-#endif // __PROTOCOLS_AB_EIP_LGX_PCCC_H__
-
-
-#ifndef __PROTOCOLS_AB_EIP_PLC5_DHP_H__
-#define __PROTOCOLS_AB_EIP_PLC5_DHP_H__
-
-/* PCCC with DH+ last hop */
-extern struct tag_vtable_t eip_plc5_dhp_vtable;
-
-#endif // __PROTOCOLS_AB_EIP_PLC5_DHP_H__
-
-
-#ifndef __PROTOCOLS_AB_EIP_PLC5_PCCC_H__
-#define __PROTOCOLS_AB_EIP_PLC5_PCCC_H__
-
-/* PLC-5  */
-extern struct tag_vtable_t plc5_vtable;
-extern tag_byte_order_t plc5_tag_byte_order;
-
-#endif // __PROTOCOLS_AB_EIP_PLC5_PCCC_H__
-
-
-#ifndef __PROTOCOLS_AB_EIP_SLC_DHP_H__
-#define __PROTOCOLS_AB_EIP_SLC_DHP_H__
-
-/* SLC/MicroLogix with DH+ last hop */
-extern struct tag_vtable_t eip_slc_dhp_vtable;
-
-#endif // __PROTOCOLS_AB_EIP_SLC_DHP_H__
-
-
-#ifndef __PROTOCOLS_AB_EIP_SLC_PCCC_H__
-#define __PROTOCOLS_AB_EIP_SLC_PCCC_H__
-
-/* SLC */
-extern struct tag_vtable_t slc_vtable;
-extern tag_byte_order_t slc_tag_byte_order;
-
-#endif // __PROTOCOLS_AB_EIP_SLC_PCCC_H__
 
 
 #ifndef __PROTOCOLS_AB_ERROR_CODES_H__
 #define __PROTOCOLS_AB_ERROR_CODES_H__
 
-extern const char *decode_cip_error_short(uint8_t *data);
-extern const char *decode_cip_error_long(uint8_t *data);
-extern int decode_cip_error_code(uint8_t *data);
+const char *decode_cip_error_short(uint8_t *data);
+const char *decode_cip_error_long(uint8_t *data);
+int decode_cip_error_code(uint8_t *data);
 
 #endif // __PROTOCOLS_AB_ERROR_CODES_H__
 
@@ -2397,17 +2329,17 @@ typedef struct {
     int element_size_bytes;
 } pccc_addr_t;
 
-extern int parse_pccc_logical_address(const char *file_address, pccc_addr_t *address);
-extern int plc5_encode_address(uint8_t *data, int *size, int buf_size, pccc_addr_t *address);
-extern int slc_encode_address(uint8_t *data, int *size, int buf_size, pccc_addr_t *address);
+int parse_pccc_logical_address(const char *file_address, pccc_addr_t *address);
+int plc5_encode_address(uint8_t *data, int *size, int buf_size, pccc_addr_t *address);
+int slc_encode_address(uint8_t *data, int *size, int buf_size, pccc_addr_t *address);
 
-//extern int plc5_encode_tag_name(uint8_t *data, int *size, pccc_file_t *file_type, const char *name, int max_tag_name_size);
-//extern int slc_encode_tag_name(uint8_t *data, int *size, pccc_file_t *file_type, const char *name, int max_tag_name_size);
-extern uint8_t pccc_calculate_bcc(uint8_t *data,int size);
-extern uint16_t pccc_calculate_crc16(uint8_t *data, int size);
-extern const char *pccc_decode_error(uint8_t *error_ptr);
-extern uint8_t *pccc_decode_dt_byte(uint8_t *data,int data_size, int *pccc_res_type, int *pccc_res_length);
-extern int pccc_encode_dt_byte(uint8_t *data,int buf_size, uint32_t data_type, uint32_t data_size);
+//int plc5_encode_tag_name(uint8_t *data, int *size, pccc_file_t *file_type, const char *name, int max_tag_name_size);
+//int slc_encode_tag_name(uint8_t *data, int *size, pccc_file_t *file_type, const char *name, int max_tag_name_size);
+uint8_t pccc_calculate_bcc(uint8_t *data,int size);
+uint16_t pccc_calculate_crc16(uint8_t *data, int size);
+const char *pccc_decode_error(uint8_t *error_ptr);
+uint8_t *pccc_decode_dt_byte(uint8_t *data,int data_size, int *pccc_res_type, int *pccc_res_length);
+int pccc_encode_dt_byte(uint8_t *data,int buf_size, uint32_t data_type, uint32_t data_size);
 
 #endif // __PROTOCOLS_AB_PCCC_H__
 
@@ -2515,13 +2447,13 @@ struct ab_request_t {
 uint64_t session_get_new_seq_id_unsafe(ab_session_p sess);
 uint64_t session_get_new_seq_id(ab_session_p sess);
 
-extern int session_startup();
-extern void session_teardown();
+int session_startup();
+void session_teardown();
 
-extern int session_find_or_create(ab_session_p *session, attr attribs);
-extern int session_get_max_payload(ab_session_p session);
-extern int session_create_request(ab_session_p session, int tag_id, ab_request_p *request);
-extern int session_add_request(ab_session_p sess, ab_request_p req);
+int session_find_or_create(ab_session_p *session, attr attribs);
+int session_get_max_payload(ab_session_p session);
+int session_create_request(ab_session_p session, int tag_id, ab_request_p *request);
+int session_add_request(ab_session_p sess, ab_request_p req);
 
 #endif // __PROTOCOLS_AB_SESSION_H__
 
@@ -2611,6 +2543,34 @@ struct ab_tag_t {
 #endif // __PROTOCOLS_AB_TAG_H__
 
 
+#ifndef __PROTOCOLS_AB_EIP_CIP_SPECIAL_H__
+#define __PROTOCOLS_AB_EIP_CIP_SPECIAL_H__
+
+/* tag creation helpers */
+//int setup_special_cip_tag(ab_tag_p tag, const char *name);
+int setup_raw_tag(ab_tag_p tag);
+int setup_tag_listing_tag(ab_tag_p tag, const char *name);
+int setup_udt_tag(ab_tag_p tag, const char *name);
+
+#endif // __PROTOCOLS_AB_EIP_CIP_SPECIAL_H__
+
+
+#ifndef __PROTOCOLS_AB_EIP_CIP_H__
+#define __PROTOCOLS_AB_EIP_CIP_H__
+
+/* tag listing helpers */
+int setup_tag_listing(ab_tag_p tag, const char *name);
+
+#endif // __PROTOCOLS_AB_EIP_CIP_H__
+
+
+typedef struct tag_vtable_t tag_vtable;
+
+typedef tag_byte_order_t* tag_byte_order_p;
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif // __LIBPLCTAG_INTERNAL_H__

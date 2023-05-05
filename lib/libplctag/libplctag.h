@@ -54,7 +54,7 @@ extern "C" {
     #ifdef LIBPLCTAGDLL_EXPORTS
         #define LIB_EXPORT __declspec(dllexport)
     #else
-        #define LIB_EXPORT __declspec(dllimport)
+        //#define LIB_EXPORT __declspec(dllimport)
         #define LIB_EXPORT extern
     #endif
 #else
