@@ -14,10 +14,6 @@ tag_byte_order_p omron_njnx_tag_byte_order();
 
 tag_byte_order_p logix_tag_listing_byte_order();
 
-tag_byte_order_p plc5_tag_byte_order();
-
-tag_byte_order_p slc_tag_byte_order();
-
 
 #ifdef __cplusplus
 }

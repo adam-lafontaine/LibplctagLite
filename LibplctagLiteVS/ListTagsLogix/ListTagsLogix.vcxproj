@@ -33,11 +33,6 @@
     <ClCompile Include="..\..\lib\libplctag\protocols\ab\cip.c" />
     <ClCompile Include="..\..\lib\libplctag\protocols\ab\eip_cip.c" />
     <ClCompile Include="..\..\lib\libplctag\protocols\ab\eip_cip_special.c" />
-    <ClCompile Include="..\..\lib\libplctag\protocols\ab\eip_lgx_pccc.c" />
-    <ClCompile Include="..\..\lib\libplctag\protocols\ab\eip_plc5_dhp.c" />
-    <ClCompile Include="..\..\lib\libplctag\protocols\ab\eip_plc5_pccc.c" />
-    <ClCompile Include="..\..\lib\libplctag\protocols\ab\eip_slc_dhp.c" />
-    <ClCompile Include="..\..\lib\libplctag\protocols\ab\eip_slc_pccc.c" />
     <ClCompile Include="..\..\lib\libplctag\protocols\ab\error_codes.c" />
     <ClCompile Include="..\..\lib\libplctag\protocols\ab\pccc.c" />
     <ClCompile Include="..\..\lib\libplctag\protocols\ab\session.c" />
