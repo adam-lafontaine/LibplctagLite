@@ -109,8 +109,7 @@ int cip_encode_path(const char *path, int *needs_connection, plc_type_t plc_type
         return PLCTAG_ERR_TOO_LARGE;
     }
 
-    if(*is_dhp) 
-    {
+    if(*is_dhp && (plc_type == AB_PLC_PLC5 || plc_type == AB_PLC_SLC || plc_type == AB_PLC_MLGX)) {
         /* DH+ bridging always needs a connection. */
         *needs_connection = 1;
 

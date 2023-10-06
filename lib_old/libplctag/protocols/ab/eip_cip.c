@@ -542,7 +542,11 @@ int build_read_request_connected(ab_tag_p tag, int byte_offset)
     //embed_start = data;
 
     /* set up the CIP Read request */
-    read_cmd = AB_EIP_CMD_CIP_READ_FRAG;
+    if(tag->plc_type == AB_PLC_OMRON_NJNX) {
+        read_cmd = AB_EIP_CMD_CIP_READ;
+    } else {
+        read_cmd = AB_EIP_CMD_CIP_READ_FRAG;
+    }
 
     *data = read_cmd;
     data++;
@@ -642,7 +646,11 @@ int build_read_request_unconnected(ab_tag_p tag, int byte_offset)
     embed_start = data;
 
     /* set up the CIP Read request */
-    read_cmd = AB_EIP_CMD_CIP_READ_FRAG;
+    if(tag->plc_type == AB_PLC_OMRON_NJNX) {
+        read_cmd = AB_EIP_CMD_CIP_READ;
+    } else {
+        read_cmd = AB_EIP_CMD_CIP_READ_FRAG;
+    }
 
     *data = read_cmd;
     data++;
@@ -1112,6 +1120,11 @@ int build_write_request_connected(ab_tag_p tag, int byte_offset)
         multiple_requests = 1;
     }
 
+    if(multiple_requests && tag->plc_type == AB_PLC_OMRON_NJNX) {
+        pdebug(DEBUG_WARN, "Tag too large for unfragmented request on Omron PLC!");
+        return PLCTAG_ERR_TOO_LARGE;
+    }
+
     cip = (eip_cip_co_req*)(req->data);
 
     /* point to the end of the struct */
@@ -1252,6 +1265,11 @@ int build_write_request_unconnected(ab_tag_p tag, int byte_offset)
 
     if(tag->write_data_per_packet < tag->size) {
         multiple_requests = 1;
+    }
+
+    if(multiple_requests && tag->plc_type == AB_PLC_OMRON_NJNX) {
+        pdebug(DEBUG_WARN, "Tag too large for unfragmented request on Omron PLC!");
+        return PLCTAG_ERR_TOO_LARGE;
     }
 
     cip = (eip_cip_uc_req*)(req->data);

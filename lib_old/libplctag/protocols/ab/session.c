@@ -526,11 +526,33 @@ ab_session_p session_create_unsafe(const char *host, const char *path, plc_type_
     session->connection_group_id = connection_group_id;
 
     /* guess the max CIP payload size. */
-    switch(plc_type) 
-    {
+    switch(plc_type) {
+    case AB_PLC_SLC:
+        session->max_payload_size = MAX_CIP_SLC_MSG_SIZE;
+        session->only_use_old_forward_open = 1;
+        break;
+
+    case AB_PLC_MLGX:
+        session->max_payload_size = MAX_CIP_MLGX_MSG_SIZE;
+        session->only_use_old_forward_open = 1;
+        break;
+
+    case AB_PLC_PLC5:
+    case AB_PLC_LGX_PCCC:
+        session->max_payload_size = MAX_CIP_PLC5_MSG_SIZE;
+        session->only_use_old_forward_open = 1;
+        break;
 
     case AB_PLC_LGX:
         session->max_payload_size = MAX_CIP_MSG_SIZE;
+        break;
+
+    case AB_PLC_MICRO800:
+        session->max_payload_size = MAX_CIP_MSG_SIZE;
+        break;
+
+    case AB_PLC_OMRON_NJNX:
+        session->max_payload_size = MAX_CIP_OMRON_MSG_SIZE;
         break;
 
     default:
@@ -2063,9 +2085,20 @@ int send_forward_open_request(ab_session_p session)
     if(session->only_use_old_forward_open) {
         uint16_t max_payload = 0;
 
-        switch(session->plc_type) 
-        {
+        switch(session->plc_type) {
+            case AB_PLC_PLC5:
+            case AB_PLC_LGX_PCCC:
+                max_payload = (uint16_t)MAX_CIP_PLC5_MSG_SIZE;
+                break;
+
+            case AB_PLC_SLC:
+            case AB_PLC_MLGX:
+                max_payload = (uint16_t)MAX_CIP_SLC_MSG_SIZE;
+                break;
+
+            case AB_PLC_MICRO800:
             case AB_PLC_LGX:
+            case AB_PLC_OMRON_NJNX:
                 max_payload = (uint16_t)MAX_CIP_MSG_SIZE;
                 break;
 
@@ -2084,11 +2117,22 @@ int send_forward_open_request(ab_session_p session)
     } else {
         uint16_t max_payload = 0;
 
-        switch(session->plc_type) 
-        {
+        switch(session->plc_type) {
+            case AB_PLC_PLC5:
+            case AB_PLC_LGX_PCCC:
+            case AB_PLC_SLC:
+            case AB_PLC_MLGX:
+                pdebug(DEBUG_WARN, "PCCC PLCs do not support extended Forward Open!");
+                return PLCTAG_ERR_UNSUPPORTED;
+                break;
 
             case AB_PLC_LGX:
+            case AB_PLC_MICRO800:
                 max_payload = (uint16_t)MAX_CIP_MSG_SIZE_EX;
+                break;
+
+            case AB_PLC_OMRON_NJNX:
+                max_payload = (uint16_t)MAX_CIP_OMRON_MSG_SIZE;
                 break;
 
             default:
@@ -2167,7 +2211,21 @@ int send_old_forward_open_request(ab_session_p session)
 
     fo->orig_to_targ_rpi = h2le32(AB_EIP_RPI); /* us to target RPI - Request Packet Interval in microseconds */
 
+    /* screwy logic if this is a DH+ route! */
+    if((session->plc_type == AB_PLC_PLC5 || session->plc_type == AB_PLC_SLC || session->plc_type == AB_PLC_MLGX) && session->is_dhp) {
+        fo->orig_to_targ_conn_params = h2le16(AB_EIP_PLC5_PARAM);
+    } else {
+        fo->orig_to_targ_conn_params = h2le16(AB_EIP_CONN_PARAM | session->max_payload_guess); /* packet size and some other things, based on protocol/cpu type */
+    }
+
     fo->targ_to_orig_rpi = h2le32(AB_EIP_RPI); /* target to us RPI - not really used for explicit messages? */
+
+    /* screwy logic if this is a DH+ route! */
+    if((session->plc_type == AB_PLC_PLC5 || session->plc_type == AB_PLC_SLC || session->plc_type == AB_PLC_MLGX) && session->is_dhp) {
+        fo->targ_to_orig_conn_params = h2le16(AB_EIP_PLC5_PARAM);
+    } else {
+        fo->targ_to_orig_conn_params = h2le16(AB_EIP_CONN_PARAM | session->max_payload_guess); /* packet size and some other things, based on protocol/cpu type */
+    }
 
     fo->transport_class = AB_EIP_TRANSPORT_CLASS_T3; /* 0xA3, server transport, class 3, application trigger */
     fo->path_size = session->conn_path_size/2; /* size in 16-bit words */
