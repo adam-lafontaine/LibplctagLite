@@ -34,7 +34,6 @@
     <ClCompile Include="..\..\lib\libplctag\protocols\ab\eip_cip.c" />
     <ClCompile Include="..\..\lib\libplctag\protocols\ab\eip_cip_special.c" />
     <ClCompile Include="..\..\lib\libplctag\protocols\ab\error_codes.c" />
-    <ClCompile Include="..\..\lib\libplctag\protocols\ab\pccc.c" />
     <ClCompile Include="..\..\lib\libplctag\protocols\ab\session.c" />
     <ClCompile Include="..\..\lib\plctag.cpp" />
   </ItemGroup>

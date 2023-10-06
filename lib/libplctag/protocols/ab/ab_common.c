@@ -298,7 +298,6 @@ int get_tag_data_type(ab_tag_p tag, attr attribs)
     int rc = PLCTAG_STATUS_OK;
     const char *elem_type = NULL;
     const char *tag_name = NULL;
-    pccc_addr_t file_addr;
 
     pdebug(DEBUG_DETAIL, "Starting.");
 
@@ -636,14 +635,11 @@ int ab_set_int_attrib(plc_tag_p raw_tag, const char *attrib_name, int new_value)
 int check_tag_name(ab_tag_p tag, const char* name)
 {
     int rc = PLCTAG_STATUS_OK;
-    pccc_addr_t pccc_address;
 
     if (!name) {
         pdebug(DEBUG_WARN,"No tag name parameter found!");
         return PLCTAG_ERR_BAD_PARAM;
     }
-
-    mem_set(&pccc_address, 0, sizeof(pccc_address));
 
     /* attempt to parse the tag name */
     if ((rc = cip_encode_tag_name(tag, name)) != PLCTAG_STATUS_OK) {

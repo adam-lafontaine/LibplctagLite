@@ -293,8 +293,8 @@ void plc_tag_generic_tickler(plc_tag_p tag)
 
             /* do we need to read? */
             if(tag->auto_sync_next_read < current_time) {
-                /* make sure that we do not have an outstanding read or write. */
-                if(!tag->read_in_flight && !tag->tag_is_dirty) {
+                /* make sure that we do not have an outstanding read. */
+                if(!tag->read_in_flight) {
                     int64_t periods = 0;
 
                     pdebug(DEBUG_DETAIL, "Triggering automatic read start.");
@@ -1111,13 +1111,6 @@ LIB_EXPORT int plc_tag_read(int32_t id, int timeout)
 
         if(tag->read_in_flight) {
             pdebug(DEBUG_WARN, "An operation is already in flight!");
-            rc = PLCTAG_ERR_BUSY;
-            is_done = 1;
-            break;
-        }
-
-        if(tag->tag_is_dirty) {
-            pdebug(DEBUG_WARN, "Tag has locally updated data that will be overwritten!");
             rc = PLCTAG_ERR_BUSY;
             is_done = 1;
             break;
