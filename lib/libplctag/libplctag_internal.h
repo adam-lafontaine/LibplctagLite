@@ -994,6 +994,10 @@ int plc_tag_tickler_wake_impl(const char *func, int line_num);
 int plc_tag_generic_wake_tag_impl(const char *func, int line_num, plc_tag_p tag);
 int plc_tag_generic_init_tag(plc_tag_p tag, attr attributes, void (*tag_callback_func)(int32_t tag_id, int event, int status, void *userdata), void *userdata);
 
+
+int plc_tag_abort(int32_t tag);
+
+
 static inline void tag_raise_event(plc_tag_p tag, int event, int8_t status)
 {
     /* do not stack up events if there is no callback. */

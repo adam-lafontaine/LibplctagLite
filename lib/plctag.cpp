@@ -399,25 +399,6 @@ namespace plctag
 
 
 
-    /*
-    * plc_tag_abort
-    *
-    * Abort any outstanding IO to the PLC.  If there is something in flight, then
-    * it is marked invalid.  Note that this does not abort anything that might
-    * be still processing in the report PLC.
-    *
-    * The status will be PLCTAG_STATUS_OK unless there is an error such as
-    * a null pointer.
-    *
-    * This is a function provided by the underlying protocol implementation.
-    */
-    bool abort(i32 tag)
-    {
-        return plc_tag_abort(tag) == (int)PLCTAG_STATUS_OK;
-    }
-
-
-
 
 
 
