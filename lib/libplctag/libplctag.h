@@ -437,24 +437,6 @@ LIB_EXPORT int plc_tag_status(int32_t tag);
 
 
 
-
-
-/*
- * plc_tag_write
- *
- * Start a write.  If the timeout value is zero, then wait until the write
- * returns or the timeout occurs, whichever is first.  Return the status.
- * If the timeout value is zero, then plc_tag_write will usually return
- * PLCTAG_STATUS_PENDING.  The write is considered done
- * when it has been written to the socket.
- *
- * This is a function provided by the underlying protocol implementation.
- */
-LIB_EXPORT int plc_tag_write(int32_t tag, int timeout);
-
-
-
-
 /*
  * Tag data accessors.
  */

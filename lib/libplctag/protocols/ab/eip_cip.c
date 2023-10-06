@@ -225,7 +225,9 @@ static tag_vtable eip_cip_vtable_def = {
     .read = (tag_vtable_func)tag_read_start,
     .status = (tag_vtable_func)ab_tag_status, /* shared */
     .tickler = (tag_vtable_func)tag_tickler,
-    .write = (tag_vtable_func)tag_write_start,
+
+    //.write = (tag_vtable_func)tag_write_start,
+    //.wake_plc = (tag_vtable_func)NULL, /* wake_plc */
 
     /* attribute accessors */
     .get_int_attrib = ab_get_int_attrib,

@@ -876,8 +876,8 @@ struct tag_vtable_t {
     tag_vtable_func read;
     tag_vtable_func status;
     tag_vtable_func tickler;
-    tag_vtable_func write;
 
+    //tag_vtable_func write;
     //tag_vtable_func wake_plc;
 
     /* attribute accessors. */

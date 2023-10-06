@@ -156,7 +156,9 @@ struct tag_vtable_t raw_tag_vtable = {
     (tag_vtable_func)NULL, /* read */
     (tag_vtable_func)ab_tag_status, /* shared */
     (tag_vtable_func)raw_tag_tickler,
-    (tag_vtable_func)raw_tag_write_start,
+
+    //(tag_vtable_func)raw_tag_write_start,
+    //(tag_vtable_func)NULL, /* wake_plc */
 
     /* attribute accessors */
     ab_get_int_attrib,
@@ -169,7 +171,9 @@ struct tag_vtable_t listing_tag_vtable = {
     (tag_vtable_func)listing_tag_read_start,
     (tag_vtable_func)ab_tag_status, /* shared */
     (tag_vtable_func)listing_tag_tickler,
-    (tag_vtable_func)NULL, /* write */
+
+    //(tag_vtable_func)NULL, /* write */
+    //(tag_vtable_func)NULL, /* wake_plc */
 
     /* attribute accessors */
     ab_get_int_attrib,
@@ -183,7 +187,9 @@ struct tag_vtable_t udt_tag_vtable = {
     (tag_vtable_func)udt_tag_read_start,
     (tag_vtable_func)ab_tag_status, /* shared */
     (tag_vtable_func)udt_tag_tickler,
-    (tag_vtable_func)NULL, /* write */
+
+    //(tag_vtable_func)NULL, /* write */
+    //(tag_vtable_func)NULL, /* wake_plc */
 
     /* attribute accessors */
     ab_get_int_attrib,
