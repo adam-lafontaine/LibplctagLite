@@ -2474,7 +2474,7 @@ typedef enum {
     AB_TYPE_TIMER,
     AB_TYPE_TAG_ENTRY,  /* not a real AB type, but a pseudo type for AB's internal tag entry. */
     AB_TYPE_TAG_UDT,    /* as above, but for UDTs. */
-    AB_TYPE_TAG_RAW     /* raw CIP tag */
+    //AB_TYPE_TAG_RAW     /* raw CIP tag */
 } elem_type_t;
 
 
@@ -2537,7 +2537,6 @@ struct ab_tag_t {
 
 /* tag creation helpers */
 //int setup_special_cip_tag(ab_tag_p tag, const char *name);
-int setup_raw_tag(ab_tag_p tag);
 int setup_tag_listing_tag(ab_tag_p tag, const char *name);
 int setup_udt_tag(ab_tag_p tag, const char *name);
 
