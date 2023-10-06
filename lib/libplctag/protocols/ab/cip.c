@@ -56,7 +56,7 @@ static int match_dhp_addr_segment(const char *path, size_t *path_index, uint8_t 
 
 
 
-int cip_encode_path(const char *path, int *needs_connection, plc_type_t plc_type, uint8_t **conn_path, uint8_t *conn_path_size, int *is_dhp, uint16_t *dhp_dest)
+int cip_encode_path(const char *path, int *needs_connection, uint8_t **conn_path, uint8_t *conn_path_size, int *is_dhp, uint16_t *dhp_dest)
 {
     size_t path_len = 0;
     size_t conn_path_index = 0;

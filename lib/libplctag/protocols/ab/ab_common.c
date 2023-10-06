@@ -187,35 +187,10 @@ plc_tag_p ab_tag_create(attr attribs, void (*tag_callback_func)(int32_t tag_id, 
         return (plc_tag_p)NULL;
     }
 
-    /*
-     * check the CPU type.
-     *
-     * This determines the protocol type.
-     */
-
-    if(check_cpu(tag, attribs) != PLCTAG_STATUS_OK) {
-        pdebug(DEBUG_WARN,"CPU type not valid or missing.");
-        /* tag->status = PLCTAG_ERR_BAD_DEVICE; */
-        rc_dec(tag);
-        return (plc_tag_p)NULL;
-    }
-
     /* set up any required settings based on the cpu type. */
-    switch(tag->plc_type) 
-    {
-
-    case AB_PLC_LGX:
-        /* default to requiring a connection and allowing packing. */
-        tag->use_connected_msg = attr_get_int(attribs,"use_connected_msg", 1);
-        tag->allow_packing = attr_get_int(attribs, "allow_packing", 1);
-        break;
-
-    default:
-        pdebug(DEBUG_WARN, "Unknown PLC type!");
-        tag->status = PLCTAG_ERR_BAD_CONFIG;
-        return (plc_tag_p)tag;
-        break;
-    }
+    /* default to requiring a connection and allowing packing. */
+    tag->use_connected_msg = attr_get_int(attribs, "use_connected_msg", 1);
+    tag->allow_packing = attr_get_int(attribs, "allow_packing", 1);
 
     /* make sure that the connection requirement is forced. */
     attr_set_int(attribs, "use_connected_msg", tag->use_connected_msg);
@@ -245,46 +220,32 @@ plc_tag_p ab_tag_create(attr attribs, void (*tag_callback_func)(int32_t tag_id, 
     }
 
     /* set up PLC-specific information. */
-    switch(tag->plc_type) 
-    {
+    pdebug(DEBUG_DETAIL, "Setting up Logix tag.");
 
-
-    case AB_PLC_LGX:
-        pdebug(DEBUG_DETAIL, "Setting up Logix tag.");
-
-        /* Logix tags need a path. */
-        if(path == NULL && tag->plc_type == AB_PLC_LGX) {
-            pdebug(DEBUG_WARN,"A path is required for Logix-class PLCs!");
-            tag->status = PLCTAG_ERR_BAD_PARAM;
-            return (plc_tag_p)tag;
-        }
-
-        /* if we did not fill in the byte order elsewhere, fill it in now. */
-        if(!tag->byte_order) {
-            pdebug(DEBUG_DETAIL, "Using default Logix byte order.");
-            //tag->byte_order = &logix_tag_byte_order;
-            tag->byte_order = logix_tag_byte_order();
-        }
-
-        /* if this was not filled in elsewhere default to Logix */
-        if(tag->vtable == &default_vtable || !tag->vtable) {
-            pdebug(DEBUG_DETAIL, "Setting default Logix vtable.");
-            //tag->vtable = &eip_cip_vtable;
-            tag->vtable = eip_cip_vtable();
-        }
-
-        /* default to requiring a connection. */
-        tag->use_connected_msg = attr_get_int(attribs,"use_connected_msg", 1);
-        tag->allow_packing = attr_get_int(attribs, "allow_packing", 1);
-
-        break;
-
-
-    default:
-        pdebug(DEBUG_WARN, "Unknown PLC type!");
-        tag->status = PLCTAG_ERR_BAD_CONFIG;
+    /* Logix tags need a path. */
+    if (path == NULL) {
+        pdebug(DEBUG_WARN, "A path is required for Logix-class PLCs!");
+        tag->status = PLCTAG_ERR_BAD_PARAM;
         return (plc_tag_p)tag;
     }
+
+    /* if we did not fill in the byte order elsewhere, fill it in now. */
+    if (!tag->byte_order) {
+        pdebug(DEBUG_DETAIL, "Using default Logix byte order.");
+        //tag->byte_order = &logix_tag_byte_order;
+        tag->byte_order = logix_tag_byte_order();
+    }
+
+    /* if this was not filled in elsewhere default to Logix */
+    if (tag->vtable == &default_vtable || !tag->vtable) {
+        pdebug(DEBUG_DETAIL, "Setting default Logix vtable.");
+        //tag->vtable = &eip_cip_vtable;
+        tag->vtable = eip_cip_vtable();
+    }
+
+    /* default to requiring a connection. */
+    tag->use_connected_msg = attr_get_int(attribs, "use_connected_msg", 1);
+    tag->allow_packing = attr_get_int(attribs, "allow_packing", 1);
 
     /* pass the connection requirement since it may be overridden above. */
     attr_set_int(attribs, "use_connected_msg", tag->use_connected_msg);
@@ -292,41 +253,10 @@ plc_tag_p ab_tag_create(attr attribs, void (*tag_callback_func)(int32_t tag_id, 
     /* get the element count, default to 1 if missing. */
     tag->elem_count = attr_get_int(attribs,"elem_count", 1);
 
-    switch(tag->plc_type) 
-    {
-    case AB_PLC_LGX:
-        /* fill this in when we read the tag. */
+    /* fill this in when we read the tag. */
         //tag->elem_size = 0;
-        tag->size = 0;
-        tag->data = NULL;
-        break;
-
-    default:
-        /* we still need size on non Logix-class PLCs */
-        /* get the element size if it is not already set. */
-        if(!tag->elem_size) {
-            tag->elem_size = attr_get_int(attribs, "elem_size", 0);
-        }
-
-        /* Determine the tag size */
-        tag->size = (tag->elem_count) * (tag->elem_size);
-        if(tag->size == 0) {
-            /* failure! Need data_size! */
-            pdebug(DEBUG_WARN,"Tag size is zero!");
-            tag->status = PLCTAG_ERR_BAD_PARAM;
-            return (plc_tag_p)tag;
-        }
-
-        /* this may be changed in the future if this is a tag list request. */
-        tag->data = (uint8_t*)mem_alloc(tag->size);
-
-        if(tag->data == NULL) {
-            pdebug(DEBUG_WARN,"Unable to allocate tag data!");
-            tag->status = PLCTAG_ERR_NO_MEM;
-            return (plc_tag_p)tag;
-        }
-        break;
-    }
+    tag->size = 0;
+    tag->data = NULL;
 
     /*
      * check the tag name, this is protocol specific.
@@ -375,118 +305,119 @@ int get_tag_data_type(ab_tag_p tag, attr attribs)
 
     pdebug(DEBUG_DETAIL, "Starting.");
 
-    switch(tag->plc_type) 
+    /* look for the elem_type attribute. */
+    elem_type = attr_get_str(attribs, "elem_type", NULL);
+
+    if (elem_type) {
+        if (str_cmp_i(elem_type, "lint") == 0 || str_cmp_i(elem_type, "ulint") == 0) {
+            pdebug(DEBUG_DETAIL, "Found tag element type of 64-bit integer.");
+            tag->elem_size = 8;
+            tag->elem_type = AB_TYPE_INT64;
+        }
+        else if (str_cmp_i(elem_type, "dint") == 0 || str_cmp_i(elem_type, "udint") == 0) {
+            pdebug(DEBUG_DETAIL, "Found tag element type of 32-bit integer.");
+            tag->elem_size = 4;
+            tag->elem_type = AB_TYPE_INT32;
+        }
+        else if (str_cmp_i(elem_type, "int") == 0 || str_cmp_i(elem_type, "uint") == 0) {
+            pdebug(DEBUG_DETAIL, "Found tag element type of 16-bit integer.");
+            tag->elem_size = 2;
+            tag->elem_type = AB_TYPE_INT16;
+        }
+        else if (str_cmp_i(elem_type, "sint") == 0 || str_cmp_i(elem_type, "usint") == 0) {
+            pdebug(DEBUG_DETAIL, "Found tag element type of 8-bit integer.");
+            tag->elem_size = 1;
+            tag->elem_type = AB_TYPE_INT8;
+        }
+        else if (str_cmp_i(elem_type, "bool") == 0) {
+            pdebug(DEBUG_DETAIL, "Found tag element type of bit.");
+            tag->elem_size = 1;
+            tag->elem_type = AB_TYPE_BOOL;
+        }
+        else if (str_cmp_i(elem_type, "bool array") == 0) {
+            pdebug(DEBUG_DETAIL, "Found tag element type of bool array.");
+            tag->elem_size = 4;
+            tag->elem_type = AB_TYPE_BOOL_ARRAY;
+        }
+        else if (str_cmp_i(elem_type, "real") == 0) {
+            pdebug(DEBUG_DETAIL, "Found tag element type of 32-bit float.");
+            tag->elem_size = 4;
+            tag->elem_type = AB_TYPE_FLOAT32;
+        }
+        else if (str_cmp_i(elem_type, "lreal") == 0) {
+            pdebug(DEBUG_DETAIL, "Found tag element type of 64-bit float.");
+            tag->elem_size = 8;
+            tag->elem_type = AB_TYPE_FLOAT64;
+        }
+        else if (str_cmp_i(elem_type, "string") == 0) {
+            pdebug(DEBUG_DETAIL, "Fount tag element type of string.");
+            tag->elem_size = 88;
+            tag->elem_type = AB_TYPE_STRING;
+        }
+        else if (str_cmp_i(elem_type, "short string") == 0) {
+            pdebug(DEBUG_DETAIL, "Found tag element type of short string.");
+            tag->elem_size = 256; /* TODO - find the real length */
+            tag->elem_type = AB_TYPE_SHORT_STRING;
+        }
+        else {
+            pdebug(DEBUG_DETAIL, "Unknown tag type %s", elem_type);
+            return PLCTAG_ERR_UNSUPPORTED;
+        }
+    }
+    else
     {
+        /*
+         * We have two cases
+         *      * tag listing, but only for CIP PLCs (but not for UDTs!).
+         *      * no type, just elem_size.
+         * Otherwise this is an error.
+         */
+        int elem_size = attr_get_int(attribs, "elem_size", 0);
 
-    case AB_PLC_LGX:
-        /* look for the elem_type attribute. */
-        elem_type = attr_get_str(attribs, "elem_type", NULL);
 
-        if(elem_type) {
-            if(str_cmp_i(elem_type,"lint") == 0 || str_cmp_i(elem_type, "ulint") == 0) {
-                pdebug(DEBUG_DETAIL,"Found tag element type of 64-bit integer.");
-                tag->elem_size = 8;
-                tag->elem_type = AB_TYPE_INT64;
-            } else if(str_cmp_i(elem_type,"dint") == 0 || str_cmp_i(elem_type,"udint") == 0) {
-                pdebug(DEBUG_DETAIL,"Found tag element type of 32-bit integer.");
-                tag->elem_size = 4;
-                tag->elem_type = AB_TYPE_INT32;
-            } else if(str_cmp_i(elem_type,"int") == 0 || str_cmp_i(elem_type,"uint") == 0) {
-                pdebug(DEBUG_DETAIL,"Found tag element type of 16-bit integer.");
-                tag->elem_size = 2;
-                tag->elem_type = AB_TYPE_INT16;
-            } else if(str_cmp_i(elem_type,"sint") == 0 || str_cmp_i(elem_type,"usint") == 0) {
-                pdebug(DEBUG_DETAIL,"Found tag element type of 8-bit integer.");
-                tag->elem_size = 1;
-                tag->elem_type = AB_TYPE_INT8;
-            } else if(str_cmp_i(elem_type,"bool") == 0) {
-                pdebug(DEBUG_DETAIL,"Found tag element type of bit.");
-                tag->elem_size = 1;
-                tag->elem_type = AB_TYPE_BOOL;
-            } else if(str_cmp_i(elem_type,"bool array") == 0) {
-                pdebug(DEBUG_DETAIL,"Found tag element type of bool array.");
-                tag->elem_size = 4;
-                tag->elem_type = AB_TYPE_BOOL_ARRAY;
-            } else if(str_cmp_i(elem_type,"real") == 0) {
-                pdebug(DEBUG_DETAIL,"Found tag element type of 32-bit float.");
-                tag->elem_size = 4;
-                tag->elem_type = AB_TYPE_FLOAT32;
-            } else if(str_cmp_i(elem_type,"lreal") == 0) {
-                pdebug(DEBUG_DETAIL,"Found tag element type of 64-bit float.");
-                tag->elem_size = 8;
-                tag->elem_type = AB_TYPE_FLOAT64;
-            } else if(str_cmp_i(elem_type,"string") == 0) {
-                pdebug(DEBUG_DETAIL,"Fount tag element type of string.");
-                tag->elem_size = 88;
-                tag->elem_type = AB_TYPE_STRING;
-            } else if(str_cmp_i(elem_type,"short string") == 0) {
-                pdebug(DEBUG_DETAIL,"Found tag element type of short string.");
-                tag->elem_size = 256; /* TODO - find the real length */
-                tag->elem_type = AB_TYPE_SHORT_STRING;
-            } else {
-                pdebug(DEBUG_DETAIL, "Unknown tag type %s", elem_type);
-                return PLCTAG_ERR_UNSUPPORTED;
-            }
-        } 
-        else 
-        {
-            /*
-             * We have two cases
-             *      * tag listing, but only for CIP PLCs (but not for UDTs!).
-             *      * no type, just elem_size.
-             * Otherwise this is an error.
-             */
-            int elem_size = attr_get_int(attribs, "elem_size", 0);
+        const char* tmp_tag_name = attr_get_str(attribs, "name", NULL);
+        int special_tag_rc = PLCTAG_STATUS_OK;
 
-            
-            const char *tmp_tag_name = attr_get_str(attribs, "name", NULL);
-            int special_tag_rc = PLCTAG_STATUS_OK;
+        /* check for special tags. */
+        if (str_cmp_i(tmp_tag_name, "@raw") == 0) {
+            special_tag_rc = setup_raw_tag(tag);
+        }
+        else if (str_str_cmp_i(tmp_tag_name, "@tags")) {
+            // if(tag->plc_type != AB_PLC_OMRON_NJNX) {
+            special_tag_rc = setup_tag_listing_tag(tag, tmp_tag_name);
+            // } else {
+            //     pdebug(DEBUG_WARN, "Tag listing is not supported for Omron PLCs.");
+            //     special_tag_rc = PLCTAG_ERR_UNSUPPORTED;
+            // }
+        }
+        else if (str_str_cmp_i(tmp_tag_name, "@udt/")) {
+            // if(tag->plc_type != AB_PLC_OMRON_NJNX) {
+                /* only supported on *Logix */
+            special_tag_rc = setup_udt_tag(tag, tmp_tag_name);
+            // } else {
+            //     pdebug(DEBUG_WARN, "UDT listing is not supported for Omron PLCs.");
+            //     special_tag_rc = PLCTAG_ERR_UNSUPPORTED;
+            // }
+        } /* else not a special tag. */
 
-            /* check for special tags. */
-            if(str_cmp_i(tmp_tag_name, "@raw") == 0) {
-                special_tag_rc = setup_raw_tag(tag);
-            } else if(str_str_cmp_i(tmp_tag_name, "@tags")) {
-                // if(tag->plc_type != AB_PLC_OMRON_NJNX) {
-                    special_tag_rc = setup_tag_listing_tag(tag, tmp_tag_name);
-                // } else {
-                //     pdebug(DEBUG_WARN, "Tag listing is not supported for Omron PLCs.");
-                //     special_tag_rc = PLCTAG_ERR_UNSUPPORTED;
-                // }
-            } else if(str_str_cmp_i(tmp_tag_name, "@udt/")) {
-                // if(tag->plc_type != AB_PLC_OMRON_NJNX) {
-                    /* only supported on *Logix */
-                    special_tag_rc = setup_udt_tag(tag, tmp_tag_name);
-                // } else {
-                //     pdebug(DEBUG_WARN, "UDT listing is not supported for Omron PLCs.");
-                //     special_tag_rc = PLCTAG_ERR_UNSUPPORTED;
-                // }
-            } /* else not a special tag. */
-
-            if(special_tag_rc != PLCTAG_STATUS_OK) {
-                pdebug(DEBUG_WARN, "Error parsing tag listing name!");
-                return special_tag_rc;
-            }
-            
-
-            /* if we did not set an element size yet, set one. */
-            if(tag->elem_size == 0) {
-                if(elem_size > 0) {
-                    pdebug(DEBUG_INFO, "Setting element size to %d.", elem_size);
-                    tag->elem_size = elem_size;
-                }
-            } else {
-                if(elem_size > 0) {
-                    pdebug(DEBUG_WARN, "Tag has elem_size and either is a tag listing or has elem_type, only use one!");
-                }
-            }
+        if (special_tag_rc != PLCTAG_STATUS_OK) {
+            pdebug(DEBUG_WARN, "Error parsing tag listing name!");
+            return special_tag_rc;
         }
 
-        break;
 
-    default:
-        pdebug(DEBUG_WARN, "Unknown PLC type!");
-        return PLCTAG_ERR_BAD_DEVICE;
-        break;
+        /* if we did not set an element size yet, set one. */
+        if (tag->elem_size == 0) {
+            if (elem_size > 0) {
+                pdebug(DEBUG_INFO, "Setting element size to %d.", elem_size);
+                tag->elem_size = elem_size;
+            }
+        }
+        else {
+            if (elem_size > 0) {
+                pdebug(DEBUG_WARN, "Tag has elem_size and either is a tag listing or has elem_type, only use one!");
+            }
+        }
     }
 
     pdebug(DEBUG_DETAIL, "Done.");
@@ -697,16 +628,7 @@ int ab_get_int_attrib(plc_tag_p raw_tag, const char *attrib_name, int default_va
     } else if(str_cmp_i(attrib_name, "elem_count") == 0) {
         res = tag->elem_count;
     } else if(str_cmp_i(attrib_name, "elem_type") == 0) {
-        switch(tag->plc_type)
-        {
-
-            case AB_PLC_LGX:
-                res = (int)(tag->elem_type);
-                break;
-            default: 
-                pdebug(DEBUG_WARN, "Unsupported PLC type %d!", tag->plc_type);
-                break;
-        }
+        res = (int)(tag->elem_type);
     } else {
         pdebug(DEBUG_WARN, "Unsupported attribute name \"%s\"!", attrib_name);
         tag->status = PLCTAG_ERR_UNSUPPORTED;
@@ -729,41 +651,6 @@ int ab_set_int_attrib(plc_tag_p raw_tag, const char *attrib_name, int new_value)
 }
 
 
-
-plc_type_t get_plc_type(attr attribs)
-{
-    const char *cpu_type = attr_get_str(attribs, "plc", attr_get_str(attribs, "cpu", "NONE"));
-
-    if (!str_cmp_i(cpu_type, "compactlogix") || !str_cmp_i(cpu_type, "clgx") || !str_cmp_i(cpu_type, "lgx") ||
-               !str_cmp_i(cpu_type, "controllogix") || !str_cmp_i(cpu_type, "contrologix") ||
-               !str_cmp_i(cpu_type, "logix")) 
-    {
-        pdebug(DEBUG_DETAIL,"Found ControlLogix/CompactLogix PLC.");
-        return AB_PLC_LGX;
-    } 
-    else 
-    {
-        pdebug(DEBUG_WARN, "Unsupported device type: %s", cpu_type);
-
-        return AB_PLC_NONE;
-    }
-}
-
-
-
-int check_cpu(ab_tag_p tag, attr attribs)
-{
-    plc_type_t result = get_plc_type(attribs);
-
-    if(result != AB_PLC_NONE) {
-        tag->plc_type = result;
-        return PLCTAG_STATUS_OK;
-    } else {
-        tag->plc_type = result;
-        return PLCTAG_ERR_BAD_DEVICE;
-    }
-}
-
 int check_tag_name(ab_tag_p tag, const char* name)
 {
     int rc = PLCTAG_STATUS_OK;
@@ -777,24 +664,10 @@ int check_tag_name(ab_tag_p tag, const char* name)
     mem_set(&pccc_address, 0, sizeof(pccc_address));
 
     /* attempt to parse the tag name */
-    switch (tag->plc_type) 
-    {
-    case AB_PLC_LGX:
-        if ((rc = cip_encode_tag_name(tag, name)) != PLCTAG_STATUS_OK) {
-            pdebug(DEBUG_WARN, "parse of CIP-style tag name %s failed!", name);
+    if ((rc = cip_encode_tag_name(tag, name)) != PLCTAG_STATUS_OK) {
+        pdebug(DEBUG_WARN, "parse of CIP-style tag name %s failed!", name);
 
-            return rc;
-        }
-
-        break;
-
-    default:
-        /* how would we get here? */
-        pdebug(DEBUG_WARN, "unsupported PLC type %d", tag->plc_type);
-
-        return PLCTAG_ERR_BAD_PARAM;
-
-        break;
+        return rc;
     }
 
     return PLCTAG_STATUS_OK;

@@ -1318,9 +1318,6 @@ typedef struct system_tag_t *system_tag_p;
 //#define AB_PLC_MICRO800     (4)
 //#define AB_PLC_LGX_PCCC    (5)
 
-//typedef enum { AB_PLC_NONE = 0, AB_PLC_PLC5 = 1, AB_PLC_SLC, AB_PLC_MLGX, AB_PLC_LGX, AB_PLC_LGX_PCCC, AB_PLC_MICRO800, AB_PLC_OMRON_NJNX } plc_type_t;
-typedef enum { AB_PLC_NONE = 0, AB_PLC_LGX } plc_type_t;
-
 
 /*********************************************************************
  ************************ AB EIP Structures **************************
@@ -2244,10 +2241,6 @@ int ab_set_float64(plc_tag_p tag, int offset, double val);
 float ab_get_float32(plc_tag_p tag, int offset);
 int ab_set_float32(plc_tag_p tag, int offset, float val);
 
-
-//int ab_tag_destroy(ab_tag_p p_tag);
-plc_type_t get_plc_type(attr attribs);
-int check_cpu(ab_tag_p tag, attr attribs);
 int check_tag_name(ab_tag_p tag, const char *name);
 int check_mutex(int debug);
 vector_p find_read_group_tags(ab_tag_p tag);
@@ -2277,7 +2270,7 @@ plc_tag_p ab_tag_create(attr attribs, void (*tag_callback_func)(int32_t tag_id, 
 #define __PROTOCOLS_AB_CIP_H__
 
 //int cip_encode_path(ab_tag_p tag, const char *path);
-int cip_encode_path(const char *path, int *needs_connection, plc_type_t plc_type, uint8_t **conn_path, uint8_t *conn_path_size, int *is_dhp, uint16_t *dhp_dest);
+int cip_encode_path(const char *path, int *needs_connection, uint8_t **conn_path, uint8_t *conn_path_size, int *is_dhp, uint16_t *dhp_dest);
 
 //~ char *cip_decode_status(int status);
 int cip_encode_tag_name(ab_tag_p tag,const char *name);
@@ -2377,8 +2370,6 @@ struct ab_session_t {
     uint32_t targ_connection_id;
     uint16_t conn_seq_num;
     uint16_t conn_serial_number;
-
-    plc_type_t plc_type;
 
     uint16_t max_payload_size;
     uint8_t *conn_path;
@@ -2490,9 +2481,6 @@ typedef enum {
 struct ab_tag_t {
     /*struct plc_tag_t p_tag;*/
     TAG_BASE_STRUCT;
-
-    /* how do we talk to this device? */
-    plc_type_t plc_type;
 
     /* pointers back to session */
     ab_session_p session;

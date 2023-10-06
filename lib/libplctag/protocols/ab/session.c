@@ -73,7 +73,7 @@ extern "C" {
 
 
 
-static ab_session_p session_create_unsafe(const char *host, const char *path, plc_type_t plc_type, int *use_connected_msg, int connection_group_id);
+static ab_session_p session_create_unsafe(const char *host, const char *path, int *use_connected_msg, int connection_group_id);
 static int session_init(ab_session_p session);
 //static int get_plc_type(attr attribs);
 static int add_session_unsafe(ab_session_p n);
@@ -241,7 +241,6 @@ int session_find_or_create(ab_session_p *tag_session, attr attribs)
     const char *session_path = attr_get_str(attribs, "path", "");
     int use_connected_msg = attr_get_int(attribs, "use_connected_msg", 0);
     //int session_gw_port = attr_get_int(attribs, "gateway_port", AB_EIP_DEFAULT_PORT);
-    plc_type_t plc_type = get_plc_type(attribs);
     ab_session_p session = AB_SESSION_NULL;
     int new_session = 0;
     int shared_session = attr_get_int(attribs, "share_session", 1); /* share the session by default. */
@@ -275,7 +274,7 @@ int session_find_or_create(ab_session_p *tag_session, attr attribs)
 
         if (session == AB_SESSION_NULL) {
             pdebug(DEBUG_DETAIL, "Creating new session.");
-            session = session_create_unsafe(session_gw, session_path, plc_type, &use_connected_msg, connection_group_id);
+            session = session_create_unsafe(session_gw, session_path, &use_connected_msg, connection_group_id);
 
             if (session == AB_SESSION_NULL) {
                 pdebug(DEBUG_WARN, "unable to create or find a session!");
@@ -459,7 +458,7 @@ ab_session_p find_session_by_host_unsafe(const char *host, const char *path, int
 
 
 
-ab_session_p session_create_unsafe(const char *host, const char *path, plc_type_t plc_type, int *use_connected_msg, int connection_group_id)
+ab_session_p session_create_unsafe(const char *host, const char *path, int *use_connected_msg, int connection_group_id)
 {
     static volatile uint32_t connection_id = 0;
 
@@ -487,7 +486,7 @@ ab_session_p session_create_unsafe(const char *host, const char *path, plc_type_
         return NULL;
     }
 
-    rc = cip_encode_path(path, use_connected_msg, plc_type, &session->conn_path, &session->conn_path_size, &session->is_dhp, &session->dhp_dest);
+    rc = cip_encode_path(path, use_connected_msg, &session->conn_path, &session->conn_path_size, &session->is_dhp, &session->dhp_dest);
     if(rc != PLCTAG_STATUS_OK) {
         pdebug(DEBUG_INFO, "Unable to convert path links strings to binary path!");
         rc_dec(session);
@@ -515,7 +514,6 @@ ab_session_p session_create_unsafe(const char *host, const char *path, plc_type_
         connection_id = (uint32_t)rand();
     }
 
-    session->plc_type = plc_type;
     session->data_capacity = MAX_PACKET_SIZE_EX;
     session->use_connected_msg = *use_connected_msg;
     session->failed = 0;
@@ -526,19 +524,7 @@ ab_session_p session_create_unsafe(const char *host, const char *path, plc_type_
     session->connection_group_id = connection_group_id;
 
     /* guess the max CIP payload size. */
-    switch(plc_type) 
-    {
-
-    case AB_PLC_LGX:
-        session->max_payload_size = MAX_CIP_MSG_SIZE;
-        break;
-
-    default:
-        pdebug(DEBUG_WARN, "Unknown protocol/cpu type!");
-        rc_dec(session);
-        return NULL;
-        break;
-    }
+    session->max_payload_size = MAX_CIP_MSG_SIZE;
 
     pdebug(DEBUG_DETAIL, "Set maximum payload size to %u bytes.", (unsigned int)(session->max_payload_size));
 
@@ -2063,17 +2049,7 @@ int send_forward_open_request(ab_session_p session)
     if(session->only_use_old_forward_open) {
         uint16_t max_payload = 0;
 
-        switch(session->plc_type) 
-        {
-            case AB_PLC_LGX:
-                max_payload = (uint16_t)MAX_CIP_MSG_SIZE;
-                break;
-
-            default:
-                pdebug(DEBUG_WARN, "Unsupported PLC type %d!", session->plc_type);
-                return PLCTAG_ERR_UNSUPPORTED;
-                break;
-        }
+        max_payload = (uint16_t)MAX_CIP_MSG_SIZE;
 
         /* set the max payload guess if it is larger than the maximum possible or if it is zero. */
         session->max_payload_guess = ((session->max_payload_guess == 0) || (session->max_payload_guess > max_payload) ? max_payload : session->max_payload_guess);
@@ -2084,18 +2060,7 @@ int send_forward_open_request(ab_session_p session)
     } else {
         uint16_t max_payload = 0;
 
-        switch(session->plc_type) 
-        {
-
-            case AB_PLC_LGX:
-                max_payload = (uint16_t)MAX_CIP_MSG_SIZE_EX;
-                break;
-
-            default:
-                pdebug(DEBUG_WARN, "Unsupported PLC type %d!", session->plc_type);
-                return PLCTAG_ERR_UNSUPPORTED;
-                break;
-        }
+        max_payload = (uint16_t)MAX_CIP_MSG_SIZE_EX;
 
         /* set the max payload guess if it is larger than the maximum possible or if it is zero. */
         session->max_payload_guess = ((session->max_payload_guess == 0) || (session->max_payload_guess > max_payload) ? max_payload : session->max_payload_guess);
