@@ -2516,7 +2516,7 @@ struct ab_tag_t {
     uint16_t udt_id;
 
     /* requests */
-    int pre_write_read;
+    //int pre_write_read;
     int first_read;
     ab_request_p req;
     int offset;
@@ -2525,7 +2525,7 @@ struct ab_tag_t {
 
     /* flags for operations */
     int read_in_progress;
-    int write_in_progress;
+    //int write_in_progress;
     /*int connect_in_progress;*/
 };
 

@@ -347,11 +347,6 @@ int listing_tag_read_start(ab_tag_p tag)
 
     pdebug(DEBUG_INFO, "Starting");
 
-    if(tag->write_in_progress) {
-        pdebug(DEBUG_WARN, "A write is in progress on a listing tag!");
-        return PLCTAG_ERR_BAD_STATUS;
-    }
-
     if(tag->read_in_progress) {
         pdebug(DEBUG_WARN, "Read or write operation already in flight!");
         return PLCTAG_ERR_BUSY;
@@ -817,11 +812,6 @@ int udt_tag_read_start(ab_tag_p tag)
     int rc = PLCTAG_STATUS_OK;
 
     pdebug(DEBUG_INFO, "Starting");
-
-    if(tag->write_in_progress) {
-        pdebug(DEBUG_WARN, "A write is in progress on a UDT tag!");
-        return PLCTAG_ERR_BAD_STATUS;
-    }
 
     if(tag->read_in_progress) {
         pdebug(DEBUG_WARN, "Read or write operation already in flight!");
