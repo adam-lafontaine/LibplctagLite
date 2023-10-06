@@ -90,7 +90,7 @@ struct tag_vtable_t default_vtable = {
     default_status,
     default_tickler,
     default_write,
-    (tag_vtable_func)NULL, /* this is not portable! */
+    
 
     /* attribute accessors */
     ab_get_int_attrib,

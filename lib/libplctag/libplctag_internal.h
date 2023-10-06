@@ -878,7 +878,7 @@ struct tag_vtable_t {
     tag_vtable_func tickler;
     tag_vtable_func write;
 
-    tag_vtable_func wake_plc;
+    //tag_vtable_func wake_plc;
 
     /* attribute accessors. */
     int (*get_int_attrib)(plc_tag_p tag, const char *attrib_name, int default_value);
@@ -1095,7 +1095,7 @@ static inline void tag_raise_event(plc_tag_p tag, int event, int8_t status)
 
 int initialize_modules(void);
 typedef plc_tag_p(*tag_create_function)(attr attributes, void (*tag_callback_func)(int32_t tag_id, int event, int status, void* userdata), void* userdata);
-tag_create_function find_tag_create_func(attr attributes);
+
 void destroy_modules(void);
 
 #endif // __LIB_INIT_H__

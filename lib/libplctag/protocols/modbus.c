@@ -269,7 +269,7 @@ struct tag_vtable_t modbus_vtable = {
     (tag_vtable_func)mb_tag_status,
     (tag_vtable_func)mb_tickler,
     (tag_vtable_func)mb_write_start,
-    (tag_vtable_func)mb_wake_plc,
+    //(tag_vtable_func)mb_wake_plc,
 
     /* data accessors */
     mb_get_int_attrib,
