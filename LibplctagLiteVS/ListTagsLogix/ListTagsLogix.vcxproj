@@ -36,8 +36,6 @@
     <ClCompile Include="..\..\lib\libplctag\protocols\ab\error_codes.c" />
     <ClCompile Include="..\..\lib\libplctag\protocols\ab\pccc.c" />
     <ClCompile Include="..\..\lib\libplctag\protocols\ab\session.c" />
-    <ClCompile Include="..\..\lib\libplctag\protocols\modbus.c" />
-    <ClCompile Include="..\..\lib\libplctag\protocols\system.c" />
     <ClCompile Include="..\..\lib\plctag.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
