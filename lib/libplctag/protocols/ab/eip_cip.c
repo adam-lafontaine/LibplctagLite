@@ -138,87 +138,6 @@ static int tag_read_start(ab_tag_p tag);
 static int tag_tickler(ab_tag_p tag);
 static int tag_write_start(ab_tag_p tag);
 
-#if 0
-/* define the exported vtable for this tag type. */
-struct tag_vtable_t eip_cip_vtable = {
-    .abort = (tag_vtable_func)ab_tag_abort, /* shared */
-    .read = (tag_vtable_func)tag_read_start,
-    .status = (tag_vtable_func)ab_tag_status, /* shared */
-    .tickler = (tag_vtable_func)tag_tickler,
-    .write = (tag_vtable_func)tag_write_start,
-    .wake_plc = (tag_vtable_func)NULL, /* wake_plc */
-
-    /* attribute accessors */
-    .get_int_attrib = ab_get_int_attrib,
-    .set_int_attrib = ab_set_int_attrib
-};
-
-/* default string types used for ControlLogix-class PLCs. */
-tag_byte_order_t logix_tag_byte_order = {
-    .is_allocated = 0,    
-
-    .str_is_defined = 1,
-    .str_is_counted = 1,
-    .str_is_fixed_length = 1,
-    .str_is_zero_terminated = 0,
-    .str_is_byte_swapped = 0,
-
-    .str_count_word_bytes = 4,
-    .str_max_capacity = 82,
-    .str_total_length = 88,
-    .str_pad_bytes = 2,
-
-    .int16_order = {0,1},
-    .int32_order = {0,1,2,3},
-    .int64_order = {0,1,2,3,4,5,6,7},
-    .float32_order = {0,1,2,3},
-    .float64_order = {0,1,2,3,4,5,6,7},
-};
-
-/* default string types used for Omron-NJ/NX PLCs. */
-tag_byte_order_t omron_njnx_tag_byte_order = {
-    .is_allocated = 0,
-
-    .str_is_defined = 1,
-    .str_is_counted = 1,
-    .str_is_fixed_length = 0,
-    .str_is_zero_terminated = 1,
-    .str_is_byte_swapped = 0,
-
-    .str_count_word_bytes = 2,
-    .str_max_capacity = 0,
-    .str_total_length = 0,
-    .str_pad_bytes = 0,
-
-    .int16_order = {0,1},
-    .int32_order = {0,1,2,3},
-    .int64_order = {0,1,2,3,4,5,6,7},
-    .float32_order = {0,1,2,3},
-    .float64_order = {0,1,2,3,4,5,6,7},
-};
-
-
-tag_byte_order_t logix_tag_listing_byte_order = {
-    .is_allocated = 0,
-
-    .str_is_defined = 1,
-    .str_is_counted = 1,
-    .str_is_fixed_length = 0,
-    .str_is_zero_terminated = 0,
-    .str_is_byte_swapped = 0,
-
-    .str_count_word_bytes = 2,
-    .str_max_capacity = 0,
-    .str_total_length = 0,
-    .str_pad_bytes = 0,
-
-    .int16_order = {0,1},
-    .int32_order = {0,1,2,3},
-    .int64_order = {0,1,2,3,4,5,6,7},
-    .float32_order = {0,1,2,3},
-    .float64_order = {0,1,2,3,4,5,6,7},
-};
-#endif
 
 static tag_vtable eip_cip_vtable_def = {
     .abort = (tag_vtable_func)ab_tag_abort, /* shared */
@@ -249,29 +168,6 @@ static tag_byte_order_t logix_tag_byte_order_def = {
     .str_max_capacity = 82,
     .str_total_length = 88,
     .str_pad_bytes = 2,
-
-    .int16_order = {0,1},
-    .int32_order = {0,1,2,3},
-    .int64_order = {0,1,2,3,4,5,6,7},
-    .float32_order = {0,1,2,3},
-    .float64_order = {0,1,2,3,4,5,6,7},
-};
-
-
-/* default string types used for Omron-NJ/NX PLCs. */
-static tag_byte_order_t omron_njnx_tag_byte_order_def = {
-    .is_allocated = 0,
-
-    .str_is_defined = 1,
-    .str_is_counted = 1,
-    .str_is_fixed_length = 0,
-    .str_is_zero_terminated = 1,
-    .str_is_byte_swapped = 0,
-
-    .str_count_word_bytes = 2,
-    .str_max_capacity = 0,
-    .str_total_length = 0,
-    .str_pad_bytes = 0,
 
     .int16_order = {0,1},
     .int32_order = {0,1,2,3},
@@ -313,12 +209,6 @@ tag_vtable_p eip_cip_vtable()
 tag_byte_order_p logix_tag_byte_order()
 {
     return &logix_tag_byte_order_def;
-}
-
-
-tag_byte_order_p omron_njnx_tag_byte_order()
-{
-    return &omron_njnx_tag_byte_order_def;
 }
 
 

@@ -276,54 +276,39 @@ LIB_EXPORT int plc_tag_get_int_attribute(int32_t tag, const char *attrib_name, i
 LIB_EXPORT int plc_tag_set_int_attribute(int32_t tag, const char *attrib_name, int new_value);
 
 LIB_EXPORT int plc_tag_get_size(int32_t tag);
-/* return the old size or negative for errors. */
-LIB_EXPORT int plc_tag_set_size(int32_t tag, int new_size);
 
 LIB_EXPORT int plc_tag_get_bit(int32_t tag, int offset_bit);
-LIB_EXPORT int plc_tag_set_bit(int32_t tag, int offset_bit, int val);
 
 LIB_EXPORT uint64_t plc_tag_get_uint64(int32_t tag, int offset);
-LIB_EXPORT int plc_tag_set_uint64(int32_t tag, int offset, uint64_t val);
 
 LIB_EXPORT int64_t plc_tag_get_int64(int32_t tag, int offset);
-LIB_EXPORT int plc_tag_set_int64(int32_t, int offset, int64_t val);
 
 
 LIB_EXPORT uint32_t plc_tag_get_uint32(int32_t tag, int offset);
-LIB_EXPORT int plc_tag_set_uint32(int32_t tag, int offset, uint32_t val);
 
 LIB_EXPORT int32_t plc_tag_get_int32(int32_t tag, int offset);
-LIB_EXPORT int plc_tag_set_int32(int32_t, int offset, int32_t val);
 
 
 LIB_EXPORT uint16_t plc_tag_get_uint16(int32_t tag, int offset);
-LIB_EXPORT int plc_tag_set_uint16(int32_t tag, int offset, uint16_t val);
 
 LIB_EXPORT int16_t plc_tag_get_int16(int32_t tag, int offset);
-LIB_EXPORT int plc_tag_set_int16(int32_t, int offset, int16_t val);
 
 
 LIB_EXPORT uint8_t plc_tag_get_uint8(int32_t tag, int offset);
-LIB_EXPORT int plc_tag_set_uint8(int32_t tag, int offset, uint8_t val);
 
 LIB_EXPORT int8_t plc_tag_get_int8(int32_t tag, int offset);
-LIB_EXPORT int plc_tag_set_int8(int32_t, int offset, int8_t val);
 
 
 LIB_EXPORT double plc_tag_get_float64(int32_t tag, int offset);
-LIB_EXPORT int plc_tag_set_float64(int32_t tag, int offset, double val);
 
 LIB_EXPORT float plc_tag_get_float32(int32_t tag, int offset);
-LIB_EXPORT int plc_tag_set_float32(int32_t tag, int offset, float val);
 
 /* raw byte bulk access */
-LIB_EXPORT int plc_tag_set_raw_bytes(int32_t id, int offset, uint8_t *buffer, int buffer_length);
 LIB_EXPORT int plc_tag_get_raw_bytes(int32_t id, int offset, uint8_t *buffer, int buffer_length);
 
 /* string accessors */
 
 LIB_EXPORT int plc_tag_get_string(int32_t tag_id, int string_start_offset, char *buffer, int buffer_length);
-LIB_EXPORT int plc_tag_set_string(int32_t tag_id, int string_start_offset, const char *string_val);
 LIB_EXPORT int plc_tag_get_string_length(int32_t tag_id, int string_start_offset);
 LIB_EXPORT int plc_tag_get_string_capacity(int32_t tag_id, int string_start_offset);
 LIB_EXPORT int plc_tag_get_string_total_length(int32_t tag_id, int string_start_offset);
