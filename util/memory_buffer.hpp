@@ -19,7 +19,7 @@ class MemoryView
 {
 public:
 	T* begin = nullptr;
-	size_t length;
+	size_t length = 0;
 };
 
 
@@ -48,6 +48,41 @@ namespace memory_buffer
 		buffer.size_ = 0;
 
 		return true;
+	}
+
+
+	template <typename T>
+	void zero_buffer(MemoryBuffer<T>& buffer)
+	{
+		assert(buffer.capacity_ > 0);
+		assert(buffer.data_);
+
+		if (buffer.capacity_ == 0 || !buffer.data_)
+		{
+			return;
+		}
+
+		using byte = unsigned char;
+
+		constexpr auto size64 = sizeof(size_t);
+
+		auto total_bytes = buffer.capacity_ * sizeof(T);
+
+		auto len64 = total_bytes / size64;
+		auto begin64 = (size_t*)buffer.data_;
+
+		auto len8 = total_bytes - len64 * size64;		
+		auto begin8 = (byte*)(begin64 + len64);
+
+		for (size_t i = 0; i < len64; ++i)
+		{
+			begin64[i] = 0;
+		}
+
+		for (size_t i = 0; i < len8; ++i)
+		{
+			begin8[i] = 0;
+		}
 	}
 
 
