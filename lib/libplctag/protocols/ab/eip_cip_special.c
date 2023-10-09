@@ -173,13 +173,10 @@ struct tag_vtable_t udt_tag_vtable = {
 
 
 tag_byte_order_t listing_tag_logix_byte_order = {
-    .is_allocated = 0,    
 
-    .str_is_defined = 1,
     .str_is_counted = 1,
     .str_is_fixed_length = 0,
     .str_is_zero_terminated = 0,
-    .str_is_byte_swapped = 0,
 
     .str_count_word_bytes = 2,
     .str_max_capacity = 0,
@@ -195,13 +192,10 @@ tag_byte_order_t listing_tag_logix_byte_order = {
 
 /* strings are zero terminated. */
 tag_byte_order_t udt_tag_logix_byte_order = {
-    .is_allocated = 0,
 
-    .str_is_defined = 1,
     .str_is_counted = 0,
     .str_is_fixed_length = 0,
     .str_is_zero_terminated = 1,
-    .str_is_byte_swapped = 0,
 
     .str_count_word_bytes = 0,
     .str_max_capacity = 0,

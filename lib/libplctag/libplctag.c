@@ -2060,7 +2060,7 @@ LIB_EXPORT int plc_tag_get_string(int32_t tag_id, int string_start_offset, char 
     }
 
     /* are strings defined for this tag? */
-    if(!tag->byte_order || !tag->byte_order->str_is_defined) {
+    if(!tag->byte_order) {
         pdebug(DEBUG_WARN,"Tag has no definitions for strings!");
         tag->status = PLCTAG_ERR_UNSUPPORTED;
         rc_dec(tag);
@@ -2099,7 +2099,7 @@ LIB_EXPORT int plc_tag_get_string(int32_t tag_id, int string_start_offset, char 
         /* check the amount of space. */
         if(string_start_offset + (int)tag->byte_order->str_count_word_bytes + max_len <= tag->size) {
             for(int i = 0; i < max_len; i++) {
-                size_t char_index = (((size_t)(unsigned int)i) ^ (tag->byte_order->str_is_byte_swapped)) /* byte swap if necessary */
+                size_t char_index = ((size_t)(unsigned int)i)
                                   + (size_t)(unsigned int)string_start_offset
                                   + (size_t)(unsigned int)(tag->byte_order->str_count_word_bytes);
                 buffer[i] = (char)tag->data[char_index];
@@ -2135,7 +2135,7 @@ LIB_EXPORT int plc_tag_get_string_capacity(int32_t id, int string_start_offset)
     }
 
     /* are strings defined for this tag? */
-    if(!tag->byte_order || !tag->byte_order->str_is_defined) {
+    if(!tag->byte_order) {
         rc_dec(tag);
         pdebug(DEBUG_WARN,"Tag has no definitions for strings!");
         tag->status = PLCTAG_ERR_UNSUPPORTED;
@@ -2183,7 +2183,7 @@ LIB_EXPORT int plc_tag_get_string_length(int32_t id, int string_start_offset)
     }
 
     /* are strings defined for this tag? */
-    if(!tag->byte_order || !tag->byte_order->str_is_defined) {
+    if(!tag->byte_order) {
         rc_dec(tag);
         pdebug(DEBUG_WARN,"Tag has no definitions for strings!");
         tag->status = PLCTAG_ERR_UNSUPPORTED;
@@ -2232,7 +2232,7 @@ LIB_EXPORT int plc_tag_get_string_total_length(int32_t id, int string_start_offs
     }
 
     /* are strings defined for this tag? */
-    if(!tag->byte_order || !tag->byte_order->str_is_defined) {
+    if(!tag->byte_order) {
         rc_dec(tag);
         pdebug(DEBUG_WARN,"Tag has no definitions for strings!");
         tag->status = PLCTAG_ERR_UNSUPPORTED;
@@ -2525,7 +2525,7 @@ int get_string_length_unsafe(plc_tag_p tag, int offset)
              * the end of the tag buffer.
              */
             for(int i = offset + (int)(tag->byte_order->str_count_word_bytes); i < tag->size; i++) {
-                size_t char_index = (((size_t)(unsigned int)string_length) ^ (tag->byte_order->str_is_byte_swapped)) /* byte swap if necessary */
+                size_t char_index = ((size_t)(unsigned int)string_length)
                                 + (size_t)(unsigned int)offset
                                 + (size_t)(unsigned int)(tag->byte_order->str_count_word_bytes);
 

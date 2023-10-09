@@ -156,13 +156,10 @@ static tag_vtable eip_cip_vtable_def = {
 
 /* default string types used for ControlLogix-class PLCs. */
 static tag_byte_order_t logix_tag_byte_order_def = {
-    .is_allocated = 0,    
 
-    .str_is_defined = 1,
     .str_is_counted = 1,
     .str_is_fixed_length = 1,
     .str_is_zero_terminated = 0,
-    .str_is_byte_swapped = 0,
 
     .str_count_word_bytes = 4,
     .str_max_capacity = 82,

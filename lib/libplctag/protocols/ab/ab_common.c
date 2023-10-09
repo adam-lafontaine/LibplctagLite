@@ -577,11 +577,6 @@ void ab_tag_destroy(ab_tag_p tag)
         tag->tag_cond_wait = NULL;
     }
 
-    if(tag->byte_order && tag->byte_order->is_allocated) {
-        mem_free(tag->byte_order);
-        tag->byte_order = NULL;
-    }
-
     if (tag->data) {
         mem_free(tag->data);
         tag->data = NULL;
