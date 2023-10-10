@@ -10,6 +10,14 @@ using Bytes = MemoryView<u8>;
 using String = MemoryView<char>;
 
 
+template <typename T>
+static void destroy_vector(std::vector<T>& vec)
+{
+    std::vector<T> temp;
+    std::swap(vec, temp);
+}
+
+
 /* tag listing */
 
 namespace
@@ -309,7 +317,7 @@ namespace
     public:
         int plc = 0; // TODO
 
-        MemoryBuffer<Tag> tags;
+        std::vector<Tag> tags;
 
         MemoryBuffer<u8> value_data;
         MemoryBuffer<char> name_data;
@@ -321,7 +329,7 @@ namespace
         mb::destroy_buffer(table.value_data);
         mb::destroy_buffer(table.name_data);
 
-        mb::destroy_buffer(table.tags);
+        destroy_vector(table.tags);
     }    
 
 
@@ -339,12 +347,6 @@ namespace
 
         assert(name_alloc_len > name_copy_len); /* zero terminated */
 
-        auto tag_p = mb::push_elements(table.tags, 1u);
-        if (!tag_p)
-        {
-            return;
-        }
-
         auto value_data = mb::push_elements(table.value_data, value_len);
         if (!value_data)
         {
@@ -354,10 +356,11 @@ namespace
         auto str_data = mb::push_elements(table.name_data, name_alloc_len);
         if (!str_data)
         {
+            mb::pop_elements(table.value_data, value_len);
             return;
         }
 
-        auto& tag = *tag_p;
+        Tag tag{};
 
         tag.type = get_tag_type(entry.type_code);
         tag.value.begin = value_data;
@@ -370,20 +373,13 @@ namespace
 
         tag.name.begin = str_data;
         tag.name.length = name_copy_len;
+
+        table.tags.push_back(tag);
     }
 
 
     static bool create_tag_table(TagEntryList const& entries, TagTable& table)
     {
-        DataResult<TagTable> result{};
-        auto& table = result.data;
-
-        if (!mb::create_buffer(table.tags, entries.size()))
-        {
-            destroy_tag_table(table);
-            return false;
-        }
-
         u32 value_bytes = 0;
         u32 str_bytes = 0;
         for (auto const& e : entries)
@@ -406,6 +402,8 @@ namespace
 
         mb::zero_buffer(table.name_data);
         mb::zero_buffer(table.name_data);
+
+        table.tags.reserve(entries.size());
 
         for (auto const& e : entries)
         {
