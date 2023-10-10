@@ -1,8 +1,10 @@
 #include "../util/types.hpp"
 #include "../util/memory_buffer.hpp"
+#include "../util/qsprintf.hpp"
 
 #include <vector>
 #include <array>
+#include <unordered_map>
 #include <cassert>
 
 namespace mb = memory_buffer;
@@ -90,7 +92,7 @@ namespace
     };
 
 
-    constexpr std::array<AtomicType, 16> SUPPORTED_TYPES = 
+    constexpr std::array<AtomicType, 14> SUPPORTED_TYPES = 
     {
         AtomicType::BOOL,
         AtomicType::SINT,
@@ -103,8 +105,6 @@ namespace
         AtomicType::ULINT,
         AtomicType::REAL,
         AtomicType::LREAL,
-        AtomicType::DATE,
-        AtomicType::TIME,
         AtomicType::CHAR_STRING,
 
         AtomicType::SYSTEM,
@@ -240,31 +240,8 @@ namespace
         default:                               return "Unknown tag type";
         }
     }
-
-
-    
-    
-
-    class TagType
-    {
-    public:
-        String data_type_name;
-        String data_type_description;
-        u32 size;
-    };
-
-
-    class DataTypeTable
-    {
-    public:
-        MemoryBuffer<char> str_data;
-    };
-    
-
     
 }
-
-
 
 
 /* tag listing */
@@ -474,7 +451,6 @@ namespace
 
 /* udt entries */
 
-
 namespace
 {
     class UdtEntry
@@ -533,5 +509,121 @@ namespace
         int offset = 14;
 
 
+    }
+}
+
+
+/* tag type table */
+
+namespace
+{
+    class DataType
+    {
+    public:
+        DataTypeId32 type_id = UNKOWN_TYPE_ID;
+        String data_type_name;
+        String data_type_description;
+    };
+
+
+    using DataTypeMap = std::unordered_map<DataTypeId32, DataType>;
+
+
+    class DataTypeTable
+    {
+    public:
+
+        DataTypeMap type_map;
+
+        MemoryBuffer<char> atomic_str_data;
+    };
+
+
+    static void add_data_type(DataTypeTable& table, AtomicType type)
+    {        
+        auto type_id = (DataTypeId32)type;
+
+        auto not_found = table.type_map.end();
+        auto it = table.type_map.find(type_id);
+
+        if (it != not_found)
+        {
+            return;
+        }
+
+        auto name_str = tag_type_str(type);
+        auto desc_str = tag_description_str(type);
+
+        auto name_len = strlen(name_str);
+        auto desc_len = strlen(desc_str);
+
+        auto name_data = mb::push_elements(table.atomic_str_data, name_len + 1);
+        if (!name_data)
+        {
+            return;
+        }
+
+        auto desc_data = mb::push_elements(table.atomic_str_data, desc_len + 1);
+        if (!desc_data)
+        {
+            mb::pop_elements(table.atomic_str_data, name_len + 1);
+            return;
+        }
+
+        DataType dt{};
+        dt.type_id = type_id;
+
+        auto& name = dt.data_type_name;
+        auto& desc = dt.data_type_description;
+
+        name.begin = name_data;
+        name.length = name_len;
+        desc.begin = desc_data;
+        desc.length = desc_len;
+
+        // strncpy/strncpy_s ?
+        qsnprintf(name.begin, name.length, "%s", name_str);
+        qsnprintf(desc.begin, desc.length, "%s", desc_str);
+
+        table.type_map[type_id] = dt;
+    }
+
+
+    static void update_data_type_table(DataTypeTable& table, TagEntry const& entry)
+    {
+        
+    }
+
+
+    static void update_data_type_table(DataTypeTable& table, UdtEntry const& entry)
+    {
+        
+    }
+
+
+    static bool create_data_type_table(DataTypeTable& table)
+    {
+        u32 str_bytes = 0;
+
+        for (auto t : SUPPORTED_TYPES)
+        {
+            str_bytes += strlen(tag_type_str(t));
+            str_bytes += strlen(tag_description_str(t));
+            str_bytes += 2; /* zero terminated */
+        }
+
+        if (!mb::create_buffer(table.atomic_str_data, str_bytes))
+        {
+            return false;
+        }
+
+        mb::zero_buffer(table.atomic_str_data);
+
+        for (auto t : SUPPORTED_TYPES)
+        {
+            add_data_type(table, t);
+        }
+
+        return true;
     }
 }
