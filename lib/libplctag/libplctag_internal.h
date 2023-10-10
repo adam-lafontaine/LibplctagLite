@@ -891,15 +891,11 @@ typedef struct tag_vtable_t *tag_vtable_p;
 /* byte ordering */
 
 struct tag_byte_order_s {
-    /* set if we allocated this specifically for the tag. */
-    //unsigned int is_allocated:1;
 
     /* string type and ordering. */
-    //unsigned int str_is_defined:1;
     unsigned int str_is_counted:1;
     unsigned int str_is_fixed_length:1;
     unsigned int str_is_zero_terminated:1;
-    //unsigned int str_is_byte_swapped:1;
 
     unsigned int str_count_word_bytes;
     unsigned int str_max_capacity;
@@ -950,7 +946,26 @@ int64_t auto_sync_next_read
 
 
 struct plc_tag_t {
-    TAG_BASE_STRUCT;
+    //TAG_BASE_STRUCT;
+    uint8_t is_bit : 1;
+    uint8_t read_in_flight : 1;
+    uint8_t read_complete : 1;
+    uint8_t skip_tickler : 1;
+    int8_t status;
+    int bit;
+    int connection_group_id;
+    int32_t size;
+    int32_t tag_id;
+    int32_t auto_sync_read_ms;
+    uint8_t* data;
+    tag_byte_order_t* byte_order;
+    mutex_p ext_mutex;
+    mutex_p api_mutex;
+    cond_p tag_cond_wait;
+    tag_vtable_p vtable;
+    int64_t read_cache_expire;
+    int64_t read_cache_ms;
+    int64_t auto_sync_next_read;
 };
 
 #define PLC_TAG_P_NULL ((plc_tag_p)0)
@@ -1837,7 +1852,26 @@ typedef enum {
 
 struct ab_tag_t {
     /*struct plc_tag_t p_tag;*/
-    TAG_BASE_STRUCT;
+    //TAG_BASE_STRUCT;
+    uint8_t is_bit : 1;
+    uint8_t read_in_flight : 1;
+    uint8_t read_complete : 1;
+    uint8_t skip_tickler : 1;
+    int8_t status;
+    int bit;
+    int connection_group_id;
+    int32_t size;
+    int32_t tag_id;
+    int32_t auto_sync_read_ms;
+    uint8_t* data;
+    tag_byte_order_t* byte_order;
+    mutex_p ext_mutex;
+    mutex_p api_mutex;
+    cond_p tag_cond_wait;
+    tag_vtable_p vtable;
+    int64_t read_cache_expire;
+    int64_t read_cache_ms;
+    int64_t auto_sync_next_read;
 
     /* pointers back to session */
     ab_session_p session;
