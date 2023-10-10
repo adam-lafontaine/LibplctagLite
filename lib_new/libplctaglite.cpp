@@ -2,6 +2,7 @@
 #include "../util/memory_buffer.hpp"
 
 #include <vector>
+#include <cassert>
 
 namespace mb = memory_buffer;
 
@@ -52,16 +53,15 @@ namespace
         TagEntry entry{};
 
         entry.type_code = c.symbol_type;
-        entry.elem_count = c.array_dims[0];
 
-        if (c.array_dims[1])
-        {
-            entry.elem_count *= c.array_dims[1];
-        }
+        entry.elem_count = 1;
 
-        if (c.array_dims[2])
+        for (u32 i = 0; i < 3; ++i)
         {
-            entry.elem_count *= c.array_dims[2];
+            if (c.array_dims[i])
+            {
+                entry.elem_count *= c.array_dims[i];
+            }
         }
 
         offset += sizeof(C);
@@ -97,20 +97,24 @@ namespace
 
 namespace
 {
-    constexpr auto TYPE_IS_STRUCT = (u16)0x8000;
-    constexpr auto TYPE_IS_SYSTEM = (u16)0x1000;
-    constexpr auto ATOMIC_TYPE_MASK = (u16)0x00FF;
+    constexpr auto TYPE_IS_STRUCT = (u16)0x8000;   // 0b1000'0000'0000'0000
+    constexpr auto TYPE_IS_SYSTEM = (u16)0x1000;   // 0b0001'0000'0000'0000
 
-    constexpr auto TYPE_UDT_ID_MASK = (u16)0x0FFF;
-    constexpr auto TAG_DIM_MASK = (u16)0x6000;
+    constexpr auto ATOMIC_TYPE_MASK = (u16)0x00FF; // 0b0000'0000'1111'1111
 
-    constexpr auto UDT_ARRAY_FIELD_MASK = (u16)0x2000;
+    constexpr auto TYPE_UDT_ID_MASK = (u16)0x0FFF; // 0b0000'1111'1111'1111
+    constexpr auto TAG_DIM_MASK = (u16)0x6000;     // 0b1100'0000'0000'0000
+
+    constexpr auto UDT_FIELD_IS_ARRAY = (u16)0x2000; // 0b0010'0000'0000'0000
 
 
     enum class TagType : int
     {
+        UNKNOWN = -1,
+
         SYSTEM = 0,
         UDT,
+
         BOOL,
         SINT,
         INT,
@@ -140,8 +144,7 @@ namespace
         DURATION_MS,
         CIP_PATH,
         ENGINEERING_UNITS,
-        INTERNATIONAL_STRING,
-        UNKNOWN
+        INTERNATIONAL_STRING,        
     };
 
 
@@ -181,7 +184,7 @@ namespace
         case TagType::CIP_PATH:             return "CIP path segment(s)";
         case TagType::ENGINEERING_UNITS:    return "Engineering units";
         case TagType::INTERNATIONAL_STRING: return "International character string (encoding?)";
-        default:                            return "unknown";
+        default:                            return "Unknown";
         }
     }
 
@@ -219,7 +222,6 @@ namespace
         }
 
         uint16_t atomic_type = type_code & ATOMIC_TYPE_MASK;
-        const char* type = NULL;
 
         switch (atomic_type)
         {
@@ -253,6 +255,7 @@ namespace
         case 0xDC: return TagType::CIP_PATH;
         case 0xDD: return TagType::ENGINEERING_UNITS;
         case 0xDE: return TagType::INTERNATIONAL_STRING;
+        default: break;
         }
 
         return TagType::UNKNOWN;
@@ -279,16 +282,8 @@ namespace
 
     static inline bool is_array_field(u16 type_code)
     {
-        return type_code & UDT_ARRAY_FIELD_MASK;
+        return type_code & UDT_FIELD_IS_ARRAY;
     }
-
-
-
-    class TypeTable
-    {
-    public:
-
-    };
 }
 
 
@@ -302,23 +297,18 @@ namespace
     public:
         int tag_id = -1;
 
+        TagType type = TagType::UNKNOWN;
+
         Bytes value;
         String name;
-    };
-
-
-    class TagQty
-    {
-    public:
-        u32 n_tags = 0;
-        u32 value_size = 0;
-        u32 name_size = 0;
     };
 
 
     class TagTable
     {
     public:
+        int plc = 0; // TODO
+
         MemoryBuffer<Tag> tags;
 
         MemoryBuffer<u8> value_data;
@@ -332,43 +322,97 @@ namespace
         mb::destroy_buffer(table.name_data);
 
         mb::destroy_buffer(table.tags);
+    }    
+
+
+    u32 elem_size(TagEntry const& e) { return e.elem_count * e.elem_size; }
+
+
+    u32 str_size(TagEntry const& e) { return e.name.length + 1; /* zero terminated */}
+
+
+    static void add_tag(TagTable& table, TagEntry const& entry)
+    {
+        auto value_len = elem_size(entry);
+        auto name_alloc_len = str_size(entry);
+        auto name_copy_len = entry.name.length;
+
+        assert(name_alloc_len > name_copy_len); /* zero terminated */
+
+        auto tag_p = mb::push_elements(table.tags, 1u);
+        if (!tag_p)
+        {
+            return;
+        }
+
+        auto value_data = mb::push_elements(table.value_data, value_len);
+        if (!value_data)
+        {
+            return;
+        }
+
+        auto str_data = mb::push_elements(table.name_data, name_alloc_len);
+        if (!str_data)
+        {
+            return;
+        }
+
+        auto& tag = *tag_p;
+
+        tag.type = get_tag_type(entry.type_code);
+        tag.value.begin = value_data;
+        tag.value.length = value_len;
+        
+        for (u32 i = 0; i < name_copy_len; ++i)
+        {
+            str_data[i] = tag.name.begin[i];
+        }
+
+        tag.name.begin = str_data;
+        tag.name.length = name_copy_len;
     }
 
 
-    static DataResult<TagTable> create_tag_table(TagQty const& qty)
+    static bool create_tag_table(TagEntryList const& entries, TagTable& table)
     {
         DataResult<TagTable> result{};
         auto& table = result.data;
 
-        if (!mb::create_buffer(table.tags, qty.n_tags))
+        if (!mb::create_buffer(table.tags, entries.size()))
         {
             destroy_tag_table(table);
-            return result;
+            return false;
         }
 
-        if (!mb::create_buffer(table.value_data, qty.value_size))
+        u32 value_bytes = 0;
+        u32 str_bytes = 0;
+        for (auto const& e : entries)
         {
-            destroy_tag_table(table);
-            return result;
+            value_bytes += elem_size(e);
+            str_bytes += str_size(e);
         }
 
-        if (!mb::create_buffer(table.name_data, qty.name_size))
+        if (!mb::create_buffer(table.value_data, value_bytes))
         {
             destroy_tag_table(table);
-            return result;
+            return false;
+        }
+
+        if (!mb::create_buffer(table.name_data, str_bytes))
+        {
+            destroy_tag_table(table);
+            return false;
         }
 
         mb::zero_buffer(table.name_data);
         mb::zero_buffer(table.name_data);
 
-        result.success = true;
-        return result;
-    }
+        for (auto const& e : entries)
+        {
+            add_tag(table, e);
+        }
 
-
-    static void add_tag(TagTable& table, Tag const& tag)
-    {
-
+        return true;
     }
 }
 
