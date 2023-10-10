@@ -2,6 +2,7 @@
 #include "../util/memory_buffer.hpp"
 
 #include <vector>
+#include <array>
 #include <cassert>
 
 namespace mb = memory_buffer;
@@ -16,6 +17,254 @@ static void destroy_vector(std::vector<T>& vec)
     std::vector<T> temp;
     std::swap(vec, temp);
 }
+
+
+
+/* tag types */
+
+namespace
+{
+    constexpr auto TYPE_IS_STRUCT = (u16)0x8000;   // 0b1000'0000'0000'0000
+    constexpr auto TYPE_IS_SYSTEM = (u16)0x1000;   // 0b0001'0000'0000'0000
+
+    constexpr auto TAG_DIM_MASK = (u16)0x6000;     // 0b0110'0000'0000'0000
+
+    constexpr auto UDT_FIELD_IS_ARRAY = (u16)0x2000; // 0b0010'0000'0000'0000
+
+    constexpr auto ATOMIC_TYPE_ID_MASK = (u16)0x00FF; // 0b0000'0000'1111'1111
+    constexpr auto ATOMIC_TYPE_ID_MIN = (u16)0xC1;    // 0b0000'0000'1100'0001
+    constexpr auto ATOMIC_TYPE_ID_MAX = (u16)0xDE;    // 0b0000'0000'1101'1110
+
+    constexpr auto UDT_TYPE_ID_MASK = (u16)0x0FFF; // 0b0000'1111'1111'1111
+
+    
+
+    using DataTypeId32 = u32;
+
+    // 0b0000'0000'0000'0000'0000'0000'0000'0000
+    //  |----other-----|------udt-----|-atomic--|
+
+    constexpr auto SYSTEM_TYPE_ID = (DataTypeId32)0b0000'0000'0001'0000'0000'0000'0000'0000;
+    constexpr auto UNKOWN_TYPE_ID = (DataTypeId32)0b0000'0000'0010'0000'0000'0000'0000'0000;
+
+    enum class AtomicType : DataTypeId32
+    {
+        UNKNOWN = UNKOWN_TYPE_ID,
+        SYSTEM  = SYSTEM_TYPE_ID,
+
+        BOOL  = (DataTypeId32)0xC1,
+        SINT  = (DataTypeId32)0xC2,
+        INT   = (DataTypeId32)0xC3,
+        DINT  = (DataTypeId32)0xC4,
+        LINT  = (DataTypeId32)0xC5,
+        USINT = (DataTypeId32)0xC6,
+        UINT  = (DataTypeId32)0xC7,
+        UDINT = (DataTypeId32)0xC8,
+        ULINT = (DataTypeId32)0xC9,
+        REAL  = (DataTypeId32)0xCA,
+        LREAL = (DataTypeId32)0xCB,
+
+        SYNCHRONOUS_TIME = (DataTypeId32)0xCC,
+        DATE             = (DataTypeId32)0xCD,
+        TIME             = (DataTypeId32)0xCE,
+        DATETIME         = (DataTypeId32)0xCF,
+
+        CHAR_STRING = (DataTypeId32)0xD0,
+        STRING_8    = (DataTypeId32)0xD1,
+        STRING_16   = (DataTypeId32)0xD2,
+        STRING_32   = (DataTypeId32)0xD3,
+        STRING_64   = (DataTypeId32)0xD4,
+        WIDE_STRING = (DataTypeId32)0xD5,
+        
+        HIGH_RES_DURATION = (DataTypeId32)0xD6,
+        MED_RES_DURATION  = (DataTypeId32)0xD7,
+        LOW_RES_DURATION  = (DataTypeId32)0xD8,
+
+        N_BYTE_STRING        = (DataTypeId32)0xD9,
+        COUNTED_CHAR_STRING  = (DataTypeId32)0xDA,
+        DURATION_MS          = (DataTypeId32)0xDB,
+        CIP_PATH             = (DataTypeId32)0xDC,
+        ENGINEERING_UNITS    = (DataTypeId32)0xDD,
+        INTERNATIONAL_STRING = (DataTypeId32)0xDE,
+        
+    };
+
+
+    constexpr std::array<AtomicType, 16> SUPPORTED_TYPES = 
+    {
+        AtomicType::BOOL,
+        AtomicType::SINT,
+        AtomicType::INT,
+        AtomicType::DINT,
+        AtomicType::LINT,
+        AtomicType::USINT,
+        AtomicType::UINT,
+        AtomicType::UDINT,
+        AtomicType::ULINT,
+        AtomicType::REAL,
+        AtomicType::LREAL,
+        AtomicType::DATE,
+        AtomicType::TIME,
+        AtomicType::CHAR_STRING,
+
+        AtomicType::SYSTEM,
+        AtomicType::UNKNOWN,
+    };
+
+
+
+    static inline u16 get_tag_dimensions(u16 type_code)
+    {
+        return (u16)((type_code & TAG_DIM_MASK) >> 13);
+    }
+
+
+    static inline u16 get_udt_id(u16 type_code)
+    {
+        return type_code & UDT_TYPE_ID_MASK;
+    }
+
+
+    static inline bool is_bit_field(u16 type_code)
+    {
+        return (AtomicType)(type_code & ATOMIC_TYPE_ID_MASK) == AtomicType::BOOL;
+    }
+
+
+    static inline bool is_array_field(u16 type_code)
+    {
+        return type_code & UDT_FIELD_IS_ARRAY;
+    }
+
+
+    static DataTypeId32 get_data_type_id(u16 type_code)
+    {
+        if (type_code & TYPE_IS_SYSTEM)
+        {
+            return SYSTEM_TYPE_ID;
+        }
+        else if (type_code & TYPE_IS_STRUCT)
+        {
+            // shift left 8 to prevent conflicts with atomic types
+            return (DataTypeId32)(type_code & UDT_TYPE_ID_MASK) << 8;
+        }
+
+        u16 atomic_type = type_code & ATOMIC_TYPE_ID_MASK;
+
+        if (atomic_type >= ATOMIC_TYPE_ID_MIN && atomic_type <= ATOMIC_TYPE_ID_MAX)
+        {
+            return (DataTypeId32)atomic_type;
+        }
+
+        return UNKOWN_TYPE_ID;
+    }
+
+
+    cstr tag_type_str(AtomicType t)
+    {
+        switch (t)
+        {
+        case AtomicType::SYSTEM:               return "SYS"; // ?
+        case AtomicType::BOOL:                 return "BOOL";
+        case AtomicType::SINT:                 return "SINT";
+        case AtomicType::INT:                  return "INT";
+        case AtomicType::DINT:                 return "DINT";
+        case AtomicType::LINT:                 return "LINT";
+        case AtomicType::USINT:                return "USINT";
+        case AtomicType::UINT:                 return "UINT";
+        case AtomicType::UDINT:                return "UDINT";
+        case AtomicType::ULINT:                return "ULINT";
+        case AtomicType::REAL:                 return "REAL";
+        case AtomicType::LREAL:                return "LREAL";
+        case AtomicType::SYNCHRONOUS_TIME:     return "SYNC_TIME"; // ?
+        case AtomicType::DATE:                 return "DATE";
+        case AtomicType::TIME:                 return "TIME";
+        case AtomicType::DATETIME:             return "DATE_AND_TIME";
+        case AtomicType::CHAR_STRING:          return "STRING";
+        case AtomicType::STRING_8:             return "STRING_8";
+        case AtomicType::STRING_16:            return "STRING_16";
+        case AtomicType::STRING_32:            return "STRING_32";
+        case AtomicType::STRING_64:            return "STRING_64";
+        case AtomicType::WIDE_STRING:          return "WIDE_STRING";        
+        case AtomicType::HIGH_RES_DURATION:    return "High resolution duration value";
+        case AtomicType::MED_RES_DURATION:     return "Medium resolution duration value";
+        case AtomicType::LOW_RES_DURATION:     return "Low resolution duration value";
+        case AtomicType::N_BYTE_STRING:        return "N-byte per char character string";
+        case AtomicType::COUNTED_CHAR_STRING:  return "Counted character sting with 1 byte per character and 1 byte length indicator";
+        case AtomicType::DURATION_MS:          return "Duration in milliseconds";
+        case AtomicType::CIP_PATH:             return "CIP path segment(s)";
+        case AtomicType::ENGINEERING_UNITS:    return "Engineering units";
+        case AtomicType::INTERNATIONAL_STRING: return "International character string (encoding?)";
+        
+        default:                               return "UNKNOWN";
+        }
+    }
+
+
+    cstr tag_description_str(AtomicType t)
+    {
+        switch (t)
+        {
+        case AtomicType::SYSTEM:               return "System tag";
+        case AtomicType::BOOL:                 return "Boolean value";
+        case AtomicType::SINT:                 return "Signed 8-bit integer value";
+        case AtomicType::INT:                  return "Signed 16-bit integer value";
+        case AtomicType::DINT:                 return "Signed 32-bit integer value";
+        case AtomicType::LINT:                 return "Signed 64-bit integer value";
+        case AtomicType::USINT:                return "Unsigned 8-bit integer value";
+        case AtomicType::UINT:                 return "Unsigned 16-bit integer value";
+        case AtomicType::UDINT:                return "Unsigned 32-bit integer value";
+        case AtomicType::ULINT:                return "Unsigned 64-bit integer value";
+        case AtomicType::REAL:                 return "32-bit floating point value, IEEE format";
+        case AtomicType::LREAL:                return "64-bit floating point value, IEEE format";
+        case AtomicType::SYNCHRONOUS_TIME:     return "Synchronous time value";
+        case AtomicType::DATE:                 return "Date value";
+        case AtomicType::TIME:                 return "Time of day value";
+        case AtomicType::DATETIME:             return "Date and time of day value";
+        case AtomicType::CHAR_STRING:          return "Character string, 1 byte per character";
+        case AtomicType::STRING_8:             return "8-bit bit string";
+        case AtomicType::STRING_16:            return "16-bit bit string";
+        case AtomicType::STRING_32:            return "32-bit bit string";
+        case AtomicType::STRING_64:            return "64-bit bit string";
+        case AtomicType::WIDE_STRING:          return "Wide char character string, 2 bytes per character";        
+        case AtomicType::HIGH_RES_DURATION:    return "High resolution duration value";
+        case AtomicType::MED_RES_DURATION:     return "Medium resolution duration value";
+        case AtomicType::LOW_RES_DURATION:     return "Low resolution duration value";
+        case AtomicType::N_BYTE_STRING:        return "N-byte per char character string";
+        case AtomicType::COUNTED_CHAR_STRING:  return "Counted character sting with 1 byte per character and 1 byte length indicator";
+        case AtomicType::DURATION_MS:          return "Duration in milliseconds";
+        case AtomicType::CIP_PATH:             return "CIP path segment(s)";
+        case AtomicType::ENGINEERING_UNITS:    return "Engineering units";
+        case AtomicType::INTERNATIONAL_STRING: return "International character string (encoding?)";
+        
+        default:                               return "Unknown tag type";
+        }
+    }
+
+
+    
+    
+
+    class TagType
+    {
+    public:
+        String data_type_name;
+        String data_type_description;
+        u32 size;
+    };
+
+
+    class DataTypeTable
+    {
+    public:
+        MemoryBuffer<char> str_data;
+    };
+    
+
+    
+}
+
+
 
 
 /* tag listing */
@@ -35,7 +284,7 @@ namespace
     using TagEntryList = std::vector<TagEntry>;
 
 
-    static int append_tag_entry(TagEntryList& entries, u8* entry_data, int offset)
+    static int append_tag_entry(TagEntryList& entries, u8* entry_data)
     {
         /* each entry looks like this:
         uint32_t instance_id    monotonically increasing but not contiguous
@@ -46,7 +295,7 @@ namespace
         uint8_t string_data[]   string bytes (string_len of them)
         */
 
-        class C
+        class Header
         {
         public:
             uint32_t instance_id;
@@ -56,30 +305,32 @@ namespace
             uint16_t string_len;
         };
 
-        auto& c = *(C*)(entry_data + offset);
+        auto& h = *(Header*)(entry_data);
         
         TagEntry entry{};
 
-        entry.type_code = c.symbol_type;
+        entry.type_code = h.symbol_type;
 
         entry.elem_count = 1;
 
-        for (u32 i = 0; i < 3; ++i)
+        auto n_dims = get_tag_dimensions(entry.type_code);
+
+        for (u32 i = 0; i < n_dims; ++i)
         {
-            if (c.array_dims[i])
+            if (h.array_dims[i])
             {
-                entry.elem_count *= c.array_dims[i];
+                entry.elem_count *= h.array_dims[i];
             }
         }
 
-        offset += sizeof(C);
+        int offset = 14;
 
         entry.name.begin = (char*)(entry_data + offset);
-        entry.name.length = c.string_len;
+        entry.name.length = h.string_len;
 
         entries.push_back(entry);
 
-        offset += c.string_len;
+        offset += h.string_len;
 
         return offset;
     }
@@ -93,204 +344,10 @@ namespace
 
         while (offset < data_size)
         {
-            offset = append_tag_entry(list, entry_data, offset);
+            offset += append_tag_entry(list, entry_data + offset);
         }
 
         return list;
-    }
-}
-
-
-/* tag types */
-
-namespace
-{
-    constexpr auto TYPE_IS_STRUCT = (u16)0x8000;   // 0b1000'0000'0000'0000
-    constexpr auto TYPE_IS_SYSTEM = (u16)0x1000;   // 0b0001'0000'0000'0000
-
-    constexpr auto ATOMIC_TYPE_MASK = (u16)0x00FF; // 0b0000'0000'1111'1111
-
-    constexpr auto TYPE_UDT_ID_MASK = (u16)0x0FFF; // 0b0000'1111'1111'1111
-    constexpr auto TAG_DIM_MASK = (u16)0x6000;     // 0b1100'0000'0000'0000
-
-    constexpr auto UDT_FIELD_IS_ARRAY = (u16)0x2000; // 0b0010'0000'0000'0000
-
-
-    enum class TagType : int
-    {
-        UNKNOWN = -1,
-
-        SYSTEM = 0,
-        UDT,
-
-        BOOL,
-        SINT,
-        INT,
-        DINT,
-        LINT,
-        USINT,
-        UINT,
-        UDINT,
-        ULINT,
-        REAL,
-        LREAL,
-        SYNCHRONOUS_TIME,
-        DATE,
-        TIME,
-        DATETIME,
-        CHAR_STRING,
-        STRING_8,
-        STRING_16,
-        STRING_32,
-        STRING_64,
-        WIDE_STRING,
-        HIGH_RES_DURATION,
-        MED_RES_DURATION,
-        LOW_RES_DURATION,
-        N_BYTE_STRING,
-        COUNTED_CHAR_STRING,
-        DURATION_MS,
-        CIP_PATH,
-        ENGINEERING_UNITS,
-        INTERNATIONAL_STRING,        
-    };
-
-
-    cstr decode_tag_type(TagType t)
-    {
-        switch (t)
-        {
-        case TagType::SYSTEM:               return "System";
-        case TagType::UDT:                  return "UDT: User defined type";
-        case TagType::BOOL:                 return "BOOL: Boolean value";
-        case TagType::SINT:                 return "SINT: Signed 8-bit integer value";
-        case TagType::INT:                  return "INT: Signed 16-bit integer value";
-        case TagType::DINT:                 return "DINT: Signed 32-bit integer value";
-        case TagType::LINT:                 return "LINT: Signed 64-bit integer value";
-        case TagType::USINT:                return "USINT: Unsigned 8-bit integer value";
-        case TagType::UINT:                 return "UINT: Unsigned 16-bit integer value";
-        case TagType::UDINT:                return "UDINT: Unsigned 32-bit integer value";
-        case TagType::ULINT:                return "ULINT: Unsigned 64-bit integer value";
-        case TagType::REAL:                 return "REAL: 32-bit floating point value, IEEE format";
-        case TagType::LREAL:                return "LREAL: 64-bit floating point value, IEEE format";
-        case TagType::SYNCHRONOUS_TIME:     return "Synchronous time value";
-        case TagType::DATE:                 return "Date value";
-        case TagType::TIME:                 return "Time of day value";
-        case TagType::DATETIME:             return "Date and time of day value";
-        case TagType::CHAR_STRING:          return "Character string, 1 byte per character";
-        case TagType::STRING_8:             return "8-bit bit string";
-        case TagType::STRING_16:            return "16-bit bit string";
-        case TagType::STRING_32:            return "32-bit bit string";
-        case TagType::STRING_64:            return "64-bit bit string";
-        case TagType::WIDE_STRING:          return "Wide char character string, 2 bytes per character";
-        case TagType::HIGH_RES_DURATION:    return "High resolution duration value";
-        case TagType::MED_RES_DURATION:     return "Medium resolution duration value";
-        case TagType::LOW_RES_DURATION:     return "Low resolution duration value";
-        case TagType::N_BYTE_STRING:        return "N-byte per char character string";
-        case TagType::COUNTED_CHAR_STRING:  return "Counted character sting with 1 byte per character and 1 byte length indicator";
-        case TagType::DURATION_MS:          return "Duration in milliseconds";
-        case TagType::CIP_PATH:             return "CIP path segment(s)";
-        case TagType::ENGINEERING_UNITS:    return "Engineering units";
-        case TagType::INTERNATIONAL_STRING: return "International character string (encoding?)";
-        default:                            return "Unknown";
-        }
-    }
-
-
-    cstr decode_tag_type_short(TagType t)
-    {
-        switch (t)
-        {
-        case TagType::UDT:   return "UDT";
-        case TagType::BOOL:  return "BOOL";
-        case TagType::SINT:  return "SINT";
-        case TagType::INT:   return "INT";
-        case TagType::DINT:  return "DINT";
-        case TagType::LINT:  return "LINT";
-        case TagType::USINT: return "USINT";
-        case TagType::UINT:  return "UINT";
-        case TagType::UDINT: return "UDINT";
-        case TagType::ULINT: return "ULINT";
-        case TagType::REAL:  return "REAL";
-        case TagType::LREAL: return "LREAL";
-        default:             return decode_tag_type(t);
-        }
-    }
-
-
-    static TagType get_tag_type(uint16_t type_code)
-    {
-        if (type_code & TYPE_IS_SYSTEM)
-        {
-            return TagType::SYSTEM;
-        }
-        else if (type_code & TYPE_IS_STRUCT)
-        {
-            return TagType::UDT;
-        }
-
-        uint16_t atomic_type = type_code & ATOMIC_TYPE_MASK;
-
-        switch (atomic_type)
-        {
-        case 0xC1: return TagType::BOOL;
-        case 0xC2: return TagType::SINT;
-        case 0xC3: return TagType::INT;
-        case 0xC4: return TagType::DINT;
-        case 0xC5: return TagType::LINT;
-        case 0xC6: return TagType::USINT;
-        case 0xC7: return TagType::UINT;
-        case 0xC8: return TagType::UDINT;
-        case 0xC9: return TagType::ULINT;
-        case 0xCA: return TagType::REAL;
-        case 0xCB: return TagType::LREAL;
-        case 0xCC: return TagType::SYNCHRONOUS_TIME;
-        case 0xCD: return TagType::DATE;
-        case 0xCE: return TagType::TIME;
-        case 0xCF: return TagType::DATE;
-        case 0xD0: return TagType::CHAR_STRING;
-        case 0xD1: return TagType::STRING_8;
-        case 0xD2: return TagType::STRING_16;
-        case 0xD3: return TagType::STRING_32;
-        case 0xD4: return TagType::STRING_64;
-        case 0xD5: return TagType::WIDE_STRING;
-        case 0xD6: return TagType::HIGH_RES_DURATION;
-        case 0xD7: return TagType::MED_RES_DURATION;
-        case 0xD8: return TagType::LOW_RES_DURATION;
-        case 0xD9: return TagType::N_BYTE_STRING;
-        case 0xDA: return TagType::COUNTED_CHAR_STRING;
-        case 0xDB: return TagType::DURATION_MS;
-        case 0xDC: return TagType::CIP_PATH;
-        case 0xDD: return TagType::ENGINEERING_UNITS;
-        case 0xDE: return TagType::INTERNATIONAL_STRING;
-        default: break;
-        }
-
-        return TagType::UNKNOWN;
-    }
-    
-
-    static inline u16 get_tag_dimensions(u16 type_code)
-    {
-        return (u16)((type_code & TAG_DIM_MASK) >> 13);
-    }
-
-
-    static inline u16 get_udt_id(u16 type_code)
-    {
-        return type_code & TYPE_UDT_ID_MASK;
-    }
-
-
-    static inline bool is_bit_field(u16 type_code)
-    {
-        return get_tag_type(type_code) == TagType::BOOL;
-    }
-
-
-    static inline bool is_array_field(u16 type_code)
-    {
-        return type_code & UDT_FIELD_IS_ARRAY;
     }
 }
 
@@ -305,7 +362,7 @@ namespace
     public:
         int tag_id = -1;
 
-        TagType type = TagType::UNKNOWN;
+        DataTypeId32 type_id = UNKOWN_TYPE_ID;
 
         Bytes value;
         String name;
@@ -362,7 +419,7 @@ namespace
 
         Tag tag{};
 
-        tag.type = get_tag_type(entry.type_code);
+        tag.type_id = get_data_type_id(entry.type_code);
         tag.value.begin = value_data;
         tag.value.length = value_len;
         
@@ -415,3 +472,66 @@ namespace
 }
 
 
+/* udt entries */
+
+
+namespace
+{
+    class UdtEntry
+    {
+    public:
+        DataTypeId32 type_id = UNKOWN_TYPE_ID;
+
+    };
+
+
+    static void append_udt(u8* udt_data)
+    {
+        /*
+
+        The format in the tag buffer is:
+
+        A new header of 14 bytes:
+
+        Bytes   Meaning
+        0-1     16-bit UDT ID
+        2-5     32-bit UDT member description size, in 32-bit words.
+        6-9     32-bit UDT instance size, in bytes.
+        10-11   16-bit UDT number of members (fields).
+        12-13   16-bit UDT handle/type.
+
+        Then the raw field info.
+
+        N x field info entries
+            uint16_t field_metadata - array element count or bit field number
+            uint16_t field_type
+            uint32_t field_offset
+
+        int8_t string - zero-terminated string, UDT name, but name stops at first semicolon!
+
+        N x field names
+            int8_t string - zero-terminated.
+
+        */
+
+        class Header
+        {
+        public:
+            u16 udt_id = 0;
+            u32 desc = 0;
+            u32 udt_size = 0;
+            u16 n_fields = 0;
+        };
+
+        auto& h = *(Header*)(udt_data);
+
+        UdtEntry entry{};
+        entry.type_id = get_data_type_id(h.udt_id);
+
+        //entry
+
+        int offset = 14;
+
+
+    }
+}
