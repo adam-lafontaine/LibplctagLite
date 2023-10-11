@@ -44,12 +44,11 @@ static bool map_contains(std::unordered_map<K, V> const& map, K key)
 
 namespace
 {
-    constexpr auto TYPE_IS_STRUCT = (u16)0x8000;   // 0b1000'0000'0000'0000
-    constexpr auto TYPE_IS_SYSTEM = (u16)0x1000;   // 0b0001'0000'0000'0000
-
-    constexpr auto TAG_DIM_MASK = (u16)0x6000;     // 0b0110'0000'0000'0000
-
+    constexpr auto TYPE_IS_STRUCT = (u16)0x8000;     // 0b1000'0000'0000'0000
+    constexpr auto TYPE_IS_SYSTEM = (u16)0x1000;     // 0b0001'0000'0000'0000
     constexpr auto UDT_FIELD_IS_ARRAY = (u16)0x2000; // 0b0010'0000'0000'0000
+
+    constexpr auto TAG_DIM_MASK = (u16)0x6000;       // 0b0110'0000'0000'0000    
 
     constexpr auto ATOMIC_TYPE_ID_MASK = (u16)0x00FF; // 0b0000'0000'1111'1111
     constexpr auto ATOMIC_TYPE_ID_MIN = (u16)0xC1;    // 0b0000'0000'1100'0001
@@ -130,7 +129,6 @@ namespace
     };
 
 
-
     static inline u16 get_tag_dimensions(u16 type_code)
     {
         return (u16)((type_code & TAG_DIM_MASK) >> 13);
@@ -164,7 +162,7 @@ namespace
         else if (type_code & TYPE_IS_STRUCT)
         {
             // shift left 8 to prevent conflicts with atomic types
-            return (DataTypeId32)(type_code & UDT_TYPE_ID_MASK) << 8;
+            return (DataTypeId32)(get_udt_id(type_code)) << 8;
         }
 
         u16 atomic_type = type_code & ATOMIC_TYPE_ID_MASK;
@@ -290,17 +288,19 @@ namespace
         uint8_t string_data[]   string bytes (string_len of them)
         */
 
-        class Header
+        class H
         {
         public:
-            uint32_t instance_id;
-            uint16_t symbol_type;
-            uint16_t element_length;
-            uint32_t array_dims[3];
-            uint16_t string_len;
+            u32 instance_id;    // 4
+            u16 symbol_type;    // 2
+            u16 element_length; // 2
+            u32 array_dims[3];  // 3 * 4
+            u16 string_len;     // 2
         };
 
-        auto& h = *(Header*)(entry_data);
+        constexpr auto H_size = 4 + 2 + 2 + 3 * 4 + 2;
+
+        auto& h = *(H*)(entry_data);
         
         TagEntry entry{};
 
@@ -318,7 +318,7 @@ namespace
             }
         }
 
-        int offset = 14;
+        int offset = H_size;
 
         entry.name.begin = (char*)(entry_data + offset);
         entry.name.length = h.string_len;
@@ -471,17 +471,33 @@ namespace
 
 namespace
 {
-    class UdtEntry
+    class FieldEntry
     {
     public:
-        DataTypeId32 type_id = UNKOWN_TYPE_ID;
+        u16 elem_count = 0;
+        u16 bit_number = 0;
 
-        String type_name;
+        u16 type_code = 0;
+        u16 offset = 0;
 
+        String field_name;
     };
 
 
-    static void append_udt(u8* udt_data)
+    class UdtEntry
+    {
+    public:
+        u16 udt_id = 0;
+        u32 udt_size = 0;
+        u32 n_fields = 0;
+
+        String udt_name;
+
+        std::vector<FieldEntry> fields;
+    };
+
+
+    static UdtEntry parse_udt_entry(u8* udt_data)
     {
         /*
 
@@ -510,25 +526,85 @@ namespace
 
         */
 
-        class Header
+        class H
         {
         public:
-            u16 udt_id = 0;
-            u32 desc = 0;
-            u32 udt_size = 0;
-            u16 n_fields = 0;
+            u16 udt_id = 0;   // 2
+            u32 desc = 0;     // 4
+            u32 udt_size = 0; // 4
+            u16 n_fields = 0; // 2
+            u16 handle = 0;   // 2
         };
 
-        auto& h = *(Header*)(udt_data);
+        constexpr auto H_size = 2 + 4 + 4 + 2 + 2;
+
+        class F
+        {
+        public:
+            u16 metadata = 0;  // 2
+            u16 type_code = 0; // 2
+            u32 offset = 0;    // 4
+        };
+
+        constexpr auto F_size = 2 + 2 + 4;
+
+        auto& h = *(H*)(udt_data);
 
         UdtEntry entry{};
-        entry.type_id = get_data_type_id(h.udt_id);
+        entry.udt_id = h.udt_id;
+        entry.udt_size = h.udt_size;
 
-        //entry
+        entry.fields.reserve(h.n_fields);        
 
-        int offset = 14;
+        int offset = H_size;
 
+        for (u16 i = 0; i < h.n_fields; ++i)
+        {
+            auto& f = *(F*)(udt_data + offset);
 
+            FieldEntry field{};
+            field.type_code = f.type_code;
+            field.offset = f.offset;
+
+            field.elem_count = 1;
+            if (is_array_field(f.type_code))
+            {
+                field.elem_count = f.metadata;
+            }
+            else if (is_bit_field(f.type_code))
+            {
+                field.bit_number = f.metadata;
+            }
+
+            entry.fields.push_back(field);
+
+            offset += F_size;
+        }
+
+        auto string_data = (char*)(udt_data + offset);
+        auto string_len = strlen(string_data);
+        int str_offset = 0;
+
+        u32 name_len = 0;
+        char end = ';';
+        while (string_data[name_len] != end && name_len < string_len)
+        {
+            ++name_len;
+        }
+
+        entry.udt_name.begin = string_data;
+        entry.udt_name.length = name_len;
+
+        str_offset = string_len + 1;
+        for (auto& field : entry.fields)
+        {
+            auto str = string_data + str_offset;
+            field.field_name.begin = str;
+            field.field_name.length = strlen(str);
+            str_offset++;
+        }
+
+        return entry; 
     }
 }
 
