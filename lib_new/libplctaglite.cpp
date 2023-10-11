@@ -21,6 +21,24 @@ static void destroy_vector(std::vector<T>& vec)
 }
 
 
+template <typename K, typename V>
+static void destroy_map(std::unordered_map<K, V>& map)
+{
+    std::unordered_map<K, V> temp;
+    std::swap(map, temp);
+}
+
+
+template <typename K, typename V>
+static bool map_contains(std::unordered_map<K, V> const& map, K key)
+{
+    auto not_found = map.end();
+    auto it = map.find(key);
+
+    return it == not_found;
+}
+
+
 
 /* tag types */
 
@@ -360,10 +378,10 @@ namespace
 
     static void destroy_tag_table(TagTable& table)
     {
+        destroy_vector(table.tags);
+
         mb::destroy_buffer(table.value_data);
         mb::destroy_buffer(table.name_data);
-
-        destroy_vector(table.tags);
     }    
 
 
@@ -458,6 +476,8 @@ namespace
     public:
         DataTypeId32 type_id = UNKOWN_TYPE_ID;
 
+        String type_name;
+
     };
 
 
@@ -536,17 +556,30 @@ namespace
         DataTypeMap type_map;
 
         MemoryBuffer<char> atomic_str_data;
+        std::vector<MemoryBuffer<char>> udt_str_data;
     };
+
+
+    static void destroy_data_type_table(DataTypeTable& table)
+    {
+        destroy_map(table.type_map);
+
+        mb::destroy_buffer(table.atomic_str_data);
+
+        for (auto& buffer : table.udt_str_data)
+        {
+            mb::destroy_buffer(buffer);
+        }
+
+        destroy_vector(table.udt_str_data);
+    }
 
 
     static void add_data_type(DataTypeTable& table, AtomicType type)
     {        
         auto type_id = (DataTypeId32)type;
 
-        auto not_found = table.type_map.end();
-        auto it = table.type_map.find(type_id);
-
-        if (it != not_found)
+        if (map_contains(table.type_map, type_id))
         {
             return;
         }
@@ -557,13 +590,13 @@ namespace
         auto name_len = strlen(name_str);
         auto desc_len = strlen(desc_str);
 
-        auto name_data = mb::push_elements(table.atomic_str_data, name_len + 1);
+        auto name_data = mb::push_elements(table.atomic_str_data, name_len + 1); /* zero terminated */
         if (!name_data)
         {
             return;
         }
 
-        auto desc_data = mb::push_elements(table.atomic_str_data, desc_len + 1);
+        auto desc_data = mb::push_elements(table.atomic_str_data, desc_len + 1); /* zero terminated */
         if (!desc_data)
         {
             mb::pop_elements(table.atomic_str_data, name_len + 1);
@@ -597,7 +630,61 @@ namespace
 
     static void update_data_type_table(DataTypeTable& table, UdtEntry const& entry)
     {
+        auto type_id = entry.type_id;
         
+        if (map_contains(table.type_map, type_id))
+        {
+            return;
+        }
+        
+        MemoryBuffer<char> buffer{};
+
+        auto name_str = entry.type_name.begin;
+        auto desc_str = "User defined type";
+
+        auto name_len = entry.type_name.length;
+        auto desc_len = strlen(desc_str);        
+
+        if (!mb::create_buffer(buffer, desc_len + name_len + 2)) /* zero terminated */
+        {            
+            return;
+        }
+
+        auto name_data = mb::push_elements(buffer, name_len + 1); /* zero terminated */
+        if (!name_data)
+        {
+            mb::destroy_buffer(buffer);
+            return;
+        }
+
+        auto desc_data = mb::push_elements(buffer, desc_len + 1); /* zero terminated */
+        if (!desc_data)
+        {
+            mb::destroy_buffer(buffer);
+            return;
+        }
+
+        mb::zero_buffer(buffer);
+
+        DataType dt{};
+
+        dt.type_id = type_id;
+
+        auto& name = dt.data_type_name;
+        auto& desc = dt.data_type_description;
+
+        name.begin = name_data;
+        name.length = name_len;
+        desc.begin = desc_data;
+        desc.length = desc_len;
+
+        // strncpy/strncpy_s ?
+        qsnprintf(name.begin, name.length, "%s", name_str);
+        qsnprintf(desc.begin, desc.length, "%s", desc_str);
+
+        table.type_map[type_id] = dt;
+
+        table.udt_str_data.push_back(buffer);
     }
 
 
