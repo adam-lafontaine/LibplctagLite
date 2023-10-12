@@ -9,8 +9,10 @@
 
 namespace mb = memory_buffer;
 
-using Bytes = MemoryOffset<u8>;
+
 using String = MemoryView<char>;
+using Bytes = MemoryView<u8>;
+using ByteOffset = MemoryOffset<u8>;
 
 
 static void copy_bytes(u8* src, u8* dst, u32 len)
@@ -448,20 +450,6 @@ namespace
 
         return list;
     }
-
-
-    template <class ENTRY>
-    static void append_udt_ids(std::vector<ENTRY> const& entries, std::vector<u16>& udt_ids)
-    {
-        for (auto const& e : entries)
-        {
-            auto id = id16::get_udt_id(e.type_code);
-            if (id && !vector_contains(udt_ids, id))
-            {
-                udt_ids.push_back(id);
-            }
-        }
-    }
 }
 
 
@@ -477,7 +465,7 @@ namespace
 
         DataTypeId32 type_id = id32::UNKNOWN_TYPE_ID;
 
-        Bytes value;
+        ByteOffset value;
         String name;
     };
 
@@ -594,6 +582,8 @@ namespace
         String udt_name;
 
         std::vector<FieldEntry> fields;
+
+        // how to parse scan data
     };
 
 
@@ -705,6 +695,23 @@ namespace
         return entry; 
     }
 
+
+    template <class ENTRY>
+    static void append_udt_ids(std::vector<ENTRY> const& entries, std::vector<u16>& udt_ids)
+    {
+        for (auto const& e : entries)
+        {
+            auto id = id16::get_udt_id(e.type_code);
+            if (id && !vector_contains(udt_ids, id))
+            {
+                udt_ids.push_back(id);
+            }
+        }
+    }
+
+
+
+
 }
 
 
@@ -715,9 +722,11 @@ namespace
     class DataType
     {
     public:
-        DataTypeId32 type_id = UNKNOWN_TYPE_ID;
+        DataTypeId32 type_id = id32::UNKNOWN_TYPE_ID;
         String data_type_name;
         String data_type_description;
+
+        // how to parse scan data
     };
 
 
@@ -759,6 +768,8 @@ namespace
             return;
         }
 
+        // how to parse scan data - AtomicType
+
         auto name_str = tag_type_str(type);
         auto desc_str = tag_description_str(type);
 
@@ -778,12 +789,6 @@ namespace
     }
 
 
-    static void update_data_type_table(DataTypeTable& table, TagEntry const& entry)
-    {
-        
-    }
-
-
     static void update_data_type_table(DataTypeTable& table, UdtEntry const& entry)
     {
         auto type_id = id32::get_udt_type_id(entry.udt_id);
@@ -792,6 +797,8 @@ namespace
         {
             return;
         }
+
+        // how to parse scan data - UdtEntry
         
         MemoryBuffer<char> buffer{};
         
@@ -823,6 +830,12 @@ namespace
     }
 
 
+    static void update_data_type_table(DataTypeTable& table, TagEntry const& entry)
+    {
+        
+    }
+
+
     static bool create_data_type_table(DataTypeTable& table)
     {
         u32 str_bytes = 0;
@@ -847,5 +860,90 @@ namespace
         }
 
         return true;
+    }
+}
+
+
+/* scan cycle */
+
+namespace
+{
+    static bool scan_tag(String const& tag_name, Bytes& dst)
+    {
+        // TODO
+        dst.begin = 0;
+        dst.length = 0;
+
+        return false;
+    }
+
+
+    static bool scan_tag(cstr tag_name, Bytes& dst)
+    {
+        // TODO
+        dst.begin = 0;
+        dst.length = 0;
+
+        return false;
+    }
+
+
+    static void init()
+    {
+        DataTypeTable data_types{};
+        TagTable tags{};
+
+        auto const cleanup = [&]()
+        {
+            destroy_data_type_table(data_types);
+            destroy_tag_table(tags);
+        };
+
+        // TODO
+        Bytes entry_data{};
+        if (!scan_tag("@tags", entry_data))
+        {
+            return;
+        }
+
+        auto tag_entries = parse_tag_entries(entry_data.begin, entry_data.length);
+
+        if (!create_tag_table(tag_entries, tags))
+        {
+            return;
+        }
+
+        if (!create_data_type_table(data_types))
+        {
+            return;
+        }
+
+        std::vector<u16> udt_ids;
+        append_udt_ids(tag_entries, udt_ids);
+
+        destroy_vector(tag_entries);
+
+        char udt[20];
+
+        for (u32 i = 0; i < udt_ids.size(); ++i)
+        {
+            auto id = (int)udt_ids[i];
+            qsnprintf(udt, 20, "@udt/%d", id);
+
+            if (!scan_tag(udt, entry_data)) // TODO
+            {
+                continue;
+            }
+
+            auto entry = parse_udt_entry(entry_data.begin);
+
+            update_data_type_table(data_types, entry);
+
+            
+
+            append_udt_ids(entry.fields, udt_ids);
+        }
+
+        
     }
 }
