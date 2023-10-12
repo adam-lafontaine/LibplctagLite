@@ -36,10 +36,12 @@ template <typename T>
 class ParallelBuffer
 {
 public:
-	T* p_data_[2] =  { 0 };
+	T* p_data_[2] = { 0 };
 
 	size_t p_capacity_ = 0;
 	size_t p_size_ = 0;
+
+	u8 read_id = 0;
 };
 
 
@@ -118,6 +120,7 @@ namespace memory_buffer
 		buffer.capacity_ = 0;
 		buffer.size_ = 0;
 	}
+
 
 	template <typename T>
 	void reset_buffer(MemoryBuffer<T>& buffer)
@@ -284,10 +287,13 @@ namespace memory_buffer
 
 		MemoryOffset<T> offset{};
 
+		offset.begin = buffer.size_;
+		offset.length = n_elements;
+
 		if (push_elements(buffer, n_elements))
 		{
-			offset.begin = buffer.size_;
-			offset.length = n_elements;
+			// error
+			assert(false);
 		}
 
 		return offset;
@@ -323,5 +329,132 @@ namespace memory_buffer
 		buffer.p_size_ = 0;
 
 		return true;
+	}
+
+
+	template <typename T>
+	void zero_buffer(ParallelBuffer<T>& buffer)
+	{
+		assert(buffer.p_capacity_ > 0);
+		assert(buffer.p_data_[0]);
+
+		if (buffer.p_capacity_ == 0 || !buffer.p_data_[0])
+		{
+			return;
+		}
+
+		using byte = unsigned char;
+
+		constexpr auto size64 = sizeof(size_t);
+
+		auto total_bytes = buffer.p_capacity_ * sizeof(T) * 2;
+
+		auto len64 = total_bytes / size64;
+		auto begin64 = (size_t*)buffer.data_[0];
+
+		auto len8 = total_bytes - len64 * size64;
+		auto begin8 = (byte*)(begin64 + len64);
+
+		for (size_t i = 0; i < len64; ++i)
+		{
+			begin64[i] = 0;
+		}
+
+		for (size_t i = 0; i < len8; ++i)
+		{
+			begin8[i] = 0;
+		}
+	}
+
+
+	template <typename T>
+	void destroy_buffer(ParallelBuffer<T>& buffer)
+	{
+		if (buffer.p_data_[0])
+		{
+			std::free(buffer.p_data_[0]);
+		}		
+
+		buffer.p_data_[0] = nullptr;
+		buffer.p_data_[1] = nullptr;
+		buffer.p_capacity_ = 0;
+		buffer.p_size_ = 0;
+	}
+
+
+	template <typename T>
+	void reset_buffer(ParallelBuffer<T>& buffer)
+	{
+		buffer.p_size_ = 0;
+	}
+
+
+	template <typename T>
+	MemoryOffset<T> push_offset(ParallelBuffer<T>& buffer, unsigned n_elements)
+	{
+		assert(n_elements > 0);
+		assert(buffer.p_data_[0]);
+		assert(buffer.p_capacity_[0]);
+
+		auto is_valid =
+			buffer.p_data_[0] &&
+			buffer.p_capacity_ &&
+			buffer.p_size_ < buffer.p_capacity_;
+
+		auto elements_available = (buffer.p_capacity_ - p_buffer.size_) >= n_elements;
+		assert(elements_available);
+
+		if (!is_valid || !elements_available)
+		{
+			// error
+			assert(false);
+		}		
+
+		MemoryOffset<T> offset{};
+		offset.begin = buffer.p_size_;
+		offset.length = n_elements;
+
+		buffer.p_size_ += n_elements;
+
+		return offset;
+	}
+
+
+	template <typename T>
+	MemoryView<T> get_read_at(ParallelBuffer<T> const& buffer, MemoryOffset<T> const& offset)
+	{
+		assert(buffer.p_data_[0]);
+		assert(buffer.p_capacity_[0]);
+
+		MemoryView<T> view{};
+
+		view.begin = buffer.p_data_[buffer.read_id] + offset.begin;
+		view.length = offset.length;
+
+		return view;
+	}
+
+
+	template <typename T>
+	MemoryView<T> get_write_at(ParallelBuffer<T> const& buffer, MemoryOffset<T> const& offset)
+	{
+		assert(buffer.p_data_[0]);
+		assert(buffer.p_capacity_[0]);
+
+		MemoryView<T> view{};
+
+		auto write_id = (int)(!buffer.read_id);
+
+		view.begin = buffer.p_data_[write_id] + offset.begin;
+		view.length = offset.length;
+
+		return view;
+	}
+
+
+	template <typename T>
+	void flip_read_write(ParallelBuffer<T>& buffer)
+	{
+		buffer.read_id = (u8)(!buffer.read_id);
 	}
 }
