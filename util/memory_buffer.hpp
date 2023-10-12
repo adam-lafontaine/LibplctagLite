@@ -394,7 +394,7 @@ namespace memory_buffer
 	{
 		assert(n_elements > 0);
 		assert(buffer.p_data_[0]);
-		assert(buffer.p_capacity_[0]);
+		assert(buffer.p_capacity_);
 
 		auto is_valid =
 			buffer.p_data_[0] &&
@@ -424,7 +424,7 @@ namespace memory_buffer
 	MemoryView<T> get_read_at(ParallelBuffer<T> const& buffer, MemoryOffset<T> const& offset)
 	{
 		assert(buffer.p_data_[0]);
-		assert(buffer.p_capacity_[0]);
+		assert(buffer.p_capacity_);
 
 		MemoryView<T> view{};
 
@@ -439,7 +439,7 @@ namespace memory_buffer
 	MemoryView<T> get_write_at(ParallelBuffer<T> const& buffer, MemoryOffset<T> const& offset)
 	{
 		assert(buffer.p_data_[0]);
-		assert(buffer.p_capacity_[0]);
+		assert(buffer.p_capacity_);
 
 		MemoryView<T> view{};
 

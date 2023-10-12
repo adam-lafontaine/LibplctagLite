@@ -13,6 +13,37 @@ using Bytes = MemoryOffset<u8>;
 using String = MemoryView<char>;
 
 
+static void copy_bytes(u8* src, u8* dst, u32 len)
+{
+    constexpr auto size64 = sizeof(u64);
+
+    auto len64 = len / size64;
+    auto src64 = (u64*)src;
+    auto dst64 = (u64*)dst;
+
+    auto len8 = len - len64 * size64;
+    auto src8 = (u8*)(src64 + len64);
+    auto dst8 = (u8*)(dst64 + len64);
+
+    for (size_t i = 0; i < len64; ++i)
+    {
+        dst64[i] = src64[i];
+    }
+
+    for (size_t i = 0; i < len8; ++i)
+    {
+        dst8[i] = src8[i];
+    }
+}
+
+
+template <typename T>
+static void copy_atomic_bytes(u8* src, u8* dst)
+{
+    *(T*)src = *(T*)dst;
+}
+
+
 static void copy(cstr src, String const& dst)
 {
     for (u32 i = 0; i < dst.length; ++i)
@@ -458,7 +489,7 @@ namespace
 
         std::vector<Tag> tags;
 
-        MemoryBuffer<u8> value_data;
+        ParallelBuffer<u8> value_data;
         MemoryBuffer<char> name_data;
     };
 
@@ -475,13 +506,13 @@ namespace
     u32 elem_size(TagEntry const& e) { return e.elem_count * e.elem_size; }
 
 
-    u32 str_size(TagEntry const& e) { return e.name.length + 1; /* zero terminated */}
+    u32 cstr_size(TagEntry const& e) { return e.name.length + 1; /* zero terminated */}
 
 
     static void add_tag(TagTable& table, TagEntry const& entry)
     {
         auto value_len = elem_size(entry);
-        auto name_alloc_len = str_size(entry);
+        auto name_alloc_len = cstr_size(entry);
         auto name_copy_len = entry.name.length;
 
         assert(name_alloc_len > name_copy_len); /* zero terminated */
@@ -506,7 +537,7 @@ namespace
         for (auto const& e : entries)
         {
             value_bytes += elem_size(e);
-            str_bytes += str_size(e);
+            str_bytes += cstr_size(e);
         }
 
         if (!mb::create_buffer(table.value_data, value_bytes))
@@ -521,7 +552,7 @@ namespace
             return false;
         }
 
-        mb::zero_buffer(table.name_data);
+        mb::zero_buffer(table.value_data);
         mb::zero_buffer(table.name_data);
 
         table.tags.reserve(entries.size());
