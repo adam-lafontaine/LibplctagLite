@@ -23,6 +23,26 @@ public:
 };
 
 
+template <typename T>
+class MemoryOffset
+{
+public:
+	u32 begin = 0;
+	u32 length = 0;
+};
+
+
+template <typename T>
+class ParallelBuffer
+{
+public:
+	T* p_data_[2] =  { 0 };
+
+	size_t p_capacity_ = 0;
+	size_t p_size_ = 0;
+};
+
+
 namespace memory_buffer
 {
 	template <typename T>
@@ -203,6 +223,24 @@ namespace memory_buffer
 	}
 
 
+	MemoryView<char> push_cstr_view(MemoryBuffer<char>& buffer, unsigned total_bytes)
+	{
+		assert(total_bytes > 0);
+		assert(buffer.data_);
+		assert(buffer.capacity_);
+
+		auto bytes_available = (buffer.capacity_ - buffer.size_) >= total_bytes;
+		assert(bytes_available);
+
+		MemoryView<char> view{};
+
+		view.begin = push_elements(buffer, total_bytes);
+		view.length = total_bytes - 1; /* zero terminated */
+
+		return view;
+	}
+
+
 	template <typename T>
 	MemoryView<T> make_view(MemoryBuffer<T>& buffer)
 	{
@@ -218,4 +256,72 @@ namespace memory_buffer
 		return view;
 	}
 
+
+	template <typename T>
+	MemoryView<T> make_view(T* data, unsigned n_elements)
+	{
+		assert(n_elements > 0);
+		assert(data);
+
+		MemoryView<T> view{};
+
+		view.begin = data;
+		view.length = n_elements;
+
+		return view;
+	}
+
+
+	template <typename T>
+	MemoryOffset<T> push_offset(MemoryBuffer<T>& buffer, unsigned n_elements)
+	{
+		assert(n_elements > 0);
+		assert(buffer.data_);
+		assert(buffer.capacity_);
+
+		auto elements_available = (buffer.capacity_ - buffer.size_) >= n_elements;
+		assert(elements_available);
+
+		MemoryOffset<T> offset{};
+
+		if (push_elements(buffer, n_elements))
+		{
+			offset.begin = buffer.size_;
+			offset.length = n_elements;
+		}
+
+		return offset;
+	}
+
+}
+
+
+namespace memory_buffer
+{
+	template <typename T>
+	bool create_buffer(ParallelBuffer<T>& buffer, size_t n_elements)
+	{
+		assert(n_elements > 0);
+		assert(!buffer.n_data_[0]);
+
+		if (n_elements == 0 || buffer.p_data_[0])
+		{
+			return false;
+		}
+
+		buffer.p_data_[0] = (T*)std::malloc(n_elements * sizeof(T) * 2);		
+		assert(buffer.p_data_[0]);
+
+		if (!buffer.p_data_[0])
+		{
+			return false;
+		}
+
+		buffer.p_data_[1] = buffer.p_data_[0] + n_elements;
+
+		buffer.p_capacity_ = n_elements;
+		buffer.p_size_ = 0;
+
+		return true;
+	}
 }

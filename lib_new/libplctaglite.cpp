@@ -9,8 +9,28 @@
 
 namespace mb = memory_buffer;
 
-using Bytes = MemoryView<u8>;
+using Bytes = MemoryOffset<u8>;
 using String = MemoryView<char>;
+
+
+static void copy(cstr src, String const& dst)
+{
+    for (u32 i = 0; i < dst.length; ++i)
+    {
+        dst.begin[i] = src[i];
+    }
+}
+
+
+static void copy(String const& src, String const& dst)
+{
+    auto len = src.length < dst.length ? src.length : dst.length;
+
+    for (u32 i = 0; i < len; ++i)
+    {
+        dst.begin[i] = src.begin[i];
+    }
+}
 
 
 template <typename T>
@@ -18,6 +38,21 @@ static void destroy_vector(std::vector<T>& vec)
 {
     std::vector<T> temp;
     std::swap(vec, temp);
+}
+
+
+template <typename T>
+static bool vector_contains(std::vector<T> const& vec, T value)
+{
+    for (auto v : vec)
+    {
+        if (v == value)
+        {
+            return true;
+        }
+    }
+
+    return false;    
 }
 
 
@@ -39,10 +74,12 @@ static bool map_contains(std::unordered_map<K, V> const& map, K key)
 }
 
 
+using DataTypeId32 = u32;
 
-/* tag types */
 
-namespace
+/* 16 bit ids */
+
+namespace id16
 {
     constexpr auto TYPE_IS_STRUCT = (u16)0x8000;     // 0b1000'0000'0000'0000
     constexpr auto TYPE_IS_SYSTEM = (u16)0x1000;     // 0b0001'0000'0000'0000
@@ -56,20 +93,104 @@ namespace
 
     constexpr auto UDT_TYPE_ID_MASK = (u16)0x0FFF; // 0b0000'1111'1111'1111
 
-    
 
-    using DataTypeId32 = u32;
+    static inline u16 get_tag_dimensions(u16 type_code)
+    {
+        return (u16)((type_code & id16::TAG_DIM_MASK) >> 13);
+    }
 
+
+    static inline bool is_bit_field(u16 type_code)
+    {
+        return (AtomicType)(type_code & id16::ATOMIC_TYPE_ID_MASK) == AtomicType::BOOL;
+    }
+
+
+    static inline bool is_array_field(u16 type_code)
+    {
+        return type_code & id16::UDT_FIELD_IS_ARRAY;
+    }
+
+
+    static inline u16 get_udt_id(u16 type_code)
+    {
+        if (type_code & TYPE_IS_STRUCT)
+        {
+            return type_code & UDT_TYPE_ID_MASK;
+        }
+
+        return 0;        
+    }
+}
+
+
+namespace id32
+{
     // 0b0000'0000'0000'0000'0000'0000'0000'0000
     //  |----other-----|------udt-----|-atomic--|
 
+    constexpr auto OTHER_TYPE_ID_MASK  = (DataTypeId32)0b1111'1111'1111'0000'0000'0000'0000'0000;
+    constexpr auto UDT_TYPE_ID_MASK    = (DataTypeId32)0b0000'0000'0000'1111'1111'1111'0000'0000;
+    constexpr auto ATOMIC_TYPE_ID_MASK = (DataTypeId32)0b0000'0000'0000'0000'0000'0000'1111'1111;
+
     constexpr auto SYSTEM_TYPE_ID = (DataTypeId32)0b0000'0000'0001'0000'0000'0000'0000'0000;
-    constexpr auto UNKOWN_TYPE_ID = (DataTypeId32)0b0000'0000'0010'0000'0000'0000'0000'0000;
+    constexpr auto UNKNOWN_TYPE_ID = (DataTypeId32)0b0000'0000'0010'0000'0000'0000'0000'0000;
+
+
+    static inline DataTypeId32 get_udt_type_id(u16 type_code)
+    {
+        if (type_code & id16::TYPE_IS_STRUCT)
+        {
+            // shift left 8 to prevent conflicts with atomic types
+            return (DataTypeId32)(id16::get_udt_id(type_code)) << 8;
+        }
+
+        return 0;        
+    }
+
+
+    static DataTypeId32 get_data_type_id(u16 type_code)
+    {
+        if (type_code & id16::TYPE_IS_SYSTEM)
+        {
+            return id32::SYSTEM_TYPE_ID;
+        }
+        else if (type_code & id16::TYPE_IS_STRUCT)
+        {            
+            return get_udt_type_id(type_code);
+        }
+
+        u16 atomic_type = type_code & id16::ATOMIC_TYPE_ID_MASK;
+
+        if (atomic_type >= id16::ATOMIC_TYPE_ID_MIN && atomic_type <= id16::ATOMIC_TYPE_ID_MAX)
+        {
+            return (DataTypeId32)atomic_type;
+        }
+
+        return id32::UNKNOWN_TYPE_ID;
+    }
+
+
+    static bool is_udt_type(DataTypeId32 id)
+    {
+        return (id & UDT_TYPE_ID_MASK) && !(id & OTHER_TYPE_ID_MASK) && !(id & ATOMIC_TYPE_ID_MASK);
+    }
+
+
+
+}
+
+
+
+/* tag types */
+
+namespace
+{   
 
     enum class AtomicType : DataTypeId32
     {
-        UNKNOWN = UNKOWN_TYPE_ID,
-        SYSTEM  = SYSTEM_TYPE_ID,
+        UNKNOWN = id32::UNKNOWN_TYPE_ID,
+        SYSTEM  = id32::SYSTEM_TYPE_ID,
 
         BOOL  = (DataTypeId32)0xC1,
         SINT  = (DataTypeId32)0xC2,
@@ -126,54 +247,7 @@ namespace
 
         AtomicType::SYSTEM,
         AtomicType::UNKNOWN,
-    };
-
-
-    static inline u16 get_tag_dimensions(u16 type_code)
-    {
-        return (u16)((type_code & TAG_DIM_MASK) >> 13);
-    }
-
-
-    static inline u16 get_udt_id(u16 type_code)
-    {
-        return type_code & UDT_TYPE_ID_MASK;
-    }
-
-
-    static inline bool is_bit_field(u16 type_code)
-    {
-        return (AtomicType)(type_code & ATOMIC_TYPE_ID_MASK) == AtomicType::BOOL;
-    }
-
-
-    static inline bool is_array_field(u16 type_code)
-    {
-        return type_code & UDT_FIELD_IS_ARRAY;
-    }
-
-
-    static DataTypeId32 get_data_type_id(u16 type_code)
-    {
-        if (type_code & TYPE_IS_SYSTEM)
-        {
-            return SYSTEM_TYPE_ID;
-        }
-        else if (type_code & TYPE_IS_STRUCT)
-        {
-            // shift left 8 to prevent conflicts with atomic types
-            return (DataTypeId32)(get_udt_id(type_code)) << 8;
-        }
-
-        u16 atomic_type = type_code & ATOMIC_TYPE_ID_MASK;
-
-        if (atomic_type >= ATOMIC_TYPE_ID_MIN && atomic_type <= ATOMIC_TYPE_ID_MAX)
-        {
-            return (DataTypeId32)atomic_type;
-        }
-
-        return UNKOWN_TYPE_ID;
-    }
+    };    
 
 
     cstr tag_type_str(AtomicType t)
@@ -308,7 +382,7 @@ namespace
 
         entry.elem_count = 1;
 
-        auto n_dims = get_tag_dimensions(entry.type_code);
+        auto n_dims = id16::get_tag_dimensions(entry.type_code);
 
         for (u32 i = 0; i < n_dims; ++i)
         {
@@ -320,8 +394,7 @@ namespace
 
         int offset = H_size;
 
-        entry.name.begin = (char*)(entry_data + offset);
-        entry.name.length = h.string_len;
+        entry.name = mb::make_view((char*)(entry_data + offset),  h.string_len);
 
         entries.push_back(entry);
 
@@ -344,6 +417,20 @@ namespace
 
         return list;
     }
+
+
+    template <class ENTRY>
+    static void append_udt_ids(std::vector<ENTRY> const& entries, std::vector<u16>& udt_ids)
+    {
+        for (auto const& e : entries)
+        {
+            auto id = id16::get_udt_id(e.type_code);
+            if (id && !vector_contains(udt_ids, id))
+            {
+                udt_ids.push_back(id);
+            }
+        }
+    }
 }
 
 
@@ -357,7 +444,7 @@ namespace
     public:
         int tag_id = -1;
 
-        DataTypeId32 type_id = UNKOWN_TYPE_ID;
+        DataTypeId32 type_id = id32::UNKNOWN_TYPE_ID;
 
         Bytes value;
         String name;
@@ -399,32 +486,14 @@ namespace
 
         assert(name_alloc_len > name_copy_len); /* zero terminated */
 
-        auto value_data = mb::push_elements(table.value_data, value_len);
-        if (!value_data)
-        {
-            return;
-        }
-
-        auto str_data = mb::push_elements(table.name_data, name_alloc_len);
-        if (!str_data)
-        {
-            mb::pop_elements(table.value_data, value_len);
-            return;
-        }
-
         Tag tag{};
 
-        tag.type_id = get_data_type_id(entry.type_code);
-        tag.value.begin = value_data;
-        tag.value.length = value_len;
-        
-        for (u32 i = 0; i < name_copy_len; ++i)
-        {
-            str_data[i] = tag.name.begin[i];
-        }
+        tag.type_id = id32::get_data_type_id(entry.type_code);
 
-        tag.name.begin = str_data;
-        tag.name.length = name_copy_len;
+        tag.value = mb::push_offset(table.value_data, value_len);
+        tag.name = mb::push_cstr_view(table.name_data, name_alloc_len);
+
+        copy(entry.name, tag.name);
 
         table.tags.push_back(tag);
     }
@@ -567,11 +636,11 @@ namespace
             field.offset = f.offset;
 
             field.elem_count = 1;
-            if (is_array_field(f.type_code))
+            if (id16::is_array_field(f.type_code))
             {
                 field.elem_count = f.metadata;
             }
-            else if (is_bit_field(f.type_code))
+            else if (id16::is_bit_field(f.type_code))
             {
                 field.bit_number = f.metadata;
             }
@@ -592,31 +661,30 @@ namespace
             ++name_len;
         }
 
-        entry.udt_name.begin = string_data;
-        entry.udt_name.length = name_len;
+        entry.udt_name = mb::make_view(string_data, name_len);
 
         str_offset = string_len + 1;
         for (auto& field : entry.fields)
         {
             auto str = string_data + str_offset;
-            field.field_name.begin = str;
-            field.field_name.length = strlen(str);
+            field.field_name = mb::make_view(str, strlen(str));
             str_offset++;
         }
 
         return entry; 
     }
+
 }
 
 
-/* tag type table */
+/* data type table */
 
 namespace
 {
     class DataType
     {
     public:
-        DataTypeId32 type_id = UNKOWN_TYPE_ID;
+        DataTypeId32 type_id = UNKNOWN_TYPE_ID;
         String data_type_name;
         String data_type_description;
     };
@@ -666,33 +734,14 @@ namespace
         auto name_len = strlen(name_str);
         auto desc_len = strlen(desc_str);
 
-        auto name_data = mb::push_elements(table.atomic_str_data, name_len + 1); /* zero terminated */
-        if (!name_data)
-        {
-            return;
-        }
-
-        auto desc_data = mb::push_elements(table.atomic_str_data, desc_len + 1); /* zero terminated */
-        if (!desc_data)
-        {
-            mb::pop_elements(table.atomic_str_data, name_len + 1);
-            return;
-        }
-
         DataType dt{};
         dt.type_id = type_id;
 
-        auto& name = dt.data_type_name;
-        auto& desc = dt.data_type_description;
+        dt.data_type_name = mb::push_cstr_view(table.atomic_str_data, name_len + 1);
+        dt.data_type_description = mb::push_cstr_view(table.atomic_str_data, desc_len + 1);
 
-        name.begin = name_data;
-        name.length = name_len;
-        desc.begin = desc_data;
-        desc.length = desc_len;
-
-        // strncpy/strncpy_s ?
-        qsnprintf(name.begin, name.length, "%s", name_str);
-        qsnprintf(desc.begin, desc.length, "%s", desc_str);
+        copy(name_str, dt.data_type_name);
+        copy(desc_str, dt.data_type_description);
 
         table.type_map[type_id] = dt;
     }
@@ -706,57 +755,36 @@ namespace
 
     static void update_data_type_table(DataTypeTable& table, UdtEntry const& entry)
     {
-        auto type_id = entry.type_id;
+        auto type_id = id32::get_udt_type_id(entry.udt_id);
         
-        if (map_contains(table.type_map, type_id))
+        if (!type_id || map_contains(table.type_map, type_id))
         {
             return;
         }
         
         MemoryBuffer<char> buffer{};
-
-        auto name_str = entry.type_name.begin;
+        
         auto desc_str = "User defined type";
 
-        auto name_len = entry.type_name.length;
-        auto desc_len = strlen(desc_str);        
+        auto name_len = entry.udt_name.length;
+        auto desc_len = strlen(desc_str);
 
         if (!mb::create_buffer(buffer, desc_len + name_len + 2)) /* zero terminated */
         {            
             return;
         }
 
-        auto name_data = mb::push_elements(buffer, name_len + 1); /* zero terminated */
-        if (!name_data)
-        {
-            mb::destroy_buffer(buffer);
-            return;
-        }
-
-        auto desc_data = mb::push_elements(buffer, desc_len + 1); /* zero terminated */
-        if (!desc_data)
-        {
-            mb::destroy_buffer(buffer);
-            return;
-        }
-
-        mb::zero_buffer(buffer);
+        mb::zero_buffer(buffer);        
 
         DataType dt{};
 
         dt.type_id = type_id;
 
-        auto& name = dt.data_type_name;
-        auto& desc = dt.data_type_description;
-
-        name.begin = name_data;
-        name.length = name_len;
-        desc.begin = desc_data;
-        desc.length = desc_len;
-
-        // strncpy/strncpy_s ?
-        qsnprintf(name.begin, name.length, "%s", name_str);
-        qsnprintf(desc.begin, desc.length, "%s", desc_str);
+        dt.data_type_name = mb::push_cstr_view(buffer, name_len + 1);
+        dt.data_type_description = mb::push_cstr_view(buffer, desc_len + 1);
+        
+        copy(entry.udt_name, dt.data_type_name);
+        copy(desc_str, dt.data_type_description);
 
         table.type_map[type_id] = dt;
 
