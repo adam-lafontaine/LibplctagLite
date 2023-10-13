@@ -716,8 +716,6 @@ int listing_tag_build_read_request_connected(ab_tag_p tag)
     /* set the size of the request */
     req->request_size = (int)((int)sizeof(*cip) + (int)(data - data_start));
 
-    req->allow_packing = tag->allow_packing;
-
     /* add the request to the session's list. */
     rc = session_add_request(tag->session, req);
 
@@ -1180,8 +1178,6 @@ int udt_tag_build_read_metadata_request_connected(ab_tag_p tag)
     /* set the size of the request */
     req->request_size = (int)((int)sizeof(*cip) + (int)(data - data_start));
 
-    req->allow_packing = tag->allow_packing;
-
     /* add the request to the session's list. */
     rc = session_add_request(tag->session, req);
 
@@ -1473,8 +1469,6 @@ int udt_tag_build_read_fields_request_connected(ab_tag_p tag)
 
     /* set the size of the request */
     req->request_size = (int)((int)sizeof(*cip) + (int)(data - data_start));
-
-    req->allow_packing = tag->allow_packing;
 
     /* add the request to the session's list. */
     rc = session_add_request(tag->session, req);

@@ -85,9 +85,9 @@ static int add_tag_lookup(plc_tag_p tag);
 static int tag_id_inc(int id);
 static THREAD_FUNC(tag_tickler_func);
 
-static int check_byte_order_str(const char *byte_order, int length);
+//static int check_byte_order_str(const char *byte_order, int length);
 // static int get_string_count_size_unsafe(plc_tag_p tag, int offset);
-static int get_string_length_unsafe(plc_tag_p tag, int offset);
+//static int get_string_length_unsafe(plc_tag_p tag, int offset);
 // static int get_string_capacity_unsafe(plc_tag_p tag, int offset);
 // static int get_string_padding_unsafe(plc_tag_p tag, int offset);
 // static int get_string_total_length_unsafe(plc_tag_p tag, int offset);
@@ -2333,51 +2333,6 @@ LIB_EXPORT int plc_tag_get_raw_bytes(int32_t id, int offset, uint8_t *buffer, in
  ****************************************************************************************************/
 
 
-int check_byte_order_str(const char *byte_order, int length)
-{
-    int taken[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-    int byte_order_len = str_length(byte_order);
-
-    pdebug(DEBUG_DETAIL, "Starting.");
-
-    /* check the size. */
-    if(byte_order_len != length) {
-        pdebug(DEBUG_WARN, "Byte order string, \"%s\", must be %d characters long!", byte_order, length);
-        return (byte_order_len < length ? PLCTAG_ERR_TOO_SMALL : PLCTAG_ERR_TOO_LARGE);
-    }
-
-    /* check each character. */
-    for(int i=0; i < byte_order_len; i++) {
-        int val = 0;
-
-        if(!isdigit(byte_order[i]) || byte_order[i] < '0' || byte_order[i] > '7') {
-            pdebug(DEBUG_WARN, "Byte order string, \"%s\", must be only characters from '0' to '7'!", byte_order);
-            return PLCTAG_ERR_BAD_DATA;
-        }
-
-        /* get the numeric value. */
-        val = byte_order[i] - '0';
-
-        if(val < 0 || val > (length-1)) {
-            pdebug(DEBUG_WARN, "Byte order string, \"%s\", must only values from 0 to %d!", byte_order, (length - 1));
-            return PLCTAG_ERR_BAD_DATA;
-        }
-
-        if(taken[val]) {
-            pdebug(DEBUG_WARN, "Byte order string, \"%s\", must use each digit exactly once!", byte_order);
-            return PLCTAG_ERR_BAD_DATA;
-        }
-
-        taken[val] = 1;
-    }
-
-    pdebug(DEBUG_DETAIL, "Done.");
-
-    return PLCTAG_STATUS_OK;
-}
-
-
-
 
 plc_tag_p lookup_tag(int32_t tag_id)
 {
@@ -2653,6 +2608,10 @@ int initialize_modules(void)
 
 
 #endif // __LIB_INIT_C__
+
+
+#ifndef __UTIL_ALL__
+#define __UTIL_ALL__
 
 
 #ifndef __UTIL_ATOMIC_INT_C__
@@ -4458,6 +4417,7 @@ int ensure_capacity(vector_p vec, int capacity)
 #endif // __UTIL_VECTOR_C__
 
 
+#endif // !__UTIL_ALL__
 
 #ifdef __cplusplus
 }

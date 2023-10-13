@@ -123,20 +123,20 @@ START_PACK typedef struct {
 
 static int build_read_request_connected(ab_tag_p tag, int byte_offset);
 //static int build_tag_list_request_connected(ab_tag_p tag);
-static int build_read_request_unconnected(ab_tag_p tag, int byte_offset);
-static int build_write_request_connected(ab_tag_p tag, int byte_offset);
-static int build_write_request_unconnected(ab_tag_p tag, int byte_offset);
-static int build_write_bit_request_connected(ab_tag_p tag);
-static int build_write_bit_request_unconnected(ab_tag_p tag);
+//static int build_read_request_unconnected(ab_tag_p tag, int byte_offset);
+//static int build_write_request_connected(ab_tag_p tag, int byte_offset);
+//static int build_write_request_unconnected(ab_tag_p tag, int byte_offset);
+//static int build_write_bit_request_connected(ab_tag_p tag);
+//static int build_write_bit_request_unconnected(ab_tag_p tag);
 static int check_read_status_connected(ab_tag_p tag);
-static int check_read_status_unconnected(ab_tag_p tag);
-static int check_write_status_connected(ab_tag_p tag);
-static int check_write_status_unconnected(ab_tag_p tag);
-static int calculate_write_data_per_packet(ab_tag_p tag);
+//static int check_read_status_unconnected(ab_tag_p tag);
+//static int check_write_status_connected(ab_tag_p tag);
+//static int check_write_status_unconnected(ab_tag_p tag);
+//static int calculate_write_data_per_packet(ab_tag_p tag);
 
 static int tag_read_start(ab_tag_p tag);
 static int tag_tickler(ab_tag_p tag);
-static int tag_write_start(ab_tag_p tag);
+//static int tag_write_start(ab_tag_p tag);
 
 
 static tag_vtable eip_cip_vtable_def = {
@@ -198,12 +198,9 @@ int tag_tickler(ab_tag_p tag)
 
     pdebug(DEBUG_SPEW,"Starting.");
 
-    if (tag->read_in_progress) {
-        if(tag->use_connected_msg) {
-            rc = check_read_status_connected(tag);
-        } else {
-            rc = check_read_status_unconnected(tag);
-        }
+    if (tag->read_in_progress) 
+    {
+        rc = check_read_status_connected(tag);
 
         tag->status = (int8_t)rc;
 
@@ -254,16 +251,7 @@ int tag_read_start(ab_tag_p tag)
     /* mark the tag read in progress */
     tag->read_in_progress = 1;
 
-    /* i is the index of the first new request */
-    if(tag->use_connected_msg) {
-        // if(tag->tag_list) {
-        //     rc = build_tag_list_request_connected(tag);
-        // } else {
-            rc = build_read_request_connected(tag, tag->offset);
-        // }
-    } else {
-        rc = build_read_request_unconnected(tag, tag->offset);
-    }
+    rc = build_read_request_connected(tag, tag->offset);
 
     if (rc != PLCTAG_STATUS_OK) {
         pdebug(DEBUG_WARN,"Unable to build read request!");
@@ -353,11 +341,6 @@ int build_read_request_connected(ab_tag_p tag, int byte_offset)
 
     /* set the size of the request */
     req->request_size = (int)(data - (req->data));
-
-    /* set the session so that we know what session the request is aiming at */
-    //req->session = tag->session;
-
-    req->allow_packing = tag->allow_packing;
 
     /* add the request to the session's list. */
     rc = session_add_request(tag->session, req);
@@ -490,9 +473,6 @@ int build_read_request_unconnected(ab_tag_p tag, int byte_offset)
 
     /* set the size of the request */
     req->request_size = (int)(data - (req->data));
-
-    /* allow packing if the tag allows it. */
-    req->allow_packing = tag->allow_packing;
 
     /* add the request to the session's list. */
     rc = session_add_request(tag->session, req);
@@ -720,205 +700,6 @@ static int check_read_status_connected(ab_tag_p tag)
 }
 
 
-
-static int check_read_status_unconnected(ab_tag_p tag)
-{
-    int rc = PLCTAG_STATUS_OK;
-    eip_cip_uc_resp* cip_resp;
-    uint8_t* data;
-    uint8_t* data_end;
-    int partial_data = 0;
-    ab_request_p request = NULL;
-
-    pdebug(DEBUG_SPEW, "Starting.");
-
-    if(!tag) {
-        pdebug(DEBUG_ERROR,"Null tag pointer passed!");
-        return PLCTAG_ERR_NULL_PTR;
-    }
-
-    /* guard against the request being deleted out from underneath us. */
-    request = (ab_request_p)rc_inc(tag->req);
-    rc = check_read_request_status(tag, request);
-    if(rc != PLCTAG_STATUS_OK)  {
-        pdebug(DEBUG_DETAIL, "Read request status is not OK.");
-        rc_dec(request);
-        return rc;
-    }
-
-    /* the request reference is still valid. */
-
-    /* point to the data */
-    cip_resp = (eip_cip_uc_resp*)(request->data);
-
-    /* point to the start of the data */
-    data = (request->data) + sizeof(eip_cip_uc_resp);
-
-    /* point the end of the data */
-    data_end = (request->data + le2h16(cip_resp->encap_length) + sizeof(eip_encap));
-
-    /* check the status */
-    do {
-        ptrdiff_t payload_size = (data_end - data);
-
-        if (le2h16(cip_resp->encap_command) != AB_EIP_UNCONNECTED_SEND) {
-            pdebug(DEBUG_WARN, "Unexpected EIP packet type received: %d!", cip_resp->encap_command);
-            rc = PLCTAG_ERR_BAD_DATA;
-            break;
-        }
-
-        if (le2h32(cip_resp->encap_status) != AB_EIP_OK) {
-            pdebug(DEBUG_WARN, "EIP command failed, response code: %d", le2h32(cip_resp->encap_status));
-            rc = PLCTAG_ERR_REMOTE_ERR;
-            break;
-        }
-
-        /*
-         * TODO
-         *
-         * It probably should not be necessary to check for both as setting the type to anything other
-         * than fragmented is error-prone.
-         */
-
-        if (cip_resp->reply_service != (AB_EIP_CMD_CIP_READ_FRAG | AB_EIP_CMD_CIP_OK)
-            && cip_resp->reply_service != (AB_EIP_CMD_CIP_READ | AB_EIP_CMD_CIP_OK) ) {
-            pdebug(DEBUG_WARN, "CIP response reply service unexpected: %d", cip_resp->reply_service);
-            rc = PLCTAG_ERR_BAD_DATA;
-            break;
-        }
-
-        if (cip_resp->status != AB_CIP_STATUS_OK && cip_resp->status != AB_CIP_STATUS_FRAG) {
-            pdebug(DEBUG_WARN, "CIP read failed with status: 0x%x %s", cip_resp->status, decode_cip_error_short((uint8_t *)&cip_resp->status));
-            pdebug(DEBUG_INFO, decode_cip_error_long((uint8_t *)&cip_resp->status));
-
-            rc = decode_cip_error_code((uint8_t *)&cip_resp->status);
-
-            break;
-        }
-
-        /* check to see if this is a partial response. */
-        partial_data = (cip_resp->status == AB_CIP_STATUS_FRAG);
-
-        /* the first byte of the response is a type byte. */
-        pdebug(DEBUG_DETAIL, "type byte = %d (%x)", (int)*data, (int)*data);
-
-        /* copy the type data. */
-
-        /* check for a simple/base type */
-
-        if ((*data) >= AB_CIP_DATA_BIT && (*data) <= AB_CIP_DATA_STRINGI) {
-            /* copy the type info for later. */
-            if (tag->encoded_type_info_size == 0) {
-                tag->encoded_type_info_size = 2;
-                mem_copy(tag->encoded_type_info, data, tag->encoded_type_info_size);
-            }
-
-            /* skip the type byte and zero length byte */
-            data += 2;
-        } else if ((*data) == AB_CIP_DATA_ABREV_STRUCT || (*data) == AB_CIP_DATA_ABREV_ARRAY ||
-                   (*data) == AB_CIP_DATA_FULL_STRUCT || (*data) == AB_CIP_DATA_FULL_ARRAY) {
-            /* this is an aggregate type of some sort, the type info is variable length */
-            int type_length =
-                *(data + 1) + 2;  /*
-                                   * MAGIC
-                                   * add 2 to get the total length including
-                                   * the type byte and the length byte.
-                                   */
-
-            /* check for extra long types */
-            if (type_length > MAX_TAG_TYPE_INFO) {
-                pdebug(DEBUG_WARN, "Read data type info is too long (%d)!", type_length);
-                rc = PLCTAG_ERR_TOO_LARGE;
-                break;
-            }
-
-            /* copy the type info for later. */
-            if (tag->encoded_type_info_size == 0) {
-                tag->encoded_type_info_size = type_length;
-                mem_copy(tag->encoded_type_info, data, tag->encoded_type_info_size);
-            }
-
-            data += type_length;
-        } else {
-            pdebug(DEBUG_WARN, "Unsupported data type returned, type byte=%d", *data);
-            rc = PLCTAG_ERR_UNSUPPORTED;
-            break;
-        }
-
-        /* check payload size now that we have bumped past the data type info. */
-        payload_size = (data_end - data);
-
-        /* copy the data into the tag and realloc if we need more space. */
-        if(payload_size + tag->offset > tag->size) {
-            tag->size = (int)payload_size + tag->offset;
-            tag->elem_size = tag->size / tag->elem_count;
-
-            pdebug(DEBUG_DETAIL, "Increasing tag buffer size to %d bytes.", tag->size);
-
-            tag->data = (uint8_t*)mem_realloc(tag->data, tag->size);
-            if(!tag->data) {
-                pdebug(DEBUG_WARN, "Unable to reallocate tag data memory!");
-                rc = PLCTAG_ERR_NO_MEM;
-                break;
-            }
-        }
-
-        pdebug(DEBUG_INFO, "Got %d bytes of data", (int)payload_size);
-
-
-        mem_copy(tag->data + tag->offset, data, (int)payload_size);
-
-        /* bump the byte offset */
-        tag->offset += (int)payload_size;
-
-        /* set the return code */
-        rc = PLCTAG_STATUS_OK;
-    } while(0);
-
-
-    /* clean up the request */
-    request->abort_request = 1;
-    tag->req = (ab_request_p)rc_dec(request);
-
-    /*
-     * huh?  Yes, we do it a second time because we already had
-     * a reference and got another at the top of this function.
-     * So we need to remove it twice.   Once for the capture above,
-     * and once for the original reference.
-     */
-
-    rc_dec(request);
-
-    /* are we actually done? */
-    if (rc == PLCTAG_STATUS_OK) {
-        /* this read is done. */
-        tag->read_in_progress = 0;
-
-        if (partial_data && tag->offset < tag->size) {
-            /* call read start again to get the next piece */
-            pdebug(DEBUG_DETAIL, "calling tag_read_start() to get the next chunk.");
-            rc = tag_read_start(tag);
-        } else {
-            tag->offset = 0;
-        }
-    }
-
-    /* this is not an else clause because the above if could result in bad rc. */
-    if(rc != PLCTAG_STATUS_OK && rc != PLCTAG_STATUS_PENDING) {
-        /* error ! */
-        pdebug(DEBUG_WARN, "Error received!");
-
-        /* clean up everything. */
-        ab_tag_abort(tag);
-    }
-
-    /* release the referene to the request. */
-    rc_dec(request);
-
-    pdebug(DEBUG_SPEW, "Done.");
-
-    return rc;
-}
 
 
 

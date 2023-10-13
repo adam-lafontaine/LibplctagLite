@@ -188,12 +188,9 @@ plc_tag_p ab_tag_create(attr attribs)
     }
 
     /* set up any required settings based on the cpu type. */
-    /* default to requiring a connection and allowing packing. */
-    tag->use_connected_msg = attr_get_int(attribs, "use_connected_msg", 1);
-    tag->allow_packing = attr_get_int(attribs, "allow_packing", 1);
 
     /* make sure that the connection requirement is forced. */
-    attr_set_int(attribs, "use_connected_msg", tag->use_connected_msg);
+    attr_set_int(attribs, "use_connected_msg", 1);
 
     /* get the connection path.  We need this to make a decision about the PLC. */
     path = attr_get_str(attribs,"path",NULL);
@@ -243,12 +240,8 @@ plc_tag_p ab_tag_create(attr attribs)
         tag->vtable = eip_cip_vtable();
     }
 
-    /* default to requiring a connection. */
-    tag->use_connected_msg = attr_get_int(attribs, "use_connected_msg", 1);
-    tag->allow_packing = attr_get_int(attribs, "allow_packing", 1);
-
     /* pass the connection requirement since it may be overridden above. */
-    attr_set_int(attribs, "use_connected_msg", tag->use_connected_msg);
+    attr_set_int(attribs, "use_connected_msg", 1);
 
     /* get the element count, default to 1 if missing. */
     tag->elem_count = attr_get_int(attribs,"elem_count", 1);

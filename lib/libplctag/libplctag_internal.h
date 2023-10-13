@@ -1794,8 +1794,8 @@ struct ab_request_t {
     int tag_id;
 
     /* allow requests to be packed in the session */
-    int allow_packing;
-    int packing_num;
+    //int allow_packing;
+    //int packing_num;
 
     /* time stamp for debugging output */
     int64_t time_sent;
@@ -1875,7 +1875,7 @@ struct ab_tag_t {
 
     /* pointers back to session */
     ab_session_p session;
-    int use_connected_msg;
+    //int use_connected_msg;
 
     /* this contains the encoded name */
     uint8_t encoded_name[MAX_TAG_NAME];
@@ -1911,7 +1911,7 @@ struct ab_tag_t {
     ab_request_p req;
     int offset;
 
-    int allow_packing;
+    //int allow_packing;
 
     /* flags for operations */
     int read_in_progress;

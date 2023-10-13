@@ -1363,9 +1363,11 @@ int process_requests(ab_session_p session)
     session->data_offset = 0;
 
     /* grab a request off the front of the list. */
-    critical_block(session->mutex) {
+    critical_block(session->mutex) 
+    {
         /* is there anything to do? */
-        if(vector_length(session->requests)) {
+        if(vector_length(session->requests)) 
+        {
             /* get rid of all aborted requests. */
             purge_aborted_requests_unsafe(session);
 
@@ -1374,18 +1376,21 @@ int process_requests(ab_session_p session)
             /* how much space do we have to work with. */
             remaining_space = session->max_payload_size - (int)sizeof(cip_multi_req_header);
 
-            if(vector_length(session->requests)) {
-                do {
+            if(vector_length(session->requests)) 
+            {
+                do 
+                {
                     request = (ab_request_p)vector_get(session->requests, 0);
 
                     remaining_space = remaining_space - get_payload_size(request);
 
                     /*
-                     * If we have a non-packable request, only queue it if it is the first one.
-                     * If the request is packable, keep queuing as long as there is space.
+                     * 
+                     * The request is packable, keep queuing as long as there is space.
                      */
 
-                    if(num_bundled_requests == 0 || (request->allow_packing && remaining_space > 0)) {
+                    if(num_bundled_requests == 0 || (remaining_space > 0)) 
+                    {
                         //pdebug(DEBUG_DETAIL, "packed %d requests with remaining space %d", num_bundled_requests+1, remaining_space);
                         bundled_requests[num_bundled_requests] = request;
                         num_bundled_requests++;
@@ -1393,8 +1398,11 @@ int process_requests(ab_session_p session)
                         /* remove it from the queue. */
                         vector_remove(session->requests, 0);
                     }
-                } while(vector_length(session->requests) && remaining_space > 0 && num_bundled_requests < MAX_REQUESTS && request->allow_packing);
-            } else {
+                } 
+                while(vector_length(session->requests) && remaining_space > 0 && num_bundled_requests < MAX_REQUESTS);
+            } 
+            else 
+            {
                 pdebug(DEBUG_DETAIL, "All requests in queue were aborted, nothing to do.");
             }
         }
@@ -1407,7 +1415,8 @@ int process_requests(ab_session_p session)
 
         pdebug(DEBUG_INFO, "%d requests to process.", num_bundled_requests);
 
-        do {
+        do 
+        {
             /* copy and pack the requests into the session buffer. */
             rc = pack_requests(session, bundled_requests, num_bundled_requests);
             if(rc != PLCTAG_STATUS_OK) {
@@ -1438,7 +1447,8 @@ int process_requests(ab_session_p session)
              * response.   If it is a singleton, then we pass the
              * status back to the tag.
              */
-            if(num_bundled_requests > 1) {
+            if(num_bundled_requests > 1) 
+            {
                 if(le2h16(((eip_encap *)(session->data))->encap_command) == AB_EIP_UNCONNECTED_SEND) {
                     eip_cip_uc_resp *resp = (eip_cip_uc_resp *)(session->data);
                     pdebug(DEBUG_INFO, "Received unconnected packet with session sequence ID %llx", resp->encap_sender_context);
@@ -1463,7 +1473,8 @@ int process_requests(ab_session_p session)
             }
 
             /* copy the results back out. Every request gets a copy. */
-            for(int i=0; i < num_bundled_requests; i++) {
+            for(int i=0; i < num_bundled_requests; i++) 
+            {
                 debug_set_tag_id(bundled_requests[i]->tag_id);
 
                 rc = unpack_response(session, bundled_requests[i], i);
@@ -1477,7 +1488,8 @@ int process_requests(ab_session_p session)
             }
 
             rc = PLCTAG_STATUS_OK;
-        } while(0);
+        } 
+        while(0);
 
         /* problem? clean up the pending requests and dump everything. */
         if(rc != PLCTAG_STATUS_OK) {

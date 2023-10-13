@@ -392,7 +392,7 @@ namespace
         uint16_t element_length length of one array element in bytes.
         uint32_t array_dims[3]  array dimensions.
         uint16_t string_len
-        uint8_t string_data[]   string bytes (string_len of them)
+        uint8_t string_data[string_len (or 82?)]   string bytes
         */
 
         class H
@@ -403,6 +403,7 @@ namespace
             u16 element_length; // 2
             u32 array_dims[3];  // 3 * 4
             u16 string_len;     // 2
+
         };
 
         constexpr auto H_size = 4 + 2 + 2 + 3 * 4 + 2;
@@ -464,6 +465,7 @@ namespace
         int tag_id = -1;
 
         DataTypeId32 type_id = id32::UNKNOWN_TYPE_ID;
+        // how to parse scan data
 
         ByteOffset value;
         String name;
