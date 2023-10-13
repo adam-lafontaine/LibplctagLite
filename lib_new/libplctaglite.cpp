@@ -15,8 +15,35 @@ using Bytes = MemoryView<u8>;
 using ByteOffset = MemoryOffset<u8>;
 
 
+template <typename T>
+static void copy_atomic_bytes(u8* src, u8* dst)
+{
+    *(T*)dst = *(T*)src;
+}
+
+
 static void copy_bytes(u8* src, u8* dst, u32 len)
 {
+    switch (len)
+    {
+    case 1:
+        copy_atomic_bytes<u8>(src, dst);
+        return;
+    case 2:
+        copy_atomic_bytes<u16>(src, dst);
+        return;
+    case 4:
+        copy_atomic_bytes<u32>(src, dst);
+        return;
+    case 8:
+        copy_atomic_bytes<u64>(src, dst);
+        return;
+
+    default:
+        break;
+    }
+
+
     constexpr auto size64 = sizeof(u64);
 
     auto len64 = len / size64;
@@ -39,13 +66,6 @@ static void copy_bytes(u8* src, u8* dst, u32 len)
 }
 
 
-template <typename T>
-static void copy_atomic_bytes(u8* src, u8* dst)
-{
-    *(T*)src = *(T*)dst;
-}
-
-
 static void copy(cstr src, String const& dst)
 {
     for (u32 i = 0; i < dst.length; ++i)
@@ -59,10 +79,13 @@ static void copy(String const& src, String const& dst)
 {
     auto len = src.length < dst.length ? src.length : dst.length;
 
-    for (u32 i = 0; i < len; ++i)
-    {
-        dst.begin[i] = src.begin[i];
-    }
+    copy_bytes((u8*)src.begin, (u8*)dst.begin, len);
+}
+
+
+static void zero_string(String const& str)
+{
+    memset(str.begin, 0, str.length);
 }
 
 
@@ -157,6 +180,7 @@ namespace id16
 }
 
 
+/* 32 bit ids */
 namespace id32
 {
     // 0b0000'0000'0000'0000'0000'0000'0000'0000
@@ -212,7 +236,6 @@ namespace id32
 
 
 }
-
 
 
 /* tag types */
@@ -458,11 +481,10 @@ namespace
 
 namespace
 {
-
     class Tag
     {
     public:
-        int tag_id = -1;
+        int connection_handle = -1;
 
         DataTypeId32 type_id = id32::UNKNOWN_TYPE_ID;
         // how to parse scan data
@@ -475,8 +497,6 @@ namespace
     class TagTable
     {
     public:
-        int plc = 0; // TODO
-
         std::vector<Tag> tags;
 
         ParallelBuffer<u8> value_data;
@@ -866,7 +886,7 @@ namespace
 }
 
 
-/* scan cycle */
+/* tag scan */
 
 namespace
 {
@@ -888,6 +908,129 @@ namespace
 
         return false;
     }
+
+
+    
+
+
+    class ControllerAttr
+    {
+    public:
+        // TODO
+        cstr gateway = "192.168.123.123";
+        cstr path = "1,0";
+
+        String connection_string;
+        String tag_name;
+
+        MemoryBuffer<char> string_data;
+    };
+
+
+    static bool init_controller(ControllerAttr& attr)
+    {
+        cstr base = "protocol=ab-eip&plc=controllogix"; // 32
+
+        cstr gateway_key = "&gateway="; // 9
+        cstr path_key = "&path="; // 6
+        cstr name_key = "&name="; // 6
+
+        auto base_len = 
+            strlen(base) + 
+            strlen(gateway_key) +
+            strlen(attr.gateway) + 
+            strlen(path_key) + 
+            strlen(attr.path) +
+            strlen(name_key);
+
+        u64 max_name_len = 32;
+
+        if (!mb::create_buffer(attr.string_data, base_len + max_name_len + 1)) /* zero terminated */
+        {
+            return false;
+        }
+
+        mb::zero_buffer(attr.string_data);
+
+        attr.connection_string = mb::push_view(attr.string_data, base_len);
+        attr.tag_name = mb::push_cstr_view(attr.string_data, max_name_len + 1);
+
+        auto dst = attr.connection_string.begin;
+        cstr fmt = "%s%s%s%s%s%s";
+
+        qsnprintf(dst, base_len, fmt, base, gateway_key, attr.gateway, path_key, attr.path, name_key);
+
+        return true;
+    }
+
+
+    static bool is_valid_tag_name(cstr tag_name)
+    {
+        auto len = strlen(tag_name);
+        if (len <= 0 || len > 32)
+        {
+            return false;
+        }
+
+        const char* invalid_begin_chars = "0123456789_";
+        if (std::strchr(invalid_begin_chars, tag_name[0]) != nullptr)
+        {
+            return false;
+        }
+
+        const char* valid_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
+        if (tag_name[0] == '@')
+        {
+            valid_chars = "@/abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
+        }
+
+        for (u32 i = 0; i < len; ++i)
+        {
+            auto c = tag_name[i];
+            if (std::strchr(valid_chars, c) == nullptr)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+
+    static bool set_tag_name(ControllerAttr const& attr, Tag& tag)
+    {
+        zero_string(attr.tag_name);
+
+        copy(tag.name, attr.tag_name);
+
+        return true;
+    }
+
+
+    static bool set_tag_name(ControllerAttr const& attr, cstr name)
+    {
+        zero_string(attr.tag_name);
+
+        copy(name, attr.tag_name);
+
+        return true;
+    }
+
+
+    static bool scan_tag_entries(ControllerAttr const& attr, Tag& dst)
+    {
+        
+    }
+
+
+
+}
+
+/* scan cycle */
+
+namespace
+{
+    
 
 
     static void init()
