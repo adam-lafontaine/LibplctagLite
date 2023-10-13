@@ -175,11 +175,6 @@ plc_tag_p ab_tag_create(attr attribs)
         return (plc_tag_p)NULL;
     }
 
-    /* set up any required settings based on the cpu type. */
-
-    /* make sure that the connection requirement is forced. */
-    attr_set_int(attribs, "use_connected_msg", 1);
-
     /* get the connection path.  We need this to make a decision about the PLC. */
     path = attr_get_str(attribs,"path",NULL);
 
@@ -227,9 +222,6 @@ plc_tag_p ab_tag_create(attr attribs)
         //tag->vtable = &eip_cip_vtable;
         tag->vtable = eip_cip_vtable();
     }
-
-    /* pass the connection requirement since it may be overridden above. */
-    attr_set_int(attribs, "use_connected_msg", 1);
 
     /* get the element count, default to 1 if missing. */
     tag->elem_count = attr_get_int(attribs,"elem_count", 1);

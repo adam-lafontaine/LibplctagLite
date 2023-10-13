@@ -953,10 +953,10 @@ struct plc_tag_t {
     uint8_t skip_tickler : 1;
     int8_t status;
     int bit;
-    int connection_group_id;
+    //int connection_group_id;
     int32_t size;
     int32_t tag_id;
-    int32_t auto_sync_read_ms;
+    //int32_t auto_sync_read_ms;
     uint8_t* data;
     tag_byte_order_t* byte_order;
     mutex_p ext_mutex;
@@ -1813,6 +1813,8 @@ uint64_t session_get_new_seq_id(ab_session_p sess);
 int session_startup();
 void session_teardown();
 
+int session_find_or_create_lite(ab_session_p* tag_session, const char* session_gw, const char* session_path);
+
 int session_find_or_create(ab_session_p *session, attr attribs);
 int session_get_max_payload(ab_session_p session);
 int session_create_request(ab_session_p session, int tag_id, ab_request_p *request);
@@ -1858,10 +1860,10 @@ struct ab_tag_t {
     uint8_t skip_tickler : 1;
     int8_t status;
     int bit;
-    int connection_group_id;
+    //int connection_group_id;
     int32_t size;
     int32_t tag_id;
-    int32_t auto_sync_read_ms;
+    //int32_t auto_sync_read_ms;
     uint8_t* data;
     tag_byte_order_t* byte_order;
     mutex_p ext_mutex;

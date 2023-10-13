@@ -244,60 +244,51 @@ int session_find_or_create(ab_session_p *tag_session, attr attribs)
     /*int debug = attr_get_int(attribs,"debug",0);*/
     const char *session_gw = attr_get_str(attribs, "gateway", "");
     const char *session_path = attr_get_str(attribs, "path", "");
-    int use_connected_msg = attr_get_int(attribs, "use_connected_msg", 0);
+    int use_connected_msg = 1; // attr_get_int(attribs, "use_connected_msg", 0);
     //int session_gw_port = attr_get_int(attribs, "gateway_port", AB_EIP_DEFAULT_PORT);
     ab_session_p session = AB_SESSION_NULL;
     int new_session = 0;
-    int shared_session = attr_get_int(attribs, "share_session", 1); /* share the session by default. */
+    int shared_session = 1; // attr_get_int(attribs, "share_session", 1); /* share the session by default. */
     int rc = PLCTAG_STATUS_OK;
     int auto_disconnect_enabled = 0;
     int auto_disconnect_timeout_ms = INT_MAX;
-    int connection_group_id = attr_get_int(attribs, "connection_group_id", 0);
+    int connection_group_id = 0; // attr_get_int(attribs, "connection_group_id", 0);
 
     pdebug(DEBUG_DETAIL, "Starting");
 
-    auto_disconnect_timeout_ms = attr_get_int(attribs, "auto_disconnect_ms", INT_MAX);
-    if(auto_disconnect_timeout_ms != INT_MAX) {
-        pdebug(DEBUG_DETAIL, "Setting auto-disconnect after %dms.", auto_disconnect_timeout_ms);
-        auto_disconnect_enabled = 1;
-    }
+    critical_block(session_mutex) 
+    {
+        session = find_session_by_host_unsafe(session_gw, session_path, connection_group_id);
 
-    // if(plc_type == AB_PLC_PLC5 && str_length(session_path) > 0) {
-    //     /* this means it is DH+ */
-    //     use_connected_msg = 1;
-    //     attr_set_int(attribs, "use_connected_msg", 1);
-    // }
-
-    critical_block(session_mutex) {
-        /* if we are to share sessions, then look for an existing one. */
-        if (shared_session) {
-            session = find_session_by_host_unsafe(session_gw, session_path, connection_group_id);
-        } else {
-            /* no sharing, create a new one */
-            session = AB_SESSION_NULL;
-        }
-
-        if (session == AB_SESSION_NULL) {
+        if (session == AB_SESSION_NULL) 
+        {
             pdebug(DEBUG_DETAIL, "Creating new session.");
             session = session_create_unsafe(session_gw, session_path, &use_connected_msg, connection_group_id);
 
-            if (session == AB_SESSION_NULL) {
+            if (session == AB_SESSION_NULL) 
+            {
                 pdebug(DEBUG_WARN, "unable to create or find a session!");
                 rc = PLCTAG_ERR_BAD_GATEWAY;
-            } else {
+            } 
+            else 
+            {
                 session->auto_disconnect_enabled = auto_disconnect_enabled;
                 session->auto_disconnect_timeout_ms = auto_disconnect_timeout_ms;
 
                 new_session = 1;
             }
-        } else {
+        } 
+        else 
+        {
             /* turn on auto disconnect if we need to. */
-            if(!session->auto_disconnect_enabled && auto_disconnect_enabled) {
+            if(!session->auto_disconnect_enabled && auto_disconnect_enabled) 
+            {
                 session->auto_disconnect_enabled = auto_disconnect_enabled;
             }
 
             /* disconnect period always goes down. */
-            if(session->auto_disconnect_enabled && session->auto_disconnect_timeout_ms > auto_disconnect_timeout_ms) {
+            if(session->auto_disconnect_enabled && session->auto_disconnect_timeout_ms > auto_disconnect_timeout_ms) 
+            {
                 session->auto_disconnect_timeout_ms = auto_disconnect_timeout_ms;
             }
 
@@ -318,6 +309,81 @@ int session_find_or_create(ab_session_p *tag_session, attr attribs)
         } else {
             /* save the status */
             //session->status = rc;
+        }
+    }
+
+    /* store it into the tag */
+    *tag_session = session;
+
+    pdebug(DEBUG_DETAIL, "Done");
+
+    return rc;
+}
+
+
+int session_find_or_create_lite(ab_session_p* tag_session, const char* session_gw, const char* session_path)
+{
+    int use_connected_msg = 1;
+    ab_session_p session = AB_SESSION_NULL;
+    int new_session = 0;
+    int shared_session = 1;
+    int rc = PLCTAG_STATUS_OK;
+    int auto_disconnect_enabled = 0;
+    int auto_disconnect_timeout_ms = INT_MAX;
+    int connection_group_id = 0;
+
+    pdebug(DEBUG_DETAIL, "Starting");
+
+    critical_block(session_mutex)
+    {
+        session = find_session_by_host_unsafe(session_gw, session_path, connection_group_id);
+
+        if (session == AB_SESSION_NULL)
+        {
+            pdebug(DEBUG_DETAIL, "Creating new session.");
+            session = session_create_unsafe(session_gw, session_path, &use_connected_msg, connection_group_id);
+
+            if (session == AB_SESSION_NULL)
+            {
+                pdebug(DEBUG_WARN, "unable to create or find a session!");
+                rc = PLCTAG_ERR_BAD_GATEWAY;
+            }
+            else
+            {
+                session->auto_disconnect_enabled = auto_disconnect_enabled;
+                session->auto_disconnect_timeout_ms = auto_disconnect_timeout_ms;
+
+                new_session = 1;
+            }
+        }
+        else
+        {
+            /* turn on auto disconnect if we need to. */
+            if (!session->auto_disconnect_enabled && auto_disconnect_enabled)
+            {
+                session->auto_disconnect_enabled = auto_disconnect_enabled;
+            }
+
+            /* disconnect period always goes down. */
+            if (session->auto_disconnect_enabled && session->auto_disconnect_timeout_ms > auto_disconnect_timeout_ms)
+            {
+                session->auto_disconnect_timeout_ms = auto_disconnect_timeout_ms;
+            }
+
+            pdebug(DEBUG_DETAIL, "Reusing existing session.");
+        }
+    }
+
+    /*
+     * do this OUTSIDE the mutex in order to let other threads not block if
+     * the session creation process blocks.
+     */
+
+    if (new_session) {
+        rc = session_init(session);
+        if (rc != PLCTAG_STATUS_OK) {
+            rc_dec(session);
+            session = AB_SESSION_NULL;
         }
     }
 

@@ -277,59 +277,16 @@ int plc_tag_generic_wake_tag_impl(const char *func, int line_num, plc_tag_p tag)
 
 void plc_tag_generic_tickler(plc_tag_p tag)
 {
-    if(tag) {
+    if(tag) 
+    {
         debug_set_tag_id(tag->tag_id);
 
         pdebug(DEBUG_DETAIL, "Tickling tag %d.", tag->tag_id);
+               
 
-        /* if this tag has automatic reads, we need to check that state too. */
-        if(tag->auto_sync_read_ms > 0) {
-            int64_t current_time = time_ms();
-
-            // /* spread these out randomly to avoid too much clustering. */
-            // if(tag->auto_sync_next_read == 0) {
-            //     tag->auto_sync_next_read = current_time - (rand() % tag->auto_sync_read_ms);
-            // }
-
-            /* do we need to read? */
-            if(tag->auto_sync_next_read < current_time) {
-                /* make sure that we do not have an outstanding read. */
-                if(!tag->read_in_flight) {
-                    int64_t periods = 0;
-
-                    pdebug(DEBUG_DETAIL, "Triggering automatic read start.");
-
-                    tag->read_in_flight = 1;
-
-                    if(tag->vtable->read) {
-                        tag->status = (int8_t)tag->vtable->read(tag);
-                    }
-
-                    /*
-                    * schedule the next read.
-                    *
-                    * Note that there will be some jitter.  In that case we want to skip
-                    * to the next read time that is a whole multiple of the read period.
-                    *
-                    * This keeps the jitter from slowly moving the polling cycle.
-                    *
-                    * Round up to the next period.
-                    */
-                    periods = (current_time - tag->auto_sync_next_read + (tag->auto_sync_read_ms - 1))/tag->auto_sync_read_ms;
-
-                    /* warn if we need to skip more than one period. */
-                    if(periods > 1) {
-                        pdebug(DEBUG_WARN, "Skipping %" PRId64 " periods of %" PRId32 "ms.", periods, tag->auto_sync_read_ms);
-                    }
-
-                    tag->auto_sync_next_read += (periods * tag->auto_sync_read_ms);
-                    pdebug(DEBUG_DETAIL, "Scheduling next read at time %" PRId64 ".", tag->auto_sync_next_read);
-                } else {
-                    //pdebug(DEBUG_SPEW, "Unable to start read tag->read_in_flight=%d, tag->tag_is_dirty=%d, tag->write_in_flight=%d!", tag->read_in_flight, tag->tag_is_dirty, tag->write_in_flight);
-                }
-            }
-        }
-    } else {
+    } 
+    else 
+    {
         pdebug(DEBUG_WARN, "Called with null tag pointer!");
     }
 
@@ -345,13 +302,6 @@ int plc_tag_generic_init_tag(plc_tag_p tag, attr attribs)
     int rc = PLCTAG_STATUS_OK;
 
     pdebug(DEBUG_INFO, "Starting.");
-
-    /* get the connection group ID here rather than in each PLC specific tag type. */
-    tag->connection_group_id = attr_get_int(attribs, "connection_group_id", 0);
-    if(tag->connection_group_id < 0 || tag->connection_group_id > 32767) {
-        pdebug(DEBUG_WARN, "Connection group ID must be between 0 and 32767, inclusive, but was %d!", tag->connection_group_id);
-        return PLCTAG_ERR_OUT_OF_BOUNDS;
-    }
 
     rc = mutex_create(&(tag->ext_mutex));
     if(rc != PLCTAG_STATUS_OK) {
@@ -739,9 +689,6 @@ LIB_EXPORT int32_t plc_tag_create(const char* attrib_str, int timeout)
         return tag_status;
     }
 
-    /* set up any automatic read/write */
-    tag->auto_sync_read_ms = 0;
-
     /*
      * Release memory for attributes
      */
@@ -768,7 +715,8 @@ LIB_EXPORT int32_t plc_tag_create(const char* attrib_str, int timeout)
     rc = tag->vtable->status(tag);
 
     /* check to see if there was an error during tag creation. */
-    if(rc != PLCTAG_STATUS_OK && rc != PLCTAG_STATUS_PENDING) {
+    if(rc != PLCTAG_STATUS_OK && rc != PLCTAG_STATUS_PENDING)
+    {
         pdebug(DEBUG_WARN, "Error %s while trying to create tag!", plc_tag_decode_error(rc));
         if(tag->vtable->abort) {
             tag->vtable->abort(tag);
@@ -789,7 +737,8 @@ LIB_EXPORT int32_t plc_tag_create(const char* attrib_str, int timeout)
     * if there is a timeout, then wait until we get
     * an error or we timeout.
     */
-    if(timeout > 0 && rc == PLCTAG_STATUS_PENDING) {
+    if(timeout > 0 && rc == PLCTAG_STATUS_PENDING) 
+    {
         int64_t start_time = time_ms();
         int64_t end_time = start_time + timeout;
 
@@ -797,7 +746,8 @@ LIB_EXPORT int32_t plc_tag_create(const char* attrib_str, int timeout)
         plc_tag_tickler_wake();
 
         /* we loop as long as we have time left to wait. */
-        do {
+        do 
+        {
             int64_t timeout_left = end_time - time_ms();
 
             /* clamp the timeout left to non-negative int range. */
@@ -811,7 +761,8 @@ LIB_EXPORT int32_t plc_tag_create(const char* attrib_str, int timeout)
 
             /* wait for something to happen */
             rc = cond_wait(tag->tag_cond_wait, (int)timeout_left);
-            if(rc != PLCTAG_STATUS_OK) {
+            if(rc != PLCTAG_STATUS_OK) 
+            {
                 pdebug(DEBUG_WARN, "Error %s while waiting for tag creation to complete!", plc_tag_decode_error(rc));
                 if(tag->vtable->abort) {
                     tag->vtable->abort(tag);
@@ -830,7 +781,8 @@ LIB_EXPORT int32_t plc_tag_create(const char* attrib_str, int timeout)
             rc = tag->vtable->status(tag);
 
             /* check to see if there was an error during tag creation. */
-            if(rc != PLCTAG_STATUS_OK && rc != PLCTAG_STATUS_PENDING) {
+            if(rc != PLCTAG_STATUS_OK && rc != PLCTAG_STATUS_PENDING) 
+            {
                 pdebug(DEBUG_WARN, "Error %s while trying to create tag!", plc_tag_decode_error(rc));
                 if(tag->vtable->abort) {
                     tag->vtable->abort(tag);
@@ -844,7 +796,8 @@ LIB_EXPORT int32_t plc_tag_create(const char* attrib_str, int timeout)
                 rc_dec(tag);
                 return rc;
             }
-        } while(rc == PLCTAG_STATUS_PENDING && time_ms() > end_time);
+        } 
+        while(rc == PLCTAG_STATUS_PENDING && time_ms() > end_time);
 
         /* clear up any remaining flags.  This should be refactored. */
         tag->read_in_flight = 0;
@@ -1274,14 +1227,14 @@ LIB_EXPORT int plc_tag_get_int_attribute(int32_t id, const char *attrib_name, in
                 res = 0; // (int)tag->read_cache_ms;
             } else if(str_cmp_i(attrib_name, "auto_sync_read_ms") == 0) {
                 tag->status = PLCTAG_STATUS_OK;
-                res = (int)tag->auto_sync_read_ms;
+                res = 0; // (int)tag->auto_sync_read_ms;
             } else if(str_cmp_i(attrib_name, "bit_num") == 0) {
                 tag->status = PLCTAG_STATUS_OK;
                 res = (int)(unsigned int)(tag->bit);
             } else if(str_cmp_i(attrib_name, "connection_group_id") == 0) {
                 pdebug(DEBUG_DETAIL, "Getting the connection_group_id for tag %" PRId32 ".", id);
                 tag->status = PLCTAG_STATUS_OK;
-                res = tag->connection_group_id;
+                res = 0; // tag->connection_group_id;
             } else {
                 if(tag->vtable->get_int_attrib) {
                     res = tag->vtable->get_int_attrib(tag, attrib_name, default_value);
@@ -1355,7 +1308,7 @@ LIB_EXPORT int plc_tag_set_int_attribute(int32_t id, const char *attrib_name, in
                 }
             } else if(str_cmp_i(attrib_name, "auto_sync_read_ms") == 0) {
                 if(new_value >= 0) {
-                    tag->auto_sync_read_ms = new_value;
+                    //tag->auto_sync_read_ms = new_value;
                     tag->status = PLCTAG_STATUS_OK;
                     res = PLCTAG_STATUS_OK;
                 } else {
@@ -3165,43 +3118,6 @@ static uint32_t get_thread_id()
 
     return this_thread_num;
 }
-
-// static int make_prefix(char *prefix_buf, int prefix_buf_size)
-// {
-//     struct tm t;
-//     time_t epoch;
-//     int64_t epoch_ms;
-//     int remainder_ms;
-//     int rc = PLCTAG_STATUS_OK;
-
-//     /* make sure we have room, MAGIC */
-//     if(prefix_buf_size < 37) {
-//         return PLCTAG_ERR_TOO_SMALL;
-//     }
-
-//     /* build the prefix */
-
-//     /* get the time parts */
-//     epoch_ms = time_ms();
-//     epoch = (time_t)(epoch_ms/1000);
-//     remainder_ms = (int)(epoch_ms % 1000);
-
-//     /* FIXME - should capture error return! */
-//     localtime_r(&epoch,&t);
-
-//     /* create the prefix and format for the file entry. */
-//     rc = snprintf(prefix_buf, (size_t)prefix_buf_size,"%04d-%02d-%02d %02d:%02d:%02d.%03d thread(%u) tag(%d)",
-//                   t.tm_year+1900,t.tm_mon,t.tm_mday,t.tm_hour,t.tm_min,t.tm_sec,remainder_ms, get_thread_id(), tag_id);
-
-//     /* enforce zero string termination */
-//     if(rc > 1 && rc < prefix_buf_size) {
-//         prefix_buf[rc] = 0;
-//     } else {
-//         prefix_buf[prefix_buf_size - 1] = 0;
-//     }
-
-//     return rc;
-// }
 
 
 static const char* debug_level_name[DEBUG_END] = { "NONE", "ERROR", "WARN", "INFO", "DETAIL", "SPEW" };
