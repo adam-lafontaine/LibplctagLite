@@ -141,20 +141,25 @@ void session_teardown()
 {
     pdebug(DEBUG_INFO, "Starting.");
 
-    if(sessions && session_mutex) {
+    if(sessions && session_mutex) 
+    {
         pdebug(DEBUG_DETAIL, "Waiting for sessions to terminate.");
 
-        while(1) {
+        while(1) 
+        {
             int remaining_sessions = 0;
 
-            critical_block(session_mutex) {
+            critical_block(session_mutex) 
+            {
                 remaining_sessions = vector_length(sessions);
             }
 
             /* wait for things to terminate. */
-            if(remaining_sessions > 0) {
+            if(remaining_sessions > 0) 
+            {
                 sleep_ms(10); // MAGIC
-            } else {
+            } else 
+            {
                 break;
             }
         }

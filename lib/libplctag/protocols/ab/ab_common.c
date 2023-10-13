@@ -54,7 +54,7 @@ extern "C" {
 
 
 /* request/response handling thread */
-volatile thread_p io_handler_thread = NULL;
+//volatile thread_p io_handler_thread = NULL;
 
 volatile int ab_protocol_terminating = 0;
 
@@ -127,18 +127,6 @@ int ab_init(void)
 void ab_teardown(void)
 {
     pdebug(DEBUG_INFO,"Releasing global AB protocol resources.");
-
-    if(io_handler_thread) {
-        pdebug(DEBUG_INFO,"Terminating IO thread.");
-        /* signal the IO thread to quit first. */
-        ab_protocol_terminating = 1;
-
-        /* wait for the thread to die */
-        thread_join(io_handler_thread);
-        thread_destroy((thread_p*)&io_handler_thread);
-    } else {
-        pdebug(DEBUG_INFO, "IO thread already stopped.");
-    }
 
     pdebug(DEBUG_INFO,"Freeing session information.");
 

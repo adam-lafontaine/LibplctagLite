@@ -923,7 +923,7 @@ typedef void (*tag_extended_callback_func)(int32_t tag_id, int event, int status
  *
  * The base type only has a vtable for operations.
  */
-
+/*
 #define TAG_BASE_STRUCT uint8_t is_bit : 1; \
 uint8_t read_in_flight : 1; \
 uint8_t read_complete : 1; \
@@ -943,7 +943,7 @@ tag_vtable_p vtable; \
 int64_t read_cache_expire; \
 int64_t read_cache_ms; \
 int64_t auto_sync_next_read
-
+*/
 
 struct plc_tag_t {
     //TAG_BASE_STRUCT;
@@ -963,9 +963,8 @@ struct plc_tag_t {
     mutex_p api_mutex;
     cond_p tag_cond_wait;
     tag_vtable_p vtable;
-    int64_t read_cache_expire;
-    int64_t read_cache_ms;
     int64_t auto_sync_next_read;
+    
 };
 
 #define PLC_TAG_P_NULL ((plc_tag_p)0)
@@ -1869,9 +1868,8 @@ struct ab_tag_t {
     mutex_p api_mutex;
     cond_p tag_cond_wait;
     tag_vtable_p vtable;
-    int64_t read_cache_expire;
-    int64_t read_cache_ms;
     int64_t auto_sync_next_read;
+    
 
     /* pointers back to session */
     ab_session_p session;

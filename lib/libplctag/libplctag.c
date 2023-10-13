@@ -676,7 +676,6 @@ LIB_EXPORT int32_t plc_tag_create(const char* attrib_str, int timeout)
     int id = PLCTAG_ERR_OUT_OF_BOUNDS;
     attr attribs = NULL;
     int rc = PLCTAG_STATUS_OK;
-    int read_cache_ms = 0;
 	int debug_level = -1;
 
     /* we are creating a tag, there is no ID yet. */
@@ -685,50 +684,51 @@ LIB_EXPORT int32_t plc_tag_create(const char* attrib_str, int timeout)
     pdebug(DEBUG_INFO,"Starting");
 
     /* check to see if the library is terminating. */
-    if(atomic_get(&library_terminating)) {
+    if(atomic_get(&library_terminating)) 
+    {
         pdebug(DEBUG_WARN, "The plctag library is in the process of shutting down!");
         return PLCTAG_ERR_NOT_ALLOWED;
     }
 
     /* make sure that all modules are initialized. */
-    if((rc = initialize_modules()) != PLCTAG_STATUS_OK) {
+    if((rc = initialize_modules()) != PLCTAG_STATUS_OK) 
+    {
         pdebug(DEBUG_ERROR,"Unable to initialize the internal library state!");
         return rc;
     }
 
     /* check the arguments */
 
-    if(timeout < 0) {
+    if(timeout < 0) 
+    {
         pdebug(DEBUG_WARN, "Timeout must not be negative!");
         return PLCTAG_ERR_BAD_PARAM;
     }
 
-    if(!attrib_str || str_length(attrib_str) == 0) {
+    if(!attrib_str || str_length(attrib_str) == 0) 
+    {
         pdebug(DEBUG_WARN,"Tag attribute string is null or zero length!");
         return PLCTAG_ERR_TOO_SMALL;
     }
 
     attribs = attr_create_from_str(attrib_str);
-    if(!attribs) {
+    if(!attribs) 
+    {
         pdebug(DEBUG_WARN,"Unable to parse attribute string!");
         return PLCTAG_ERR_BAD_DATA;
     }
 
-    /* set debug level */
-	debug_level = attr_get_int(attribs, "debug", -1);
-	if (debug_level > DEBUG_NONE) {
-		set_debug_level(debug_level);
-	}
-
     tag = ab_tag_create(attribs);
 
-    if(!tag) {
+    if(!tag) 
+    {
         pdebug(DEBUG_WARN, "Tag creation failed, skipping mutex creation and other generic setup.");
         attr_destroy(attribs);
         return PLCTAG_ERR_CREATE;
     }
 
-    if(tag->status != PLCTAG_STATUS_OK && tag->status != PLCTAG_STATUS_PENDING) {
+    if(tag->status != PLCTAG_STATUS_OK && tag->status != PLCTAG_STATUS_PENDING) 
+    {
         int tag_status = tag->status;
 
         pdebug(DEBUG_WARN, "Warning, %s error found while creating tag!", plc_tag_decode_error(tag_status));
@@ -739,30 +739,8 @@ LIB_EXPORT int32_t plc_tag_create(const char* attrib_str, int timeout)
         return tag_status;
     }
 
-    /* set up the read cache config. */
-    read_cache_ms = attr_get_int(attribs,"read_cache_ms",0);
-    if(read_cache_ms < 0) {
-        pdebug(DEBUG_WARN, "read_cache_ms value must be positive, using zero.");
-        read_cache_ms = 0;
-    }
-
-    tag->read_cache_expire = (int64_t)0;
-    tag->read_cache_ms = (int64_t)read_cache_ms;
-
     /* set up any automatic read/write */
-    tag->auto_sync_read_ms = attr_get_int(attribs, "auto_sync_read_ms", 0);
-    if(tag->auto_sync_read_ms < 0) {
-        pdebug(DEBUG_WARN, "auto_sync_read_ms value must be positive!");
-        attr_destroy(attribs);
-        rc_dec(tag);
-        return PLCTAG_ERR_BAD_PARAM;
-    } else if(tag->auto_sync_read_ms > 0) {
-        /* how many periods did we already pass? */
-        // int64_t periods = (time_ms() / tag->auto_sync_read_ms);
-        // tag->auto_sync_next_read = (periods + 1) * tag->auto_sync_read_ms;
-        /* start some time in the future, but with random jitter. */
-        tag->auto_sync_next_read = time_ms() + (rand() % tag->auto_sync_read_ms);
-    }
+    tag->auto_sync_read_ms = 0;
 
     /*
      * Release memory for attributes
@@ -770,7 +748,7 @@ LIB_EXPORT int32_t plc_tag_create(const char* attrib_str, int timeout)
     attr_destroy(attribs);
 
     /* map the tag to a tag ID */
-    id = add_tag_lookup(tag);
+    id = add_tag_lookup((plc_tag_p)tag);
 
     /* if the mapping failed, then punt */
     if(id < 0) {
@@ -973,7 +951,7 @@ int plc_tag_abort(int32_t id)
 
     critical_block(tag->api_mutex) {
         /* who knows what state the tag data is in.  */
-        tag->read_cache_expire = (uint64_t)0;
+        //tag->read_cache_expire = (uint64_t)0;
 
         if(!tag->vtable || !tag->vtable->abort) {
             pdebug(DEBUG_WARN,"Tag does not have a abort function!");
@@ -1092,14 +1070,6 @@ LIB_EXPORT int plc_tag_read(int32_t id, int timeout)
 
     critical_block(tag->api_mutex) {
 
-        /* check read cache, if not expired, return existing data. */
-        if(tag->read_cache_expire > time_ms()) {
-            pdebug(DEBUG_INFO, "Returning cached data.");
-            rc = PLCTAG_STATUS_OK;
-            is_done = 1;
-            break;
-        }
-
         if(tag->read_in_flight) {
             pdebug(DEBUG_WARN, "An operation is already in flight!");
             rc = PLCTAG_ERR_BUSY;
@@ -1185,11 +1155,6 @@ LIB_EXPORT int plc_tag_read(int32_t id, int timeout)
         }
 
         pdebug(DEBUG_INFO,"elapsed time %" PRId64 "ms", (time_ms()-start_time));
-    }
-
-    if(rc == PLCTAG_STATUS_OK) {
-        /* set up the cache time.  This works when read_cache_ms is zero as it is already expired. */
-        tag->read_cache_expire = time_ms() + tag->read_cache_ms;
     }
 
     rc_dec(tag);
@@ -1306,7 +1271,7 @@ LIB_EXPORT int plc_tag_get_int_attribute(int32_t id, const char *attrib_name, in
             } else if(str_cmp_i(attrib_name, "read_cache_ms") == 0) {
                 /* FIXME - what happens if this overflows? */
                 tag->status = PLCTAG_STATUS_OK;
-                res = (int)tag->read_cache_ms;
+                res = 0; // (int)tag->read_cache_ms;
             } else if(str_cmp_i(attrib_name, "auto_sync_read_ms") == 0) {
                 tag->status = PLCTAG_STATUS_OK;
                 res = (int)tag->auto_sync_read_ms;
@@ -1380,8 +1345,8 @@ LIB_EXPORT int plc_tag_set_int_attribute(int32_t id, const char *attrib_name, in
             if(str_cmp_i(attrib_name, "read_cache_ms") == 0) {
                 if(new_value >= 0) {
                     /* expire the cache. */
-                    tag->read_cache_expire = (int64_t)0;
-                    tag->read_cache_ms = (int64_t)new_value;
+                    //tag->read_cache_expire = (int64_t)0;
+                    //tag->read_cache_ms = (int64_t)new_value;
                     tag->status = PLCTAG_STATUS_OK;
                     res = PLCTAG_STATUS_OK;
                 } else {
@@ -2528,8 +2493,10 @@ void destroy_modules(void)
 
     lib_teardown();
 
-    spin_block(&library_initialization_lock) {
-        if(lib_mutex != NULL) {
+    spin_block(&library_initialization_lock)
+    {
+        if(lib_mutex != NULL) 
+        {
             /* FIXME casting to get rid of volatile is WRONG */
             mutex_destroy((mutex_p *)&lib_mutex);
             lib_mutex = NULL;
@@ -2559,8 +2526,10 @@ int initialize_modules(void)
      * If there is no mutex set up, then create one.
      * Only one thread allowed at a time through this gate.
      */
-    spin_block(&library_initialization_lock) {
-        if(lib_mutex == NULL) {
+    spin_block(&library_initialization_lock) 
+    {
+        if(lib_mutex == NULL) 
+        {
             pdebug(DEBUG_INFO, "Creating library mutex.");
             /* FIXME - casting to get rid of volatile is WRONG */
             rc = mutex_create((mutex_p *)&lib_mutex);
@@ -2568,17 +2537,22 @@ int initialize_modules(void)
     }
 
     /* check the status outside the lock. */
-    if(rc != PLCTAG_STATUS_OK) {
+    if(rc != PLCTAG_STATUS_OK) 
+    {
         pdebug(DEBUG_ERROR, "Unable to initialize library mutex!  Error %s!", plc_tag_decode_error(rc));
         return rc;
-    } else {
+    } 
+    else 
+    {
         /*
         * guard library initialization with a mutex.
         *
         * This prevents busy waiting as would happen with just a spin lock.
         */
-        critical_block(lib_mutex) {
-            if(!library_initialized) {
+        critical_block(lib_mutex) 
+        {
+            if(!library_initialized) 
+            {
                 /* initialize a random seed value. */
                 srand((unsigned int)time_ms());
 
