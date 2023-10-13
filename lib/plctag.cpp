@@ -1,5 +1,5 @@
 #include "plctag.hpp"
-#include "libplctag/libplctag.h"
+#include "libplctag/libplctaglite.h"
 
 #include <cstdio>
 #include <cstring>

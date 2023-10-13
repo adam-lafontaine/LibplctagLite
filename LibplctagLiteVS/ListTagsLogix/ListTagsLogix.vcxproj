@@ -19,15 +19,15 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\lib\libplctag\libplctag.h" />
-    <ClInclude Include="..\..\lib\libplctag\libplctag_internal.h" />
+    <ClInclude Include="..\..\lib\libplctag\libplctaglite.h" />
+    <ClInclude Include="..\..\lib\libplctag\libplctaglite_internal.h" />
     <ClInclude Include="..\..\lib\libplctag\protocols\ab\ab_byte_order.h" />
     <ClInclude Include="..\..\lib\libplctag\protocols\ab\ab_vtable.h" />
     <ClInclude Include="..\..\lib\plctag.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\examples\cpp\list_tags_logix.cpp" />
-    <ClCompile Include="..\..\lib\libplctag\libplctag.c" />
+    <ClCompile Include="..\..\lib\libplctag\libplctaglite.c" />
     <ClCompile Include="..\..\lib\libplctag\platform_windows.c" />
     <ClCompile Include="..\..\lib\libplctag\protocols\ab\ab_common.c" />
     <ClCompile Include="..\..\lib\libplctag\protocols\ab\cip.c" />

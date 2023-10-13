@@ -34,7 +34,7 @@
 #ifndef __LIBPLCTAG_INTERNAL_H__
 #define __LIBPLCTAG_INTERNAL_H__
 
-#include "libplctag.h"
+#include "libplctaglite.h"
 
 
 #ifdef __cplusplus

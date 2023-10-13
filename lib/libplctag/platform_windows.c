@@ -35,7 +35,7 @@
  ******************************* WINDOWS ***********************************
  **************************************************************************/
 
-#include "libplctag_internal.h"
+#include "libplctaglite_internal.h"
 
 #define _WINSOCKAPI_
 #include <windows.h>

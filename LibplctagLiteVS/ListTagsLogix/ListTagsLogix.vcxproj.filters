@@ -33,10 +33,10 @@
     <ClInclude Include="..\..\lib\plctag.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\lib\libplctag\libplctag.h">
+    <ClInclude Include="..\..\lib\libplctag\libplctaglite.h">
       <Filter>Header Files\libplctag</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\lib\libplctag\libplctag_internal.h">
+    <ClInclude Include="..\..\lib\libplctag\libplctaglite_internal.h">
       <Filter>Header Files\libplctag</Filter>
     </ClInclude>
     <ClInclude Include="..\..\lib\libplctag\protocols\ab\ab_byte_order.h">
@@ -71,7 +71,7 @@
     <ClCompile Include="..\..\lib\libplctag\platform_windows.c">
       <Filter>Source Files\libplctag</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\lib\libplctag\libplctag.c">
+    <ClCompile Include="..\..\lib\libplctag\libplctaglite.c">
       <Filter>Source Files\libplctag</Filter>
     </ClCompile>
     <ClCompile Include="..\..\lib\libplctag\protocols\ab\session.c">

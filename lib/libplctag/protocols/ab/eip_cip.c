@@ -33,7 +33,7 @@
 
 #include <ctype.h>
 
-#include "../../libplctag_internal.h"
+#include "../../libplctaglite_internal.h"
 
 #ifdef __cplusplus
 extern "C" {

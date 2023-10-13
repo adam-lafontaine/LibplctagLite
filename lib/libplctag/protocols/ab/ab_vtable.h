@@ -2,7 +2,7 @@
 #define __AB_VTABLE_H__
 
 
-#include "../../libplctag_internal.h"
+#include "../../libplctaglite_internal.h"
 
 #ifdef __cplusplus
 extern "C" {
