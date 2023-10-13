@@ -2,6 +2,8 @@
 #include "../util/memory_buffer.hpp"
 #include "../util/qsprintf.hpp"
 
+#include "../lib_old/libplctag/libplctag.h"
+
 #include <vector>
 #include <array>
 #include <unordered_map>
@@ -890,29 +892,6 @@ namespace
 
 namespace
 {
-    static bool scan_tag(String const& tag_name, Bytes& dst)
-    {
-        // TODO
-        dst.begin = 0;
-        dst.length = 0;
-
-        return false;
-    }
-
-
-    static bool scan_tag(cstr tag_name, Bytes& dst)
-    {
-        // TODO
-        dst.begin = 0;
-        dst.length = 0;
-
-        return false;
-    }
-
-
-    
-
-
     class ControllerAttr
     {
     public:
@@ -1017,9 +996,64 @@ namespace
     }
 
 
-    static bool scan_tag_entries(ControllerAttr const& attr, Tag& dst)
+    static bool scan_to_buffer(ControllerAttr const& attr, cstr tag_name, MemoryBuffer<u8>& dst)
     {
-        
+        if (!set_tag_name(attr, tag_name))
+        {
+            return false;
+        }
+
+        auto timeout = 100;
+
+        auto rc = plc_tag_create(attr.connection_string.begin, timeout);
+        if (rc < 0)
+        {
+            return false;
+        }
+
+        auto handle = rc;
+
+        rc = plc_tag_read(handle, timeout);
+        if (rc != PLCTAG_STATUS_OK)
+        {
+            return false;
+        }
+
+        auto size = plc_tag_get_size(handle);
+        if (size < 4)
+        {
+            return false;
+        }
+
+        if (!mb::create_buffer(dst, (u32)size))
+        {
+            return false;
+        }
+
+        auto view = mb::push_view(dst, (u32)size);
+
+        rc = plc_tag_get_raw_bytes(handle, 0, view.begin, view.length);
+        if (rc != PLCTAG_STATUS_OK)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+
+    static bool scan_tag_entries(ControllerAttr const& attr, MemoryBuffer<u8>& dst)
+    {
+        return scan_to_buffer(attr, "@tags", dst);
+    }
+
+
+    static bool scan_udt_entry(ControllerAttr const& attr, int udt_id, MemoryBuffer<u8>& dst)
+    {
+        char udt[20];
+        qsnprintf(udt, 20, "@udt/%d", udt_id);
+
+        return scan_to_buffer(attr, udt, dst);
     }
 
 
@@ -1038,28 +1072,35 @@ namespace
         DataTypeTable data_types{};
         TagTable tags{};
 
+        ControllerAttr attr{};
+
+        MemoryBuffer<u8> entry_buffer;
+
         auto const cleanup = [&]()
         {
             destroy_data_type_table(data_types);
             destroy_tag_table(tags);
+            mb::destroy_buffer(entry_buffer);
         };
-
-        // TODO
-        Bytes entry_data{};
-        if (!scan_tag("@tags", entry_data))
+        
+        if (!scan_tag_entries(attr, entry_buffer))
         {
             return;
         }
+
+        auto entry_data = mb::make_view(entry_buffer);
 
         auto tag_entries = parse_tag_entries(entry_data.begin, entry_data.length);
 
         if (!create_tag_table(tag_entries, tags))
         {
+            cleanup();
             return;
         }
 
         if (!create_data_type_table(data_types))
         {
+            cleanup();
             return;
         }
 
@@ -1067,28 +1108,25 @@ namespace
         append_udt_ids(tag_entries, udt_ids);
 
         destroy_vector(tag_entries);
-
-        char udt[20];
+        mb::destroy_buffer(entry_buffer);
 
         for (u32 i = 0; i < udt_ids.size(); ++i)
         {
             auto id = (int)udt_ids[i];
-            qsnprintf(udt, 20, "@udt/%d", id);
+            
+            MemoryBuffer<u8> udt_buffer;
 
-            if (!scan_tag(udt, entry_data)) // TODO
+            if (!scan_udt_entry(attr, id, udt_buffer))
             {
                 continue;
             }
 
-            auto entry = parse_udt_entry(entry_data.begin);
+            auto entry = parse_udt_entry(udt_buffer.data_);
 
             update_data_type_table(data_types, entry);
-
-            
-
             append_udt_ids(entry.fields, udt_ids);
-        }
 
-        
+            mb::destroy_buffer(udt_buffer);
+        }
     }
 }
