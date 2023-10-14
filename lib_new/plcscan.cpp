@@ -132,123 +132,20 @@ static bool map_contains(std::unordered_map<K, V> const& map, K key)
 }
 
 
-using DataTypeId32 = u32;
 
-
-/* 16 bit ids */
-
-namespace id16
-{
-    constexpr auto TYPE_IS_STRUCT = (u16)0x8000;     // 0b1000'0000'0000'0000
-    constexpr auto TYPE_IS_SYSTEM = (u16)0x1000;     // 0b0001'0000'0000'0000
-    constexpr auto UDT_FIELD_IS_ARRAY = (u16)0x2000; // 0b0010'0000'0000'0000
-
-    constexpr auto TAG_DIM_MASK = (u16)0x6000;       // 0b0110'0000'0000'0000    
-
-    constexpr auto ATOMIC_TYPE_ID_MASK = (u16)0x00FF; // 0b0000'0000'1111'1111
-    constexpr auto ATOMIC_TYPE_ID_MIN = (u16)0xC1;    // 0b0000'0000'1100'0001
-    constexpr auto ATOMIC_TYPE_ID_MAX = (u16)0xDE;    // 0b0000'0000'1101'1110
-
-    constexpr auto UDT_TYPE_ID_MASK = (u16)0x0FFF; // 0b0000'1111'1111'1111
-
-
-    static inline u16 get_tag_dimensions(u16 type_code)
-    {
-        return (u16)((type_code & id16::TAG_DIM_MASK) >> 13);
-    }
-
-
-    static inline bool is_bit_field(u16 type_code)
-    {
-        return (AtomicType)(type_code & id16::ATOMIC_TYPE_ID_MASK) == AtomicType::BOOL;
-    }
-
-
-    static inline bool is_array_field(u16 type_code)
-    {
-        return type_code & id16::UDT_FIELD_IS_ARRAY;
-    }
-
-
-    static inline u16 get_udt_id(u16 type_code)
-    {
-        if (type_code & TYPE_IS_STRUCT)
-        {
-            return type_code & UDT_TYPE_ID_MASK;
-        }
-
-        return 0;        
-    }
-}
-
-
-/* 32 bit ids */
-namespace id32
-{
-    // 0b0000'0000'0000'0000'0000'0000'0000'0000
-    //  |----other-----|------udt-----|-atomic--|
-
-    constexpr auto OTHER_TYPE_ID_MASK  = (DataTypeId32)0b1111'1111'1111'0000'0000'0000'0000'0000;
-    constexpr auto UDT_TYPE_ID_MASK    = (DataTypeId32)0b0000'0000'0000'1111'1111'1111'0000'0000;
-    constexpr auto ATOMIC_TYPE_ID_MASK = (DataTypeId32)0b0000'0000'0000'0000'0000'0000'1111'1111;
-
-    constexpr auto SYSTEM_TYPE_ID  = (DataTypeId32)0b0000'0000'0001'0000'0000'0000'0000'0000;
-    constexpr auto UNKNOWN_TYPE_ID = (DataTypeId32)0b0000'0000'0010'0000'0000'0000'0000'0000;
-
-
-    static inline DataTypeId32 get_udt_type_id(u16 type_code)
-    {
-        if (type_code & id16::TYPE_IS_STRUCT)
-        {
-            // shift left 8 to prevent conflicts with atomic types
-            return (DataTypeId32)(id16::get_udt_id(type_code)) << 8;
-        }
-
-        return 0;        
-    }
-
-
-    static DataTypeId32 get_data_type_id(u16 type_code)
-    {
-        if (type_code & id16::TYPE_IS_SYSTEM)
-        {
-            return id32::SYSTEM_TYPE_ID;
-        }
-        else if (type_code & id16::TYPE_IS_STRUCT)
-        {            
-            return get_udt_type_id(type_code);
-        }
-
-        u16 atomic_type = type_code & id16::ATOMIC_TYPE_ID_MASK;
-
-        if (atomic_type >= id16::ATOMIC_TYPE_ID_MIN && atomic_type <= id16::ATOMIC_TYPE_ID_MAX)
-        {
-            return (DataTypeId32)atomic_type;
-        }
-
-        return id32::UNKNOWN_TYPE_ID;
-    }
-
-
-    static bool is_udt_type(DataTypeId32 id)
-    {
-        return (id & UDT_TYPE_ID_MASK) && !(id & OTHER_TYPE_ID_MASK) && !(id & ATOMIC_TYPE_ID_MASK);
-    }
-
-
-
-}
 
 
 /* tag types */
 
 namespace
 {   
+    using DataTypeId32 = u32;
+
 
     enum class AtomicType : DataTypeId32
     {
-        UNKNOWN = id32::UNKNOWN_TYPE_ID,
-        SYSTEM  = id32::SYSTEM_TYPE_ID,
+        UNKNOWN = (DataTypeId32)0b0000'0000'0001'0000'0000'0000'0000'0000,
+        SYSTEM  = (DataTypeId32)0b0000'0000'0010'0000'0000'0000'0000'0000,
 
         BOOL  = (DataTypeId32)0xC1,
         SINT  = (DataTypeId32)0xC2,
@@ -392,6 +289,113 @@ namespace
 }
 
 
+/* 16 bit ids */
+
+namespace id16
+{
+    constexpr auto TYPE_IS_STRUCT = (u16)0x8000;     // 0b1000'0000'0000'0000
+    constexpr auto TYPE_IS_SYSTEM = (u16)0x1000;     // 0b0001'0000'0000'0000
+    constexpr auto UDT_FIELD_IS_ARRAY = (u16)0x2000; // 0b0010'0000'0000'0000
+
+    constexpr auto TAG_DIM_MASK = (u16)0x6000;       // 0b0110'0000'0000'0000    
+
+    constexpr auto ATOMIC_TYPE_ID_MASK = (u16)0x00FF; // 0b0000'0000'1111'1111
+    constexpr auto ATOMIC_TYPE_ID_MIN = (u16)0xC1;    // 0b0000'0000'1100'0001
+    constexpr auto ATOMIC_TYPE_ID_MAX = (u16)0xDE;    // 0b0000'0000'1101'1110
+
+    constexpr auto UDT_TYPE_ID_MASK = (u16)0x0FFF; // 0b0000'1111'1111'1111
+
+
+    static inline u16 get_tag_dimensions(u16 type_code)
+    {
+        return (u16)((type_code & id16::TAG_DIM_MASK) >> 13);
+    }
+
+
+    static inline bool is_bit_field(u16 type_code)
+    {
+        return (AtomicType)(type_code & id16::ATOMIC_TYPE_ID_MASK) == AtomicType::BOOL;
+    }
+
+
+    static inline bool is_array_field(u16 type_code)
+    {
+        return type_code & id16::UDT_FIELD_IS_ARRAY;
+    }
+
+
+    static inline u16 get_udt_id(u16 type_code)
+    {
+        if (type_code & TYPE_IS_STRUCT)
+        {
+            return type_code & UDT_TYPE_ID_MASK;
+        }
+
+        return 0;        
+    }
+}
+
+
+/* 32 bit ids */
+namespace id32
+{
+    // 0b0000'0000'0000'0000'0000'0000'0000'0000
+    //  |----other-----|------udt-----|-atomic--|
+
+    constexpr auto OTHER_TYPE_ID_MASK  = (DataTypeId32)0b1111'1111'1111'0000'0000'0000'0000'0000;
+    constexpr auto UDT_TYPE_ID_MASK    = (DataTypeId32)0b0000'0000'0000'1111'1111'1111'0000'0000;
+    constexpr auto ATOMIC_TYPE_ID_MASK = (DataTypeId32)0b0000'0000'0000'0000'0000'0000'1111'1111;
+
+    constexpr auto UNKNOWN_TYPE_ID = (DataTypeId32)AtomicType::UNKNOWN;
+
+
+    static inline DataTypeId32 get_udt_type_id(u16 type_code)
+    {
+        if (type_code & id16::TYPE_IS_STRUCT)
+        {
+            // shift left 8 to prevent conflicts with atomic types
+            return (DataTypeId32)(id16::get_udt_id(type_code)) << 8;
+        }
+
+        return 0;        
+    }
+
+
+    static DataTypeId32 get_data_type_id(u16 type_code)
+    {
+        if (type_code & id16::TYPE_IS_SYSTEM)
+        {
+            return UNKNOWN_TYPE_ID;
+        }
+        else if (type_code & id16::TYPE_IS_STRUCT)
+        {            
+            return get_udt_type_id(type_code);
+        }
+
+        u16 atomic_type = type_code & id16::ATOMIC_TYPE_ID_MASK;
+
+        if (atomic_type >= id16::ATOMIC_TYPE_ID_MIN && atomic_type <= id16::ATOMIC_TYPE_ID_MAX)
+        {
+            return (DataTypeId32)atomic_type;
+        }
+
+        return UNKNOWN_TYPE_ID;
+    }
+
+
+    static bool is_udt_type(DataTypeId32 id)
+    {
+        return (id & UDT_TYPE_ID_MASK) && !(id & OTHER_TYPE_ID_MASK) && !(id & ATOMIC_TYPE_ID_MASK);
+    }
+
+
+
+}
+
+
+
+
+
 /* tag listing */
 
 namespace
@@ -438,6 +442,8 @@ namespace
         TagEntry entry{};
 
         entry.type_code = h.symbol_type;
+
+        entry.elem_size = (u32)h.element_length;
 
         entry.elem_count = 1;
 
@@ -1075,13 +1081,6 @@ namespace
         ControllerAttr attr{};
 
         MemoryBuffer<u8> entry_buffer;
-
-        auto const cleanup = [&]()
-        {
-            destroy_data_type_table(data_types);
-            destroy_tag_table(tags);
-            mb::destroy_buffer(entry_buffer);
-        };
         
         if (!scan_tag_entries(attr, entry_buffer))
         {
@@ -1094,13 +1093,14 @@ namespace
 
         if (!create_tag_table(tag_entries, tags))
         {
-            cleanup();
+            mb::destroy_buffer(entry_buffer);
             return;
         }
 
         if (!create_data_type_table(data_types))
         {
-            cleanup();
+            mb::destroy_buffer(entry_buffer);
+            destroy_tag_table(tags);
             return;
         }
 
