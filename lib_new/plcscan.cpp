@@ -70,7 +70,10 @@ static void copy_bytes(u8* src, u8* dst, u32 len)
 
 static void copy_unsafe(cstr src, String const& dst)
 {
-    for (u32 i = 0; i < dst.length; ++i)
+    auto len = (u32)strlen(src);
+    auto len = len < dst.length ? len : dst.length;
+
+    for (u32 i = 0; i < len; ++i)
     {
         dst.begin[i] = src[i];
     }
@@ -79,7 +82,10 @@ static void copy_unsafe(cstr src, String const& dst)
 
 static void copy_unsafe(String const& src, char* dst)
 {
-    for (u32 i = 0; i < src.length; ++i)
+    auto len = (u32)strlen(dst);
+    auto len = len < src.length ? len : src.length;
+
+    for (u32 i = 0; i < len; ++i)
     {
         dst[i] = src.begin[i];
     }
@@ -609,7 +615,7 @@ namespace
     {
         u32 value_bytes = 0;
         u32 str_bytes = 0;
-        
+
         for (auto const& e : entries)
         {
             value_bytes += elem_size(e);
@@ -885,8 +891,6 @@ namespace
         {
             return;
         }
-
-        // how to parse scan data - UdtEntry
         
         MemoryBuffer<char> buffer{};
         
@@ -980,9 +984,9 @@ namespace
             strlen(attr.path) +
             strlen(name_key);
 
-        u64 max_name_len = 32;
+        auto total_size = base_len + MAX_TAG_NAME_LENGTH + 1; /* zero terminated */
 
-        if (!mb::create_buffer(attr.string_data, base_len + max_name_len + 1)) /* zero terminated */
+        if (!mb::create_buffer(attr.string_data, total_size))
         {
             return false;
         }
@@ -990,7 +994,7 @@ namespace
         mb::zero_buffer(attr.string_data);
 
         attr.connection_string = mb::push_view(attr.string_data, base_len);
-        attr.tag_name = mb::push_cstr_view(attr.string_data, max_name_len + 1);
+        attr.tag_name = mb::push_cstr_view(attr.string_data, MAX_TAG_NAME_LENGTH + 1);
 
         auto dst = attr.connection_string.begin;
         cstr fmt = "%s%s%s%s%s%s";
@@ -1067,7 +1071,7 @@ namespace
     }
 
 
-    static bool scan_tag_entries(ControllerAttr const& attr, MemoryBuffer<u8>& dst)
+    static bool scan_tag_entry_listing(ControllerAttr const& attr, MemoryBuffer<u8>& dst)
     {
         return scan_to_buffer(attr, "@tags", dst);
     }
@@ -1102,7 +1106,7 @@ namespace
 
         MemoryBuffer<u8> entry_buffer;
         
-        if (!scan_tag_entries(attr, entry_buffer))
+        if (!scan_tag_entry_listing(attr, entry_buffer))
         {
             return;
         }
