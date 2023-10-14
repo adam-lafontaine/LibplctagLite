@@ -68,11 +68,20 @@ static void copy_bytes(u8* src, u8* dst, u32 len)
 }
 
 
-static void copy(cstr src, String const& dst)
+static void copy_unsafe(cstr src, String const& dst)
 {
     for (u32 i = 0; i < dst.length; ++i)
     {
         dst.begin[i] = src[i];
+    }
+}
+
+
+static void copy_unsafe(String const& src, char* dst)
+{
+    for (u32 i = 0; i < src.length; ++i)
+    {
+        dst[i] = src.begin[i];
     }
 }
 
@@ -394,12 +403,13 @@ namespace id32
 
 
 
-
-
 /* tag listing */
 
 namespace
 {
+    constexpr size_t MAX_TAG_NAME_LENGTH = 32;
+
+
     class TagEntry
     {
     public:
@@ -410,7 +420,49 @@ namespace
     };
 
 
-    using TagEntryList = std::vector<TagEntry>;
+    using TagEntryList = std::vector<TagEntry>;    
+
+
+    static bool is_valid_tag_name(cstr tag_name)
+    {
+        auto len = strlen(tag_name);
+        if (len == 0 || len > MAX_TAG_NAME_LENGTH)
+        {
+            return false;
+        }
+
+        const char* invalid_begin_chars = "0123456789_";
+        if (std::strchr(invalid_begin_chars, tag_name[0]) != nullptr)
+        {
+            return false;
+        }
+
+        const char* valid_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
+        if (tag_name[0] == '@')
+        {
+            valid_chars = "@/abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
+        }
+
+        for (u32 i = 0; i < len; ++i)
+        {
+            auto c = tag_name[i];
+            if (std::strchr(valid_chars, c) == nullptr)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+
+    static bool is_valid_tag_name(String tag_name)
+    {
+        char buffer[MAX_TAG_NAME_LENGTH + 1] = { 0 };
+        copy_unsafe(tag_name, buffer);
+
+        return is_valid_tag_name(buffer);
+    }
 
 
     static int append_tag_entry(TagEntryList& entries, u8* entry_data)
@@ -461,7 +513,10 @@ namespace
 
         entry.name = mb::make_view((char*)(entry_data + offset),  h.string_len);
 
-        entries.push_back(entry);
+        if (is_valid_tag_name(entry.name))
+        {
+            entries.push_back(entry);
+        }
 
         offset += h.string_len;
 
@@ -495,6 +550,7 @@ namespace
         int connection_handle = -1;
 
         DataTypeId32 type_id = id32::UNKNOWN_TYPE_ID;
+        u32 array_count = 0;
         // how to parse scan data
 
         ByteOffset value;
@@ -538,6 +594,7 @@ namespace
         Tag tag{};
 
         tag.type_id = id32::get_data_type_id(entry.type_code);
+        tag.array_count = entry.elem_count;
 
         tag.value = mb::push_offset(table.value_data, value_len);
         tag.name = mb::push_cstr_view(table.name_data, name_alloc_len);
@@ -552,6 +609,7 @@ namespace
     {
         u32 value_bytes = 0;
         u32 str_bytes = 0;
+        
         for (auto const& e : entries)
         {
             value_bytes += elem_size(e);
@@ -812,8 +870,8 @@ namespace
         dt.data_type_name = mb::push_cstr_view(table.atomic_str_data, name_len + 1);
         dt.data_type_description = mb::push_cstr_view(table.atomic_str_data, desc_len + 1);
 
-        copy(name_str, dt.data_type_name);
-        copy(desc_str, dt.data_type_description);
+        copy_unsafe(name_str, dt.data_type_name);
+        copy_unsafe(desc_str, dt.data_type_description);
 
         table.type_map[type_id] = dt;
     }
@@ -852,17 +910,11 @@ namespace
         dt.data_type_description = mb::push_cstr_view(buffer, desc_len + 1);
         
         copy(entry.udt_name, dt.data_type_name);
-        copy(desc_str, dt.data_type_description);
+        copy_unsafe(desc_str, dt.data_type_description);
 
         table.type_map[type_id] = dt;
 
         table.udt_str_data.push_back(buffer);
-    }
-
-
-    static void update_data_type_table(DataTypeTable& table, TagEntry const& entry)
-    {
-        
     }
 
 
@@ -949,39 +1001,6 @@ namespace
     }
 
 
-    static bool is_valid_tag_name(cstr tag_name)
-    {
-        auto len = strlen(tag_name);
-        if (len <= 0 || len > 32)
-        {
-            return false;
-        }
-
-        const char* invalid_begin_chars = "0123456789_";
-        if (std::strchr(invalid_begin_chars, tag_name[0]) != nullptr)
-        {
-            return false;
-        }
-
-        const char* valid_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
-        if (tag_name[0] == '@')
-        {
-            valid_chars = "@/abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
-        }
-
-        for (u32 i = 0; i < len; ++i)
-        {
-            auto c = tag_name[i];
-            if (std::strchr(valid_chars, c) == nullptr)
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-
     static bool set_tag_name(ControllerAttr const& attr, Tag& tag)
     {
         zero_string(attr.tag_name);
@@ -996,7 +1015,7 @@ namespace
     {
         zero_string(attr.tag_name);
 
-        copy(name, attr.tag_name);
+        copy_unsafe(name, attr.tag_name);
 
         return true;
     }
@@ -1065,6 +1084,7 @@ namespace
 
 
 }
+
 
 /* scan cycle */
 
