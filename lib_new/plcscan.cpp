@@ -1,6 +1,7 @@
 #include "../util/types.hpp"
 #include "../util/memory_buffer.hpp"
 #include "../util/qsprintf.hpp"
+#include "../util/stopwatch.hpp"
 
 #include "../lib_old/libplctag/libplctag.h"
 
@@ -8,6 +9,7 @@
 #include <array>
 #include <unordered_map>
 #include <cassert>
+#include <thread>
 
 namespace mb = memory_buffer;
 
@@ -46,7 +48,6 @@ static void copy_bytes(u8* src, u8* dst, u32 len)
         break;
     }
 
-
     constexpr auto size64 = sizeof(u64);
 
     auto len64 = len / size64;
@@ -66,6 +67,48 @@ static void copy_bytes(u8* src, u8* dst, u32 len)
     {
         dst8[i] = src8[i];
     }
+}
+
+
+static bool bytes_equal(u8* lhs, u8* rhs, u32 len)
+{
+    switch (len)
+    {
+    case 1: return *lhs == *rhs;
+
+    case 2: return *((u16*)lhs) == *((u16*)rhs);
+
+    case 4: return *((u32*)lhs) == *((u32*)rhs);
+
+    case 8: return *((u64*)lhs) == *((u64*)rhs);
+
+    default:
+        break;
+    }
+
+    constexpr auto size64 = sizeof(u64);
+
+    auto len64 = len / size64;
+    auto lhs64 = (u64*)lhs;
+    auto rhs64 = (u64*)rhs;
+
+    for (u32 i = 0; i < len64; ++i)
+    {
+        if (lhs64[i] != rhs64[i])
+        {
+            return false;
+        }
+    }
+
+    for (u32 i = len64 * 8; i < len; ++i)
+    {
+        if (lhs[i] != rhs[i])
+        {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 
@@ -146,6 +189,31 @@ static bool map_contains(std::unordered_map<K, V> const& map, K key)
 
     return it == not_found;
 }
+
+
+namespace time_helper
+{
+    namespace chr = std::chrono;
+
+	inline void delay_current_thread(Stopwatch& sw, double min_delay_ms = 20.0)
+	{
+		auto ms = sw.get_time_milli();
+		if (ms < min_delay_ms)
+		{
+			auto delay_ms = (unsigned long long)(min_delay_ms - ms);
+			std::this_thread::sleep_for(chr::milliseconds(delay_ms));
+		}
+	}
+
+
+	inline long long get_timestamp()
+	{
+		return chr::duration_cast<chr::milliseconds>(chr::system_clock::now().time_since_epoch()).count();
+	}
+}
+
+
+namespace tmh = time_helper;
 
 
 /* 16 bin ids */
@@ -582,6 +650,8 @@ namespace
 
         ByteOffset value;
         StringView name;
+
+        bool is_connected() const { return connection_handle > 0; }
     };
 
 
@@ -1016,6 +1086,12 @@ namespace
     };
 
 
+    static void destroy_controller(ControllerAttr& attr)
+    {
+        mb::destroy_buffer(attr.string_data);
+    }
+
+
     static bool init_controller(ControllerAttr& attr)
     {
         cstr base = "protocol=ab-eip&plc=controllogix"; // 32
@@ -1197,24 +1273,6 @@ namespace
 
 namespace
 {
-    
-
-    static void init()
-    {
-        DataTypeTable data_types{};
-        ControllerAttr attr{};
-
-        init_controller(attr);        
-
-        if (!create_data_type_table(data_types))
-        {
-            return;
-        }
-
-        
-    }
-
-
     void enumerate_tags(ControllerAttr const& attr, TagTable& tags, DataTypeTable& data_types)
     {
         MemoryBuffer<u8> entry_buffer;
@@ -1258,5 +1316,103 @@ namespace
 
             mb::destroy_buffer(udt_buffer);
         }
+    }
+
+
+    static void connect_tags(ControllerAttr const& attr, TagTable& tags)
+    {
+        auto timeout = 100;
+
+        for (auto& tag : tags.tags)
+        {
+            connect_tag(attr, tag);
+        }
+    }
+
+
+    static void scan_tags(TagTable const& tags)
+    {
+        auto timeout = 100;
+
+        for (auto const& tag : tags.tags)
+        {
+            if (!tag.is_connected())
+            {
+                continue;
+            }
+
+            auto rc = plc_tag_read(tag.connection_handle, timeout);
+            if (rc != PLCTAG_STATUS_OK)
+            {
+                
+            }
+        }
+
+        for (auto const& tag : tags.tags)
+        {
+            if (!tag.is_connected())
+            {
+                continue;
+            }
+
+            auto view = mb::get_write_at(tags.value_data, tag.value);
+            auto rc = plc_tag_get_raw_bytes(tag.connection_handle, 0, view.begin, view.length);
+            if (rc != PLCTAG_STATUS_OK)
+            {
+                
+            }
+        }
+    }
+
+
+    static void sample_main()
+    {
+        DataTypeTable data_types{};
+        ControllerAttr attr{};
+        TagTable tags{};
+
+        if (!create_data_type_table(data_types))
+        {
+            return;
+        }        
+
+        if (!init_controller(attr))
+        {
+            return;
+        }
+
+        enumerate_tags(attr, tags, data_types);
+
+        connect_tags(attr, tags);
+
+        Stopwatch sw;
+        f64 scan_ms = 0.0;
+        f64 proc_ms = 0.0;
+        f64 total_ms = 0.0;
+
+        auto const scan = [&](){ scan_tags(tags); scan_ms = sw.get_time_milli(); };
+        auto const process = [&](){ proc_ms = sw.get_time_milli(); };
+
+        int running = 500;
+
+        while (running > 0)
+        {
+            sw.start();
+
+            std::thread scan_th(scan);
+            std::thread process_th(process);
+
+            scan_th.join();
+            process_th.join();
+
+            running--;
+            total_ms = sw.get_time_milli();
+            
+            tmh::delay_current_thread(sw, 100);
+        }
+
+        destroy_tag_table(tags);
+        destroy_controller(attr);
+        destroy_data_type_table(data_types);
     }
 }
