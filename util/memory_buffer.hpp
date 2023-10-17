@@ -245,7 +245,7 @@ namespace memory_buffer
 
 
 	template <typename T>
-	MemoryView<T> make_view(MemoryBuffer<T>& buffer)
+	MemoryView<T> make_view(MemoryBuffer<T> const& buffer)
 	{
 		assert(buffer.data_);
 		assert(buffer.size_);
@@ -282,8 +282,7 @@ namespace memory_buffer
 		assert(buffer.data_);
 		assert(buffer.capacity_);
 
-		auto elements_available = (buffer.capacity_ - buffer.size_) >= n_elements;
-		assert(elements_available);
+		assert((buffer.capacity_ - buffer.size_) >= n_elements);
 
 		MemoryOffset<T> offset{};
 
@@ -297,6 +296,23 @@ namespace memory_buffer
 		}
 
 		return offset;
+	}
+
+
+	template <typename T>
+	MemoryView<T> make_view(MemoryBuffer<T> const& buffer, MemoryOffset<T> const& offset)
+	{
+		assert(buffer.data_);
+		assert(buffer.capacity_);
+
+		assert((buffer.size_ - offset.begin) >= offset.length);
+
+		MemoryView<T> view{};
+
+		view.begin = buffer.data_ + offset.begin;
+		view.length = offset.length;
+
+		return view;
 	}
 
 }
@@ -421,10 +437,27 @@ namespace memory_buffer
 
 
 	template <typename T>
-	MemoryView<T> get_read_at(ParallelBuffer<T> const& buffer, MemoryOffset<T> const& offset)
+	MemoryView<T> make_read_view(ParallelBuffer<T> const& buffer)
 	{
 		assert(buffer.p_data_[0]);
 		assert(buffer.p_capacity_);
+
+		MemoryView<T> view{};
+
+		view.begin = buffer.p_data_[buffer.read_id];
+		view.length = buffer.p_size_;
+
+		return view;
+	}
+
+
+	template <typename T>
+	MemoryView<T> make_read_view(ParallelBuffer<T> const& buffer, MemoryOffset<T> const& offset)
+	{
+		assert(buffer.p_data_[0]);
+		assert(buffer.p_capacity_);
+
+		assert((buffer.size_ - offset.begin) >= offset.length);
 
 		MemoryView<T> view{};
 
@@ -436,7 +469,7 @@ namespace memory_buffer
 
 
 	template <typename T>
-	MemoryView<T> get_write_at(ParallelBuffer<T> const& buffer, MemoryOffset<T> const& offset)
+	MemoryView<T> make_write_view(ParallelBuffer<T> const& buffer, MemoryOffset<T> const& offset)
 	{
 		assert(buffer.p_data_[0]);
 		assert(buffer.p_capacity_);

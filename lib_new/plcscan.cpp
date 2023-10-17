@@ -20,34 +20,55 @@ using ByteOffset = MemoryOffset<u8>;
 using DataTypeId32 = u32;
 
 
-template <typename T>
-static void copy_numeric_bytes(u8* src, u8* dst)
+static void copy_8(u8* src, u8* dst, u32 len8)
 {
-    *(T*)dst = *(T*)src;
-}
-
-
-static void copy_bytes(u8* src, u8* dst, u32 len)
-{
-    switch (len)
+    switch (len8)
     {
     case 1:
-        copy_numeric_bytes<u8>(src, dst);
+        *dst = *src;
         return;
+
     case 2:
-        copy_numeric_bytes<u16>(src, dst);
+        *(u16*)dst = *(u16*)src;
         return;
+
+    case 3:
+        *(u16*)dst = *(u16*)src;
+        dst[2] = src[2];
+        return;
+
     case 4:
-        copy_numeric_bytes<u32>(src, dst);
+        *(u32*)dst = *(u32*)src;
         return;
+    
+    case 5:
+        *(u32*)dst = *(u32*)src;
+        dst[4] = src[4];
+        return;
+    
+    case 6:
+        *(u32*)dst = *(u32*)src;
+        *(u16*)(dst + 4) = *(u16*)(src + 4);
+        return;
+    
+    case 7:
+        *(u32*)dst = *(u32*)src;
+        *(u16*)(dst + 4) = *(u16*)(src + 4);
+        dst[6] = src[6];
+        return;
+
     case 8:
-        copy_numeric_bytes<u64>(src, dst);
+        *(u64*)dst = *(u64*)src;
         return;
 
     default:
         break;
     }
+}
 
+
+static void copy_bytes(u8* src, u8* dst, u32 len)
+{
     constexpr auto size64 = sizeof(u64);
 
     auto len64 = len / size64;
@@ -63,10 +84,7 @@ static void copy_bytes(u8* src, u8* dst, u32 len)
         dst64[i] = src64[i];
     }
 
-    for (size_t i = 0; i < len8; ++i)
-    {
-        dst8[i] = src8[i];
-    }
+    copy_8(src8, dst8, len8);
 }
 
 
@@ -141,6 +159,14 @@ static void copy(StringView const& src, StringView const& dst)
     auto len = src.length < dst.length ? src.length : dst.length;
 
     copy_bytes((u8*)src.begin, (u8*)dst.begin, len);
+}
+
+
+static void copy(ByteView const& src, ByteView const& dst)
+{
+    assert(src.length <= dst.length);
+
+    copy_bytes(src.begin, dst.begin, src.length);
 }
 
 
@@ -248,6 +274,7 @@ namespace id32
     constexpr auto UNKNOWN_TYPE_ID = (DataTypeId32)0b0000'0000'0001'0000'0000'0000'0000'0000;
     constexpr auto SYSTEM_TYPE_ID = (DataTypeId32)0b0000'0000'0010'0000'0000'0000'0000'0000;
 }
+
 
 /* tag types */
 
@@ -648,7 +675,7 @@ namespace
         // how to parse scan data
         // fixed type size, udt fields
 
-        ByteOffset value;
+        ByteOffset scan_offset;
         StringView name;
 
         bool is_connected() const { return connection_handle > 0; }
@@ -660,7 +687,8 @@ namespace
     public:
         std::vector<Tag> tags;
 
-        ParallelBuffer<u8> value_data;
+        ParallelBuffer<u8> scan_data;
+        MemoryBuffer<u8> value_data;
         MemoryBuffer<char> name_data;
     };
 
@@ -669,7 +697,8 @@ namespace
     {
         destroy_vector(table.tags);
 
-        mb::destroy_buffer(table.value_data);
+        mb::destroy_buffer(table.scan_data );
+        mb::destroy_buffer(table.value_data );
         mb::destroy_buffer(table.name_data);
     }    
 
@@ -677,7 +706,7 @@ namespace
     u32 elem_size(TagEntry const& e) { return e.elem_count * e.elem_size; }
 
 
-    u32 cstr_size(TagEntry const& e) { return e.name.length + 1; /* zero terminated */}
+    u32 cstr_size(TagEntry const& e) { return e.name.length + 1; /* zero terminated */ }
 
 
     static void add_tag(TagTable& table, TagEntry const& entry)
@@ -693,7 +722,7 @@ namespace
         tag.type_id = id32::get_data_type_id(entry.type_code);
         tag.array_count = entry.elem_count;
 
-        tag.value = mb::push_offset(table.value_data, value_len);
+        tag.scan_offset = mb::push_offset(table.scan_data , value_len);
         tag.name = mb::push_cstr_view(table.name_data, name_alloc_len);
 
         copy(entry.name, tag.name);
@@ -713,7 +742,13 @@ namespace
             str_bytes += cstr_size(e);
         }
 
-        if (!mb::create_buffer(table.value_data, value_bytes))
+        if (!mb::create_buffer(table.scan_data , value_bytes))
+        {
+            destroy_tag_table(table);
+            return false;
+        }
+
+        if (!mb::create_buffer(table.value_data , value_bytes))
         {
             destroy_tag_table(table);
             return false;
@@ -725,7 +760,8 @@ namespace
             return false;
         }
 
-        mb::zero_buffer(table.value_data);
+        mb::zero_buffer(table.scan_data );
+        mb::zero_buffer(table.value_data );
         mb::zero_buffer(table.name_data);
 
         table.tags.reserve(entries.size());
@@ -1192,7 +1228,7 @@ namespace
 
     static bool scan_tag(Tag const& tag, ParallelBuffer<u8> const& buffer)
     {
-        auto view = mb::get_write_at(buffer, tag.value);
+        auto view = mb::make_write_view(buffer, tag.scan_offset);
 
         return scan_to_view(tag.connection_handle, view);
     }
@@ -1355,13 +1391,24 @@ namespace
                 continue;
             }
 
-            auto view = mb::get_write_at(tags.value_data, tag.value);
+            auto view = mb::make_write_view(tags.scan_data , tag.scan_offset);
             auto rc = plc_tag_get_raw_bytes(tag.connection_handle, 0, view.begin, view.length);
             if (rc != PLCTAG_STATUS_OK)
             {
                 
             }
         }
+    }
+
+
+    static void process_tags(TagTable const& tags)
+    {
+        auto src = mb::make_read_view(tags.scan_data);
+        auto dst = mb::make_view(tags.value_data);
+
+        copy(src, dst);
+
+
     }
 
 
@@ -1391,7 +1438,7 @@ namespace
         f64 total_ms = 0.0;
 
         auto const scan = [&](){ scan_tags(tags); scan_ms = sw.get_time_milli(); };
-        auto const process = [&](){ proc_ms = sw.get_time_milli(); };
+        auto const process = [&](){ process_tags(tags); proc_ms = sw.get_time_milli(); };
 
         int running = 500;
 
@@ -1405,9 +1452,11 @@ namespace
             scan_th.join();
             process_th.join();
 
+            mb::flip_read_write(tags.scan_data );
+
             running--;
             total_ms = sw.get_time_milli();
-            
+
             tmh::delay_current_thread(sw, 100);
         }
 
