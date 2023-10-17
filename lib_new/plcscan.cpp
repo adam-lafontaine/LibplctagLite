@@ -15,10 +15,11 @@ namespace mb = memory_buffer;
 using String = MemoryView<char>;
 using Bytes = MemoryView<u8>;
 using ByteOffset = MemoryOffset<u8>;
+using DataTypeId32 = u32;
 
 
 template <typename T>
-static void copy_atomic_bytes(u8* src, u8* dst)
+static void copy_numeric_bytes(u8* src, u8* dst)
 {
     *(T*)dst = *(T*)src;
 }
@@ -29,16 +30,16 @@ static void copy_bytes(u8* src, u8* dst, u32 len)
     switch (len)
     {
     case 1:
-        copy_atomic_bytes<u8>(src, dst);
+        copy_numeric_bytes<u8>(src, dst);
         return;
     case 2:
-        copy_atomic_bytes<u16>(src, dst);
+        copy_numeric_bytes<u16>(src, dst);
         return;
     case 4:
-        copy_atomic_bytes<u32>(src, dst);
+        copy_numeric_bytes<u32>(src, dst);
         return;
     case 8:
-        copy_atomic_bytes<u64>(src, dst);
+        copy_numeric_bytes<u64>(src, dst);
         return;
 
     default:
@@ -147,20 +148,47 @@ static bool map_contains(std::unordered_map<K, V> const& map, K key)
 }
 
 
+/* 16 bin ids */
+
+namespace id16
+{
+    constexpr auto TYPE_IS_STRUCT = (u16)0x8000;     // 0b1000'0000'0000'0000
+    constexpr auto TYPE_IS_SYSTEM = (u16)0x1000;     // 0b0001'0000'0000'0000
+    constexpr auto UDT_FIELD_IS_ARRAY = (u16)0x2000; // 0b0010'0000'0000'0000
+
+    constexpr auto TAG_DIM_MASK = (u16)0x6000;       // 0b0110'0000'0000'0000    
+
+    constexpr auto FIXED_TYPE_ID_MASK = (u16)0x00FF; // 0b0000'0000'1111'1111
+    constexpr auto FIXED_TYPE_ID_MIN = (u16)0xC1;    // 0b0000'0000'1100'0001
+    constexpr auto FIXED_TYPE_ID_MAX = (u16)0xDE;    // 0b0000'0000'1101'1110
+
+    constexpr auto UDT_TYPE_ID_MASK = (u16)0x0FFF; // 0b0000'1111'1111'1111
+}
 
 
+/* 32 bit ids */
+
+namespace id32
+{
+    // 0b0000'0000'0000'0000'0000'0000'0000'0000
+    //  |----other-----|------udt-----|--fixed--|
+
+    constexpr auto OTHER_TYPE_ID_MASK  = (DataTypeId32)0b1111'1111'1111'0000'0000'0000'0000'0000;
+    constexpr auto UDT_TYPE_ID_MASK    = (DataTypeId32)0b0000'0000'0000'1111'1111'1111'0000'0000;
+    constexpr auto FIXED_TYPE_ID_MASK = (DataTypeId32)0b0000'0000'0000'0000'0000'0000'1111'1111;
+
+    constexpr auto UNKNOWN_TYPE_ID = (DataTypeId32)0b0000'0000'0001'0000'0000'0000'0000'0000;
+    constexpr auto SYSTEM_TYPE_ID = (DataTypeId32)0b0000'0000'0010'0000'0000'0000'0000'0000;
+}
 
 /* tag types */
 
 namespace
-{   
-    using DataTypeId32 = u32;
-
-
-    enum class AtomicType : DataTypeId32
+{ 
+    enum class FixedType : DataTypeId32
     {
-        UNKNOWN = (DataTypeId32)0b0000'0000'0001'0000'0000'0000'0000'0000,
-        SYSTEM  = (DataTypeId32)0b0000'0000'0010'0000'0000'0000'0000'0000,
+        UNKNOWN = id32::UNKNOWN_TYPE_ID,
+        SYSTEM  = id32::SYSTEM_TYPE_ID,
 
         BOOL  = (DataTypeId32)0xC1,
         SINT  = (DataTypeId32)0xC2,
@@ -200,102 +228,119 @@ namespace
     };
 
 
-    constexpr std::array<AtomicType, 14> SUPPORTED_TYPES = 
+    constexpr std::array<FixedType, 14> NUMERIC_FIXED_TYPES = 
     {
-        AtomicType::BOOL,
-        AtomicType::SINT,
-        AtomicType::INT,
-        AtomicType::DINT,
-        AtomicType::LINT,
-        AtomicType::USINT,
-        AtomicType::UINT,
-        AtomicType::UDINT,
-        AtomicType::ULINT,
-        AtomicType::REAL,
-        AtomicType::LREAL,
-        AtomicType::CHAR_STRING,
+        FixedType::BOOL,
+        FixedType::SINT,
+        FixedType::INT,
+        FixedType::DINT,
+        FixedType::LINT,
+        FixedType::USINT,
+        FixedType::UINT,
+        FixedType::UDINT,
+        FixedType::ULINT,
+        FixedType::REAL,
+        FixedType::LREAL,
+        FixedType::CHAR_STRING,
 
-        AtomicType::SYSTEM,
-        AtomicType::UNKNOWN,
-    };    
+        FixedType::SYSTEM,
+        FixedType::UNKNOWN,
+    };
 
 
-    cstr tag_type_str(AtomicType t)
+    constexpr std::array<FixedType, 11> STRING_FIXED_TYPES = 
+    {
+        FixedType::CHAR_STRING,
+        FixedType::STRING_8,
+        FixedType::STRING_16,
+        FixedType::STRING_32,
+        FixedType::STRING_64,
+        FixedType::WIDE_STRING,
+        FixedType::N_BYTE_STRING,
+        FixedType::COUNTED_CHAR_STRING,
+        FixedType::INTERNATIONAL_STRING,
+
+        FixedType::SYSTEM,
+        FixedType::UNKNOWN,
+    };
+
+
+    cstr tag_type_str(FixedType t)
     {
         switch (t)
         {
-        case AtomicType::SYSTEM:               return "SYS"; // ?
-        case AtomicType::BOOL:                 return "BOOL";
-        case AtomicType::SINT:                 return "SINT";
-        case AtomicType::INT:                  return "INT";
-        case AtomicType::DINT:                 return "DINT";
-        case AtomicType::LINT:                 return "LINT";
-        case AtomicType::USINT:                return "USINT";
-        case AtomicType::UINT:                 return "UINT";
-        case AtomicType::UDINT:                return "UDINT";
-        case AtomicType::ULINT:                return "ULINT";
-        case AtomicType::REAL:                 return "REAL";
-        case AtomicType::LREAL:                return "LREAL";
-        case AtomicType::SYNCHRONOUS_TIME:     return "SYNC_TIME"; // ?
-        case AtomicType::DATE:                 return "DATE";
-        case AtomicType::TIME:                 return "TIME";
-        case AtomicType::DATETIME:             return "DATE_AND_TIME";
-        case AtomicType::CHAR_STRING:          return "STRING";
-        case AtomicType::STRING_8:             return "STRING_8";
-        case AtomicType::STRING_16:            return "STRING_16";
-        case AtomicType::STRING_32:            return "STRING_32";
-        case AtomicType::STRING_64:            return "STRING_64";
-        case AtomicType::WIDE_STRING:          return "WIDE_STRING";        
-        case AtomicType::HIGH_RES_DURATION:    return "High resolution duration value";
-        case AtomicType::MED_RES_DURATION:     return "Medium resolution duration value";
-        case AtomicType::LOW_RES_DURATION:     return "Low resolution duration value";
-        case AtomicType::N_BYTE_STRING:        return "N-byte per char character string";
-        case AtomicType::COUNTED_CHAR_STRING:  return "Counted character sting with 1 byte per character and 1 byte length indicator";
-        case AtomicType::DURATION_MS:          return "Duration in milliseconds";
-        case AtomicType::CIP_PATH:             return "CIP path segment(s)";
-        case AtomicType::ENGINEERING_UNITS:    return "Engineering units";
-        case AtomicType::INTERNATIONAL_STRING: return "International character string (encoding?)";
+        case FixedType::SYSTEM:               return "SYS"; // ?
+        case FixedType::BOOL:                 return "BOOL";
+        case FixedType::SINT:                 return "SINT";
+        case FixedType::INT:                  return "INT";
+        case FixedType::DINT:                 return "DINT";
+        case FixedType::LINT:                 return "LINT";
+        case FixedType::USINT:                return "USINT";
+        case FixedType::UINT:                 return "UINT";
+        case FixedType::UDINT:                return "UDINT";
+        case FixedType::ULINT:                return "ULINT";
+        case FixedType::REAL:                 return "REAL";
+        case FixedType::LREAL:                return "LREAL";
+        case FixedType::SYNCHRONOUS_TIME:     return "SYNC_TIME"; // ?
+        case FixedType::DATE:                 return "DATE";
+        case FixedType::TIME:                 return "TIME";
+        case FixedType::DATETIME:             return "DATE_AND_TIME";
+        case FixedType::CHAR_STRING:          return "STRING";
+        case FixedType::STRING_8:             return "STRING_8";
+        case FixedType::STRING_16:            return "STRING_16";
+        case FixedType::STRING_32:            return "STRING_32";
+        case FixedType::STRING_64:            return "STRING_64";
+        case FixedType::WIDE_STRING:          return "WIDE_STRING";        
+        case FixedType::HIGH_RES_DURATION:    return "High resolution duration value";
+        case FixedType::MED_RES_DURATION:     return "Medium resolution duration value";
+        case FixedType::LOW_RES_DURATION:     return "Low resolution duration value";
+        case FixedType::N_BYTE_STRING:        return "N-byte per char character string";
+        case FixedType::COUNTED_CHAR_STRING:  return "Counted character sting with 1 byte per character and 1 byte length indicator";
+        case FixedType::DURATION_MS:          return "Duration in milliseconds";
+        case FixedType::CIP_PATH:             return "CIP path segment(s)";
+        case FixedType::ENGINEERING_UNITS:    return "Engineering units";
+        case FixedType::INTERNATIONAL_STRING: return "International character string (encoding?)";
         
         default:                               return "UNKNOWN";
         }
     }
 
 
-    cstr tag_description_str(AtomicType t)
+    cstr tag_description_str(FixedType t)
     {
         switch (t)
         {
-        case AtomicType::SYSTEM:               return "System tag";
-        case AtomicType::BOOL:                 return "Boolean value";
-        case AtomicType::SINT:                 return "Signed 8-bit integer value";
-        case AtomicType::INT:                  return "Signed 16-bit integer value";
-        case AtomicType::DINT:                 return "Signed 32-bit integer value";
-        case AtomicType::LINT:                 return "Signed 64-bit integer value";
-        case AtomicType::USINT:                return "Unsigned 8-bit integer value";
-        case AtomicType::UINT:                 return "Unsigned 16-bit integer value";
-        case AtomicType::UDINT:                return "Unsigned 32-bit integer value";
-        case AtomicType::ULINT:                return "Unsigned 64-bit integer value";
-        case AtomicType::REAL:                 return "32-bit floating point value, IEEE format";
-        case AtomicType::LREAL:                return "64-bit floating point value, IEEE format";
-        case AtomicType::SYNCHRONOUS_TIME:     return "Synchronous time value";
-        case AtomicType::DATE:                 return "Date value";
-        case AtomicType::TIME:                 return "Time of day value";
-        case AtomicType::DATETIME:             return "Date and time of day value";
-        case AtomicType::CHAR_STRING:          return "Character string, 1 byte per character";
-        case AtomicType::STRING_8:             return "8-bit bit string";
-        case AtomicType::STRING_16:            return "16-bit bit string";
-        case AtomicType::STRING_32:            return "32-bit bit string";
-        case AtomicType::STRING_64:            return "64-bit bit string";
-        case AtomicType::WIDE_STRING:          return "Wide char character string, 2 bytes per character";        
-        case AtomicType::HIGH_RES_DURATION:    return "High resolution duration value";
-        case AtomicType::MED_RES_DURATION:     return "Medium resolution duration value";
-        case AtomicType::LOW_RES_DURATION:     return "Low resolution duration value";
-        case AtomicType::N_BYTE_STRING:        return "N-byte per char character string";
-        case AtomicType::COUNTED_CHAR_STRING:  return "Counted character sting with 1 byte per character and 1 byte length indicator";
-        case AtomicType::DURATION_MS:          return "Duration in milliseconds";
-        case AtomicType::CIP_PATH:             return "CIP path segment(s)";
-        case AtomicType::ENGINEERING_UNITS:    return "Engineering units";
-        case AtomicType::INTERNATIONAL_STRING: return "International character string (encoding?)";
+        case FixedType::SYSTEM:               return "System tag";
+        case FixedType::BOOL:                 return "Boolean value";
+        case FixedType::SINT:                 return "Signed 8-bit integer value";
+        case FixedType::INT:                  return "Signed 16-bit integer value";
+        case FixedType::DINT:                 return "Signed 32-bit integer value";
+        case FixedType::LINT:                 return "Signed 64-bit integer value";
+        case FixedType::USINT:                return "Unsigned 8-bit integer value";
+        case FixedType::UINT:                 return "Unsigned 16-bit integer value";
+        case FixedType::UDINT:                return "Unsigned 32-bit integer value";
+        case FixedType::ULINT:                return "Unsigned 64-bit integer value";
+        case FixedType::REAL:                 return "32-bit floating point value, IEEE format";
+        case FixedType::LREAL:                return "64-bit floating point value, IEEE format";
+        case FixedType::SYNCHRONOUS_TIME:     return "Synchronous time value";
+        case FixedType::DATE:                 return "Date value";
+        case FixedType::TIME:                 return "Time of day value";
+        case FixedType::DATETIME:             return "Date and time of day value";
+        case FixedType::CHAR_STRING:          return "Character string, 1 byte per character";
+        case FixedType::STRING_8:             return "8-bit bit string";
+        case FixedType::STRING_16:            return "16-bit bit string";
+        case FixedType::STRING_32:            return "32-bit bit string";
+        case FixedType::STRING_64:            return "64-bit bit string";
+        case FixedType::WIDE_STRING:          return "Wide char character string, 2 bytes per character";        
+        case FixedType::HIGH_RES_DURATION:    return "High resolution duration value";
+        case FixedType::MED_RES_DURATION:     return "Medium resolution duration value";
+        case FixedType::LOW_RES_DURATION:     return "Low resolution duration value";
+        case FixedType::N_BYTE_STRING:        return "N-byte per char character string";
+        case FixedType::COUNTED_CHAR_STRING:  return "Counted character sting with 1 byte per character and 1 byte length indicator";
+        case FixedType::DURATION_MS:          return "Duration in milliseconds";
+        case FixedType::CIP_PATH:             return "CIP path segment(s)";
+        case FixedType::ENGINEERING_UNITS:    return "Engineering units";
+        case FixedType::INTERNATIONAL_STRING: return "International character string (encoding?)";
         
         default:                               return "Unknown tag type";
         }
@@ -304,23 +349,10 @@ namespace
 }
 
 
-/* 16 bit ids */
+/* 16 bit id helpers */
 
 namespace id16
 {
-    constexpr auto TYPE_IS_STRUCT = (u16)0x8000;     // 0b1000'0000'0000'0000
-    constexpr auto TYPE_IS_SYSTEM = (u16)0x1000;     // 0b0001'0000'0000'0000
-    constexpr auto UDT_FIELD_IS_ARRAY = (u16)0x2000; // 0b0010'0000'0000'0000
-
-    constexpr auto TAG_DIM_MASK = (u16)0x6000;       // 0b0110'0000'0000'0000    
-
-    constexpr auto ATOMIC_TYPE_ID_MASK = (u16)0x00FF; // 0b0000'0000'1111'1111
-    constexpr auto ATOMIC_TYPE_ID_MIN = (u16)0xC1;    // 0b0000'0000'1100'0001
-    constexpr auto ATOMIC_TYPE_ID_MAX = (u16)0xDE;    // 0b0000'0000'1101'1110
-
-    constexpr auto UDT_TYPE_ID_MASK = (u16)0x0FFF; // 0b0000'1111'1111'1111
-
-
     static inline u16 get_tag_dimensions(u16 type_code)
     {
         return (u16)((type_code & id16::TAG_DIM_MASK) >> 13);
@@ -329,7 +361,7 @@ namespace id16
 
     static inline bool is_bit_field(u16 type_code)
     {
-        return (AtomicType)(type_code & id16::ATOMIC_TYPE_ID_MASK) == AtomicType::BOOL;
+        return (FixedType)(type_code & id16::FIXED_TYPE_ID_MASK) == FixedType::BOOL;
     }
 
 
@@ -351,24 +383,15 @@ namespace id16
 }
 
 
-/* 32 bit ids */
+/* 32 bit id helpers */
+
 namespace id32
 {
-    // 0b0000'0000'0000'0000'0000'0000'0000'0000
-    //  |----other-----|------udt-----|-atomic--|
-
-    constexpr auto OTHER_TYPE_ID_MASK  = (DataTypeId32)0b1111'1111'1111'0000'0000'0000'0000'0000;
-    constexpr auto UDT_TYPE_ID_MASK    = (DataTypeId32)0b0000'0000'0000'1111'1111'1111'0000'0000;
-    constexpr auto ATOMIC_TYPE_ID_MASK = (DataTypeId32)0b0000'0000'0000'0000'0000'0000'1111'1111;
-
-    constexpr auto UNKNOWN_TYPE_ID = (DataTypeId32)AtomicType::UNKNOWN;
-
-
     static inline DataTypeId32 get_udt_type_id(u16 type_code)
     {
         if (type_code & id16::TYPE_IS_STRUCT)
         {
-            // shift left 8 to prevent conflicts with atomic types
+            // shift left 8 to prevent conflicts with numeric types
             return (DataTypeId32)(id16::get_udt_id(type_code)) << 8;
         }
 
@@ -387,11 +410,11 @@ namespace id32
             return get_udt_type_id(type_code);
         }
 
-        u16 atomic_type = type_code & id16::ATOMIC_TYPE_ID_MASK;
+        u16 numeric_type = type_code & id16::FIXED_TYPE_ID_MASK;
 
-        if (atomic_type >= id16::ATOMIC_TYPE_ID_MIN && atomic_type <= id16::ATOMIC_TYPE_ID_MAX)
+        if (numeric_type >= id16::FIXED_TYPE_ID_MIN && numeric_type <= id16::FIXED_TYPE_ID_MAX)
         {
-            return (DataTypeId32)atomic_type;
+            return (DataTypeId32)numeric_type;
         }
 
         return UNKNOWN_TYPE_ID;
@@ -400,11 +423,8 @@ namespace id32
 
     static bool is_udt_type(DataTypeId32 id)
     {
-        return (id & UDT_TYPE_ID_MASK) && !(id & OTHER_TYPE_ID_MASK) && !(id & ATOMIC_TYPE_ID_MASK);
+        return (id & UDT_TYPE_ID_MASK) && !(id & OTHER_TYPE_ID_MASK) && !(id & FIXED_TYPE_ID_MASK);
     }
-
-
-
 }
 
 
@@ -558,6 +578,7 @@ namespace
         DataTypeId32 type_id = id32::UNKNOWN_TYPE_ID;
         u32 array_count = 0;
         // how to parse scan data
+        // fixed type size, udt fields
 
         ByteOffset value;
         String name;
@@ -831,38 +852,42 @@ namespace
     {
     public:
 
-        DataTypeMap type_map;
+        DataTypeMap numeric_type_map;
+        DataTypeMap string_type_map;
+        DataTypeMap udt_type_map;
 
-        MemoryBuffer<char> atomic_str_data;
-        std::vector<MemoryBuffer<char>> udt_str_data;
+        MemoryBuffer<char> numeric_string_name_data;
+        std::vector<MemoryBuffer<char>> udt_name_data;
     };
 
 
     static void destroy_data_type_table(DataTypeTable& table)
     {
-        destroy_map(table.type_map);
+        destroy_map(table.numeric_type_map);
+        destroy_map(table.string_type_map);
+        destroy_map(table.udt_type_map);
 
-        mb::destroy_buffer(table.atomic_str_data);
+        mb::destroy_buffer(table.numeric_string_name_data);
 
-        for (auto& buffer : table.udt_str_data)
+        for (auto& buffer : table.udt_name_data)
         {
             mb::destroy_buffer(buffer);
         }
 
-        destroy_vector(table.udt_str_data);
+        destroy_vector(table.udt_name_data);
     }
 
 
-    static void add_data_type(DataTypeTable& table, AtomicType type)
+    static void add_data_type(DataTypeMap& type_map, MemoryBuffer<char>& name_data, FixedType type)
     {        
         auto type_id = (DataTypeId32)type;
 
-        if (map_contains(table.type_map, type_id))
+        if (map_contains(type_map, type_id))
         {
             return;
         }
 
-        // how to parse scan data - AtomicType
+        // how to parse scan data - FixedType
 
         auto name_str = tag_type_str(type);
         auto desc_str = tag_description_str(type);
@@ -873,13 +898,13 @@ namespace
         DataType dt{};
         dt.type_id = type_id;
 
-        dt.data_type_name = mb::push_cstr_view(table.atomic_str_data, name_len + 1);
-        dt.data_type_description = mb::push_cstr_view(table.atomic_str_data, desc_len + 1);
+        dt.data_type_name = mb::push_cstr_view(name_data, name_len + 1);
+        dt.data_type_description = mb::push_cstr_view(name_data, desc_len + 1);
 
         copy_unsafe(name_str, dt.data_type_name);
         copy_unsafe(desc_str, dt.data_type_description);
 
-        table.type_map[type_id] = dt;
+        type_map[type_id] = dt;
     }
 
 
@@ -887,7 +912,7 @@ namespace
     {
         auto type_id = id32::get_udt_type_id(entry.udt_id);
         
-        if (!type_id || map_contains(table.type_map, type_id))
+        if (!type_id || map_contains(table.udt_type_map, type_id))
         {
             return;
         }
@@ -916,36 +941,59 @@ namespace
         copy(entry.udt_name, dt.data_type_name);
         copy_unsafe(desc_str, dt.data_type_description);
 
-        table.type_map[type_id] = dt;
+        // TODO: entry.fields - offsets
 
-        table.udt_str_data.push_back(buffer);
+        table.udt_type_map[type_id] = dt;
+
+        table.udt_name_data.push_back(buffer);
     }
 
 
     static bool create_data_type_table(DataTypeTable& table)
     {
-        u32 str_bytes = 0;
+        u32 name_bytes = 0;
 
-        for (auto t : SUPPORTED_TYPES)
+        for (auto t : NUMERIC_FIXED_TYPES)
         {
-            str_bytes += strlen(tag_type_str(t));
-            str_bytes += strlen(tag_description_str(t));
-            str_bytes += 2; /* zero terminated */
+            name_bytes += strlen(tag_type_str(t));
+            name_bytes += strlen(tag_description_str(t));
+            name_bytes += 2; /* zero terminated */
         }
 
-        if (!mb::create_buffer(table.atomic_str_data, str_bytes))
+        for (auto t : STRING_FIXED_TYPES)
+        {
+            name_bytes += strlen(tag_type_str(t));
+            name_bytes += strlen(tag_description_str(t));
+            name_bytes += 2; /* zero terminated */
+        }
+
+        if (!mb::create_buffer(table.numeric_string_name_data, name_bytes))
         {
             return false;
         }
 
-        mb::zero_buffer(table.atomic_str_data);
+        mb::zero_buffer(table.numeric_string_name_data);
 
-        for (auto t : SUPPORTED_TYPES)
+        for (auto t : NUMERIC_FIXED_TYPES)
         {
-            add_data_type(table, t);
+            add_data_type(table.numeric_type_map, table.numeric_string_name_data, t);
+        }
+
+        for (auto t : STRING_FIXED_TYPES)
+        {
+            add_data_type(table.string_type_map, table.numeric_string_name_data, t);
         }
 
         return true;
+    }
+
+
+    DataType lookup_type(DataTypeMap const& type_map, DataTypeId32 type_id)
+    {
+        auto not_found = type_map.end();
+        auto it = type_map.find(type_id);
+
+        return it == not_found ? type_map.at(id32::UNKNOWN_TYPE_ID) : (*it).second;
     }
 }
 
@@ -1096,14 +1144,24 @@ namespace
 {
     
 
-
     static void init()
     {
         DataTypeTable data_types{};
-        TagTable tags{};
-
         ControllerAttr attr{};
 
+        init_controller(attr);        
+
+        if (!create_data_type_table(data_types))
+        {
+            return;
+        }
+
+        
+    }
+
+
+    void enumerate_tags(ControllerAttr const& attr, TagTable& tags, DataTypeTable& data_types)
+    {
         MemoryBuffer<u8> entry_buffer;
         
         if (!scan_tag_entry_listing(attr, entry_buffer))
@@ -1118,13 +1176,6 @@ namespace
         if (!create_tag_table(tag_entries, tags))
         {
             mb::destroy_buffer(entry_buffer);
-            return;
-        }
-
-        if (!create_data_type_table(data_types))
-        {
-            mb::destroy_buffer(entry_buffer);
-            destroy_tag_table(tags);
             return;
         }
 
