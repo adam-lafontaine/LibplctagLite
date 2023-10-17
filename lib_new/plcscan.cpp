@@ -12,8 +12,8 @@
 namespace mb = memory_buffer;
 
 
-using String = MemoryView<char>;
-using Bytes = MemoryView<u8>;
+using StringView = MemoryView<char>;
+using ByteView = MemoryView<u8>;
 using ByteOffset = MemoryOffset<u8>;
 using DataTypeId32 = u32;
 
@@ -69,7 +69,7 @@ static void copy_bytes(u8* src, u8* dst, u32 len)
 }
 
 
-static void copy_unsafe(cstr src, String const& dst)
+static void copy_unsafe(cstr src, StringView const& dst)
 {
     auto len = (u32)strlen(src);
     auto len = len < dst.length ? len : dst.length;
@@ -81,7 +81,7 @@ static void copy_unsafe(cstr src, String const& dst)
 }
 
 
-static void copy_unsafe(String const& src, char* dst)
+static void copy_unsafe(StringView const& src, char* dst)
 {
     auto len = (u32)strlen(dst);
     auto len = len < src.length ? len : src.length;
@@ -93,7 +93,7 @@ static void copy_unsafe(String const& src, char* dst)
 }
 
 
-static void copy(String const& src, String const& dst)
+static void copy(StringView const& src, StringView const& dst)
 {
     auto len = src.length < dst.length ? src.length : dst.length;
 
@@ -101,7 +101,7 @@ static void copy(String const& src, String const& dst)
 }
 
 
-static void zero_string(String const& str)
+static void zero_string(StringView const& str)
 {
     memset(str.begin, 0, str.length);
 }
@@ -442,7 +442,7 @@ namespace
         u16 type_code = 0;
         u32 elem_size = 0;
         u32 elem_count = 0;
-        String name;
+        StringView name;
     };
 
 
@@ -482,7 +482,7 @@ namespace
     }
 
 
-    static bool is_valid_tag_name(String tag_name)
+    static bool is_valid_tag_name(StringView tag_name)
     {
         char buffer[MAX_TAG_NAME_LENGTH + 1] = { 0 };
         copy_unsafe(tag_name, buffer);
@@ -581,7 +581,7 @@ namespace
         // fixed type size, udt fields
 
         ByteOffset value;
-        String name;
+        StringView name;
     };
 
 
@@ -683,7 +683,7 @@ namespace
         u16 type_code = 0;
         u16 offset = 0;
 
-        String field_name;
+        StringView field_name;
     };
 
 
@@ -694,7 +694,7 @@ namespace
         u32 udt_size = 0;
         u32 n_fields = 0;
 
-        String udt_name;
+        StringView udt_name;
 
         std::vector<FieldEntry> fields;
 
@@ -838,8 +838,8 @@ namespace
     {
     public:
         DataTypeId32 type_id = id32::UNKNOWN_TYPE_ID;
-        String data_type_name;
-        String data_type_description;
+        StringView data_type_name;
+        StringView data_type_description;
 
         // how to parse scan data
     };
@@ -1009,8 +1009,8 @@ namespace
         cstr gateway = "192.168.123.123";
         cstr path = "1,0";
 
-        String connection_string;
-        String tag_name;
+        StringView connection_string;
+        StringView tag_name;
 
         MemoryBuffer<char> string_data;
     };
@@ -1073,6 +1073,88 @@ namespace
     }
 
 
+    static bool connect_tag(ControllerAttr const& attr, Tag& tag)
+    {
+        if (!set_tag_name(attr, tag))
+        {
+            return false;
+        }
+
+        auto timeout = 100;
+
+        auto rc = plc_tag_create(attr.connection_string.begin, timeout);
+        if (rc < 0)
+        {
+            return false;
+        }
+
+        tag.connection_handle = rc;
+
+        return true;
+    }
+    
+    
+    static bool scan_to_view(int tag_handle, ByteView const& view)
+    {
+        auto timeout = 100;
+
+        auto rc = plc_tag_read(tag_handle, timeout);
+        if (rc != PLCTAG_STATUS_OK)
+        {
+            return false;
+        }
+
+        rc = plc_tag_get_raw_bytes(tag_handle, 0, view.begin, view.length);
+        if (rc != PLCTAG_STATUS_OK)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+
+    static bool scan_tag(Tag const& tag, ParallelBuffer<u8> const& buffer)
+    {
+        auto view = mb::get_write_at(buffer, tag.value);
+
+        return scan_to_view(tag.connection_handle, view);
+    }
+
+
+    static bool scan_to_buffer(int tag_handle, MemoryBuffer<u8>& dst)
+    {
+        auto timeout = 100;
+
+        auto rc = plc_tag_read(tag_handle, timeout);
+        if (rc != PLCTAG_STATUS_OK)
+        {
+            return false;
+        }
+
+        auto size = plc_tag_get_size(tag_handle);
+        if (size < 4)
+        {
+            return false;
+        }
+
+        if (!mb::create_buffer(dst, (u32)size))
+        {
+            return false;
+        }
+
+        auto view = mb::push_view(dst, (u32)size);
+
+        rc = plc_tag_get_raw_bytes(tag_handle, 0, view.begin, view.length);
+        if (rc != PLCTAG_STATUS_OK)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+
     static bool scan_to_buffer(ControllerAttr const& attr, cstr tag_name, MemoryBuffer<u8>& dst)
     {
         if (!set_tag_name(attr, tag_name))
@@ -1090,32 +1172,7 @@ namespace
 
         auto handle = rc;
 
-        rc = plc_tag_read(handle, timeout);
-        if (rc != PLCTAG_STATUS_OK)
-        {
-            return false;
-        }
-
-        auto size = plc_tag_get_size(handle);
-        if (size < 4)
-        {
-            return false;
-        }
-
-        if (!mb::create_buffer(dst, (u32)size))
-        {
-            return false;
-        }
-
-        auto view = mb::push_view(dst, (u32)size);
-
-        rc = plc_tag_get_raw_bytes(handle, 0, view.begin, view.length);
-        if (rc != PLCTAG_STATUS_OK)
-        {
-            return false;
-        }
-
-        return true;
+        return scan_to_buffer(handle, dst);
     }
 
 
@@ -1132,8 +1189,6 @@ namespace
 
         return scan_to_buffer(attr, udt, dst);
     }
-
-
 
 }
 
