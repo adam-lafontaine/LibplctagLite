@@ -437,7 +437,51 @@ namespace
         case FixedType::ENGINEERING_UNITS:    return "Engineering units";
         case FixedType::INTERNATIONAL_STRING: return "International character string (encoding?)";
         
-        default:                               return "Unknown tag type";
+        default:                              return "Unknown tag type";
+        }
+    }
+
+
+    constexpr u32 MAX_TYPE_BYTES = 16;
+
+
+    u32 data_type_size(FixedType t)
+    {
+        switch (t)
+        {
+        case FixedType::SYSTEM:               return 0;
+        case FixedType::BOOL:                 return 1;
+        case FixedType::SINT:                 return 1;
+        case FixedType::INT:                  return 2;
+        case FixedType::DINT:                 return 4;
+        case FixedType::LINT:                 return 8;
+        case FixedType::USINT:                return 1;
+        case FixedType::UINT:                 return 2;
+        case FixedType::UDINT:                return 4;
+        case FixedType::ULINT:                return 8;
+        case FixedType::REAL:                 return 4;
+        case FixedType::LREAL:                return 8;
+        case FixedType::SYNCHRONOUS_TIME:     return MAX_TYPE_BYTES;
+        case FixedType::DATE:                 return MAX_TYPE_BYTES;
+        case FixedType::TIME:                 return MAX_TYPE_BYTES;
+        case FixedType::DATETIME:             return MAX_TYPE_BYTES;
+        case FixedType::CHAR_STRING:          return MAX_TYPE_BYTES;
+        case FixedType::STRING_8:             return MAX_TYPE_BYTES;
+        case FixedType::STRING_16:            return MAX_TYPE_BYTES;
+        case FixedType::STRING_32:            return MAX_TYPE_BYTES;
+        case FixedType::STRING_64:            return MAX_TYPE_BYTES;
+        case FixedType::WIDE_STRING:          return MAX_TYPE_BYTES;    
+        case FixedType::HIGH_RES_DURATION:    return MAX_TYPE_BYTES;
+        case FixedType::MED_RES_DURATION:     return MAX_TYPE_BYTES;
+        case FixedType::LOW_RES_DURATION:     return MAX_TYPE_BYTES;
+        case FixedType::N_BYTE_STRING:        return MAX_TYPE_BYTES;
+        case FixedType::COUNTED_CHAR_STRING:  return MAX_TYPE_BYTES;
+        case FixedType::DURATION_MS:          return MAX_TYPE_BYTES;
+        case FixedType::CIP_PATH:             return MAX_TYPE_BYTES;
+        case FixedType::ENGINEERING_UNITS:    return MAX_TYPE_BYTES;
+        case FixedType::INTERNATIONAL_STRING: return MAX_TYPE_BYTES;
+        
+        default:                              return MAX_TYPE_BYTES;
         }
     }
     
@@ -798,7 +842,6 @@ namespace
     public:
         u16 udt_id = 0;
         u32 udt_size = 0;
-        u32 n_fields = 0;
 
         StringView udt_name;
 
@@ -930,9 +973,6 @@ namespace
         }
     }
 
-
-
-
 }
 
 
@@ -947,11 +987,31 @@ namespace
         StringView data_type_name;
         StringView data_type_description;
 
+        u32 size = 0;
+
         // how to parse scan data
     };
 
 
+    class UdtType
+    {
+    public:
+        DataTypeId32 type_id = id32::UNKNOWN_TYPE_ID;
+
+        StringView udt_name;
+        StringView udt_description;
+
+        std::vector<FieldType> fields; // TODO
+
+        std::vector<DataTypeId32> field_ids;
+        std::vector<u32> field_offsets;
+
+        u32 size = 0;
+    };
+
+
     using DataTypeMap = std::unordered_map<DataTypeId32, DataType>;
+    using UdtTypeMap = std::unordered_map<DataTypeId32, UdtType>;
 
 
     class DataTypeTable
@@ -960,7 +1020,7 @@ namespace
 
         DataTypeMap numeric_type_map;
         DataTypeMap string_type_map;
-        DataTypeMap udt_type_map;
+        UdtTypeMap udt_type_map;
 
         MemoryBuffer<char> numeric_string_name_data;
         std::vector<MemoryBuffer<char>> udt_name_data;
@@ -1003,6 +1063,7 @@ namespace
 
         DataType dt{};
         dt.type_id = type_id;
+        dt.size = data_type_size(type);
 
         dt.data_type_name = mb::push_cstr_view(name_data, name_len + 1);
         dt.data_type_description = mb::push_cstr_view(name_data, desc_len + 1);
@@ -1037,19 +1098,27 @@ namespace
 
         mb::zero_buffer(buffer);        
 
-        DataType dt{};
+        UdtType ut{};
 
-        dt.type_id = type_id;
+        ut.type_id = type_id;
+        ut.size = entry.udt_size;
 
-        dt.data_type_name = mb::push_cstr_view(buffer, name_len + 1);
-        dt.data_type_description = mb::push_cstr_view(buffer, desc_len + 1);
+        ut.udt_name = mb::push_cstr_view(buffer, name_len + 1);
+        ut.udt_description = mb::push_cstr_view(buffer, desc_len + 1);
         
-        copy(entry.udt_name, dt.data_type_name);
-        copy_unsafe(desc_str, dt.data_type_description);
+        copy(entry.udt_name, ut.udt_name);
+        copy_unsafe(desc_str, ut.udt_description);
 
-        // TODO: entry.fields - offsets
+        // TODO: fields
+        ut.field_ids.reserve(entry.fields.size());
+        ut.field_offsets.reserve(entry.fields.size());
 
-        table.udt_type_map[type_id] = dt;
+        for (auto const& f : entry.fields)
+        {
+            
+        }
+
+        table.udt_type_map[type_id] = ut;
 
         table.udt_name_data.push_back(buffer);
     }
@@ -1101,6 +1170,48 @@ namespace
 
         return it == not_found ? type_map.at(id32::UNKNOWN_TYPE_ID) : (*it).second;
     }
+}
+
+
+/* tag view */
+
+namespace
+{
+    class DataTypeView
+    {
+    public:
+        u32 data_type_id = 0;
+        StringView name;
+        StringView description;
+
+        StringView size;
+    };
+
+
+    class UdtTypeView
+    {
+    public:
+        u32 data_type_id = 0;
+        StringView name;
+        std::vector<StringView> fields;
+
+        StringView size;
+    };
+
+
+    class TagView
+    {
+    public:
+        StringView name;
+        StringView type;
+        StringView size;
+
+        StringView value;
+        std::vector<StringView> array_values;
+    };
+    
+
+
 }
 
 
