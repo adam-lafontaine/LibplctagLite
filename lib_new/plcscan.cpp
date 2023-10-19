@@ -1395,7 +1395,7 @@ namespace
 
 /* scan cycle */
 
-namespace plcscan
+namespace
 {
     void enumerate_tags(ControllerAttr const& attr, TagTable& tags, DataTypeTable& data_types)
     {
