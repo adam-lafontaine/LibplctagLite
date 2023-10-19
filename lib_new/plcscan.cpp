@@ -1,13 +1,13 @@
 #include "../util/qsprintf.hpp"
-#include "../util/stopwatch.hpp"
+#include "../util/time_helper.hpp"
 #include "plcscan.hpp"
 
 #include "../lib_old/libplctag/libplctag.h"
 
 #include <array>
 #include <cassert>
-#include <thread>
 
+namespace tmh = time_helper;
 
 using ByteOffset = MemoryOffset<u8>;
 
@@ -232,29 +232,10 @@ static bool vector_contains(std::vector<T> const& vec, T value)
 }
 
 
-namespace time_helper
-{
-    namespace chr = std::chrono;
-
-	inline void delay_current_thread(Stopwatch& sw, double min_delay_ms = 20.0)
-	{
-		auto ms = sw.get_time_milli();
-		if (ms < min_delay_ms)
-		{
-			auto delay_ms = (unsigned long long)(min_delay_ms - ms);
-			std::this_thread::sleep_for(chr::milliseconds(delay_ms));
-		}
-	}
 
 
-	inline long long get_timestamp()
-	{
-		return chr::duration_cast<chr::milliseconds>(chr::system_clock::now().time_since_epoch()).count();
-	}
-}
 
 
-namespace tmh = time_helper;
 
 
 /* 16 bin ids */

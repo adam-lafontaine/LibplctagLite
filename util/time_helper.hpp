@@ -1,5 +1,8 @@
 #pragma once
+
 #include <chrono>
+#include <thread>
+
 
 class Stopwatch
 {
@@ -45,3 +48,25 @@ public:
 	}
 
 };
+
+
+namespace time_helper
+{
+    namespace chr = std::chrono;
+
+	inline void delay_current_thread(Stopwatch& sw, double min_delay_ms = 20.0)
+	{
+		auto ms = sw.get_time_milli();
+		if (ms < min_delay_ms)
+		{
+			auto delay_ms = (unsigned long long)(min_delay_ms - ms);
+			std::this_thread::sleep_for(chr::milliseconds(delay_ms));
+		}
+	}
+
+
+	inline long long get_timestamp()
+	{
+		return chr::duration_cast<chr::milliseconds>(chr::system_clock::now().time_since_epoch()).count();
+	}
+}

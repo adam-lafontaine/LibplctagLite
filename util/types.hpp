@@ -15,12 +15,3 @@ using f32 = float;
 using f64 = double;
 using cstr = const char*;
 using b32 = int;
-
-
-template <typename T>
-class DataResult
-{
-public:
-    T data;
-    bool success = false;
-};
