@@ -333,12 +333,11 @@ namespace /* private */
         DURATION_MS          = (DataTypeId32)0xDB,
         CIP_PATH             = (DataTypeId32)0xDC,
         ENGINEERING_UNITS    = (DataTypeId32)0xDD,
-        INTERNATIONAL_STRING = (DataTypeId32)0xDE,
-        
+        INTERNATIONAL_STRING = (DataTypeId32)0xDE,        
     };
 
 
-    constexpr std::array<FixedType, 14> NUMERIC_FIXED_TYPES = 
+    constexpr std::array<FixedType, 11> NUMERIC_FIXED_TYPES = 
     {
         FixedType::BOOL,
         FixedType::SINT,
@@ -351,14 +350,10 @@ namespace /* private */
         FixedType::ULINT,
         FixedType::REAL,
         FixedType::LREAL,
-        FixedType::CHAR_STRING,
-
-        FixedType::SYSTEM,
-        FixedType::UNKNOWN,
     };
 
 
-    constexpr std::array<FixedType, 11> STRING_FIXED_TYPES = 
+    constexpr std::array<FixedType, 9> STRING_FIXED_TYPES = 
     {
         FixedType::CHAR_STRING,
         FixedType::STRING_8,
@@ -369,9 +364,26 @@ namespace /* private */
         FixedType::N_BYTE_STRING,
         FixedType::COUNTED_CHAR_STRING,
         FixedType::INTERNATIONAL_STRING,
+    };
 
+
+    constexpr std::array<FixedType, 12> OTHER_FIXED_TYPES = 
+    {        
         FixedType::SYSTEM,
         FixedType::UNKNOWN,
+
+        FixedType::SYNCHRONOUS_TIME,
+        FixedType::DATE,
+        FixedType::TIME,
+        FixedType::DATETIME,
+
+        FixedType::HIGH_RES_DURATION,
+        FixedType::MED_RES_DURATION,
+        FixedType::LOW_RES_DURATION,
+
+        FixedType::DURATION_MS,
+        FixedType::CIP_PATH,
+        FixedType::ENGINEERING_UNITS,
     };
 
 
@@ -549,7 +561,7 @@ namespace id32
             return (DataTypeId32)(id16::get_udt_id(type_code)) << 8;
         }
 
-        return 0;        
+        return UNKNOWN_TYPE_ID;     
     }
 
 
@@ -1166,6 +1178,13 @@ namespace /* private */
             str_bytes += 2; /* zero terminated */
         }
 
+        for (auto t : OTHER_FIXED_TYPES)
+        {
+            str_bytes += strlen(tag_type_str(t));
+            str_bytes += strlen(tag_description_str(t));
+            str_bytes += 2; /* zero terminated */
+        }
+
         if (!mb::create_buffer(mem.type_name_data, str_bytes))
         {
             return false;
@@ -1187,6 +1206,11 @@ namespace /* private */
         }
 
         for (auto t : STRING_FIXED_TYPES)
+        {
+            add_data_type(data_types, mem, t);
+        }
+
+        for (auto t : OTHER_FIXED_TYPES)
         {
             add_data_type(data_types, mem, t);
         }
@@ -1456,6 +1480,8 @@ namespace
             auto& conn = mem.connections[i];
             auto& tag = tags[i];
 
+            connect_tag(attr, tag, conn);
+
             //tag.connection_ok = connect_tag(attr, tag, conn);
         }
     }
@@ -1557,7 +1583,7 @@ namespace plcscan
     }
 
 
-    bool scan(void_f const& scan_cb, bool_f const& scan_condition)
+    void scan(void_f const& scan_cb, bool_f const& scan_condition)
     {
         constexpr int target_scan_ms = 100;
 
@@ -1595,10 +1621,29 @@ namespace plcscan
 
             tmh::delay_current_thread(sw, target_scan_ms);
         }
-
-        return true;
     }
 
 
+    DataTypeCategory get_type_category(DataTypeId32 type_id)
+    {
+        if (type_id >= (DataTypeId32)FixedType::BOOL && type_id <= (DataTypeId32)FixedType::LREAL)
+        {
+            return DataTypeCategory::Numeric;
+        }
 
+        if (id32::is_udt_type(type_id))
+        {
+            return DataTypeCategory::Udt;
+        }
+
+        for (auto t : STRING_FIXED_TYPES)
+        {
+            if (type_id == (DataTypeId32)t)
+            {
+                return DataTypeCategory::String;
+            }
+        }
+
+        return DataTypeCategory::Other;
+    }
 }

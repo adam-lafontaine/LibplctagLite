@@ -33,9 +33,9 @@ namespace plcscan
         // how to parse scan data
         // fixed type size, udt fields
 
-        ByteView data;
-
         StringView name;
+
+        ByteView data;
 
         // TODO: tag/connection status
 
@@ -99,6 +99,20 @@ namespace plcscan
 }
 
 
+/* enum */
+
+namespace plcscan
+{
+    enum class DataTypeCategory : int
+    {
+        Numeric,
+        String,
+        Udt,
+        Other
+    };
+}
+
+
 /* api */
 
 namespace plcscan
@@ -107,5 +121,7 @@ namespace plcscan
     
     PlcTagData connect(cstr gateway, cstr path);
 
-    bool scan(void_f const& scan_cb, bool_f const& scan_condition);
+    void scan(void_f const& scan_cb, bool_f const& scan_condition);
+
+    DataTypeCategory get_type_category(DataTypeId32 type_id);
 }
