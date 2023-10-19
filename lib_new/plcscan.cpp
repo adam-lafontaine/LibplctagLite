@@ -1545,22 +1545,9 @@ namespace plcscan
     }
 
 
-    PlcTagData connect(cstr gateway, cstr path)
+    PlcTagData init()
     {
         PlcTagData data{};
-
-        data.gateway = gateway;
-        data.path = path;
-        data.is_connected = false;
-        
-        g_attr.gateway = gateway;
-        g_attr.path = path;
-
-        if (!init_controller(g_attr))
-        {
-            disconnect();
-            return data;
-        }
 
         if (!create_data_type_memory(g_dt_mem))
         {
@@ -1570,16 +1557,38 @@ namespace plcscan
 
         add_data_types(g_dt_mem, data.data_types);
 
+        data.is_init = true;
+        return data;
+    }
+
+
+    bool connect(cstr gateway, cstr path, PlcTagData& data)
+    {     
+        if (!data.is_init)
+        {
+            disconnect();
+            return false;
+        }   
+
+        g_attr.gateway = gateway;
+        g_attr.path = path;
+
+        if (!init_controller(g_attr))
+        {
+            disconnect();
+            return false;
+        }
+
         if (!enumerate_tags(g_attr, g_tag_mem, g_dt_mem, data))
         {
             disconnect();
-            return data;
+            return false;
         }
 
         connect_tags(g_attr, g_tag_mem, data.tags);        
 
         data.is_connected = true;
-        return data;
+        return false;
     }
 
 

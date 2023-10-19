@@ -91,9 +91,7 @@ namespace plcscan
         List<UdtType> udt_types;
         List<Tag> tags;
 
-        cstr gateway = "192.168.123.123";
-        cstr path = "1,0";
-
+        bool is_init = false;
         bool is_connected = false;
     };
 }
@@ -118,8 +116,10 @@ namespace plcscan
 namespace plcscan
 {
     void disconnect();
+
+    PlcTagData init();
     
-    PlcTagData connect(cstr gateway, cstr path);
+    bool connect(cstr gateway, cstr path, PlcTagData& data);
 
     void scan(void_f const& scan_cb, bool_f const& scan_condition);
 
