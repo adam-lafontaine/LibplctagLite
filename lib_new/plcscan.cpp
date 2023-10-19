@@ -1,23 +1,26 @@
-#include "../util/types.hpp"
-#include "../util/memory_buffer.hpp"
+
 #include "../util/qsprintf.hpp"
 #include "../util/stopwatch.hpp"
+#include "plcscan.hpp"
 
 #include "../lib_old/libplctag/libplctag.h"
 
-#include <vector>
+
 #include <array>
 #include <cassert>
 #include <thread>
 #include <functional>
+#include <cstring>
 
-namespace mb = memory_buffer;
 
-
-using StringView = MemoryView<char>;
-using ByteView = MemoryView<u8>;
 using ByteOffset = MemoryOffset<u8>;
-using DataTypeId32 = u32;
+
+
+using DataTypeId32 = plcscan::DataTypeId32;
+using Tag = plcscan::Tag;
+using DataType = plcscan::DataType;
+using UdtFieldType = plcscan::UdtFieldType;
+using UdtType = plcscan::UdtType;
 
 
 static void copy_8(u8* src, u8* dst, u32 len8)
@@ -172,7 +175,25 @@ static void copy(ByteView const& src, ByteView const& dst)
 
 static void zero_string(StringView const& str)
 {
-    memset(str.begin, 0, str.length);
+    constexpr auto size64 = sizeof(u64);
+
+    auto len = str.length;
+
+    auto len64 = len / size64;
+    auto dst64 = (u64*)str.begin;
+
+    auto len8 = len - len64 * size64;
+    auto dst8 = (u8*)(dst64 + len64);
+
+    for (size_t i = 0; i < len64; ++i)
+    {
+        dst64[i] = 0;
+    }
+
+    for (size_t i = 0; i < len8; ++i)
+    {
+        dst8[i] = 0;
+    }
 }
 
 
@@ -260,7 +281,7 @@ namespace id32
 
 /* tag types */
 
-namespace
+namespace /* private */
 { 
     enum class FixedType : DataTypeId32
     {
@@ -551,7 +572,7 @@ namespace id32
 
 /* tag listing */
 
-namespace
+namespace /* private */
 {
     constexpr size_t MAX_TAG_NAME_LENGTH = 32;
 
@@ -577,13 +598,13 @@ namespace
             return false;
         }
 
-        const char* invalid_begin_chars = "0123456789_";
+        auto invalid_begin_chars = "0123456789_";
         if (std::strchr(invalid_begin_chars, tag_name[0]) != nullptr)
         {
             return false;
         }
 
-        const char* valid_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
+        auto valid_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
         if (tag_name[0] == '@')
         {
             valid_chars = "@/abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
@@ -688,7 +709,7 @@ namespace
 
 /* tag table */
 
-namespace
+namespace /* private */
 {
     class TagConnection
     {
@@ -700,25 +721,6 @@ namespace
         bool scan_ok = false;
 
         bool is_connected() const { return connection_handle > 0; }
-    };
-
-
-    class Tag
-    {
-    public:
-        DataTypeId32 type_id = id32::UNKNOWN_TYPE_ID;
-        u32 array_count = 0;
-        // how to parse scan data
-        // fixed type size, udt fields
-
-        ByteView data;
-
-        StringView name;
-
-        bool connection_ok = false;
-        bool scan_ok = false;    
-
-        u32 size() const { return data.length; }
     };
 
 
@@ -828,7 +830,7 @@ namespace
 
 /* udt entries */
 
-namespace
+namespace /* private */
 {
     class FieldEntry
     {
@@ -984,48 +986,8 @@ namespace
 
 /* data type table */
 
-namespace
+namespace /* private */
 {
-    class DataType
-    {
-    public:
-        DataTypeId32 type_id = id32::UNKNOWN_TYPE_ID;
-        StringView data_type_name;
-        StringView data_type_description;
-
-        u32 size = 0;
-
-        // how to parse scan data
-    };
-
-
-    class UdtFieldType
-    {
-    public:
-        DataTypeId32 type_id;
-        u32 offset;
-
-        u32 array_count = 0;
-        u32 bit_number = 0;
-
-        StringView field_name;
-    };
-
-
-    class UdtType
-    {
-    public:
-        DataTypeId32 type_id = id32::UNKNOWN_TYPE_ID;
-
-        StringView udt_name;
-        StringView udt_description;
-
-        std::vector<UdtFieldType> fields;
-
-        u32 size = 0;
-    };
-
-
     using DataTypeMap = std::vector<DataType>;
     using UdtTypeMap = std::vector<UdtType>;
 
@@ -1072,7 +1034,6 @@ namespace
     class DataTypeTable
     {
     public:
-
         DataTypeMap numeric_type_map;
         DataTypeMap string_type_map;
         UdtTypeMap udt_type_map;
@@ -1434,7 +1395,7 @@ namespace
 
 /* scan cycle */
 
-namespace
+namespace plcscan
 {
     void enumerate_tags(ControllerAttr const& attr, TagTable& tags, DataTypeTable& data_types)
     {
