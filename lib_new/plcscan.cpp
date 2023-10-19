@@ -5,12 +5,10 @@
 
 #include "../lib_old/libplctag/libplctag.h"
 
-
 #include <array>
 #include <cassert>
 #include <thread>
 #include <functional>
-#include <cstring>
 
 
 using ByteOffset = MemoryOffset<u8>;
@@ -21,6 +19,7 @@ using Tag = plcscan::Tag;
 using DataType = plcscan::DataType;
 using UdtFieldType = plcscan::UdtFieldType;
 using UdtType = plcscan::UdtType;
+using PlcTagData = plcscan::PlcTagData;
 
 
 static void copy_8(u8* src, u8* dst, u32 len8)
@@ -194,6 +193,22 @@ static void zero_string(StringView const& str)
     {
         dst8[i] = 0;
     }
+}
+
+
+static bool string_contains(cstr str, char c)
+{
+    auto len = strlen(str);
+
+    for (u32 i = 0; i < len; ++i)
+    {
+        if (str[i] == c)
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 
@@ -599,21 +614,24 @@ namespace /* private */
         }
 
         auto invalid_begin_chars = "0123456789_";
-        if (std::strchr(invalid_begin_chars, tag_name[0]) != nullptr)
+        if (string_contains(invalid_begin_chars, tag_name[0]))
         {
             return false;
         }
 
         auto valid_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
+
+        u32 begin = 0;
+        
         if (tag_name[0] == '@')
         {
-            valid_chars = "@/abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
+            begin++; // start checking from 2nd character
         }
 
-        for (u32 i = 0; i < len; ++i)
+        for (u32 i = begin; i < len; ++i)
         {
             auto c = tag_name[i];
-            if (std::strchr(valid_chars, c) == nullptr)
+            if (!string_contains(valid_chars, c))
             {
                 return false;
             }
@@ -707,7 +725,7 @@ namespace /* private */
 }
 
 
-/* tag table */
+/* tag memory */
 
 namespace /* private */
 {
@@ -724,11 +742,12 @@ namespace /* private */
     };
 
 
-    class TagTable
+    class TagMemory
     {
     public:
         std::vector<TagConnection> connections;
-        std::vector<Tag> tags;
+        // TODO tag_status
+        //std::vector<Tag> tags;
 
         u32 n_tags = 0;
 
@@ -738,14 +757,13 @@ namespace /* private */
     };
 
 
-    static void destroy_tag_table(TagTable& table)
+    static void destroy_tag_memory(TagMemory& mem)
     {
-        destroy_vector(table.connections);
-        destroy_vector(table.tags);
+        destroy_vector(mem.connections);
 
-        mb::destroy_buffer(table.scan_data);
-        mb::destroy_buffer(table.public_tag_data);
-        mb::destroy_buffer(table.name_data);
+        mb::destroy_buffer(mem.scan_data);
+        mb::destroy_buffer(mem.public_tag_data);
+        mb::destroy_buffer(mem.name_data);
     }    
 
 
@@ -755,7 +773,7 @@ namespace /* private */
     u32 cstr_size(TagEntry const& e) { return e.name.length + 1; /* zero terminated */ }
 
 
-    static void add_tag(TagTable& table, TagEntry const& entry)
+    static void add_tag(TagEntry const& entry, TagMemory& mem, List<Tag>& tags)
     {
         auto value_len = elem_size(entry);
         auto name_alloc_len = cstr_size(entry);
@@ -764,24 +782,24 @@ namespace /* private */
         assert(name_alloc_len > name_copy_len); /* zero terminated */
 
         TagConnection conn{};
-        conn.scan_offset = mb::push_offset(table.scan_data , value_len);
+        conn.scan_offset = mb::push_offset(mem.scan_data , value_len);
 
         Tag tag{};
         tag.type_id = id32::get_data_type_id(entry.type_code);
         tag.array_count = entry.elem_count;
-        tag.name = mb::push_cstr_view(table.name_data, name_alloc_len);
-        tag.data = mb::make_view(table.public_tag_data, conn.scan_offset);
+        tag.name = mb::push_cstr_view(mem.name_data, name_alloc_len);
+        tag.data = mb::make_view(mem.public_tag_data, conn.scan_offset);
 
         copy(entry.name, tag.name);
 
-        table.connections.push_back(conn);
-        table.tags.push_back(tag);
+        mem.connections.push_back(conn);
+        tags.push_back(tag);
 
-        table.n_tags++;
+        mem.n_tags++;
     }
 
 
-    static bool create_tag_table(TagEntryList const& entries, TagTable& table)
+    static bool create_tags(TagEntryList const& entries, TagMemory& mem, List<Tag>& tags)
     {
         u32 value_bytes = 0;
         u32 str_bytes = 0;
@@ -792,35 +810,36 @@ namespace /* private */
             str_bytes += cstr_size(e);
         }
 
-        if (!mb::create_buffer(table.scan_data , value_bytes))
+        if (!mb::create_buffer(mem.scan_data , value_bytes))
         {
-            destroy_tag_table(table);
+            destroy_tag_memory(mem);
             return false;
         }
 
-        if (!mb::create_buffer(table.public_tag_data , value_bytes))
+        if (!mb::create_buffer(mem.public_tag_data , value_bytes))
         {
-            destroy_tag_table(table);
+            destroy_tag_memory(mem);
             return false;
         }
 
-        if (!mb::create_buffer(table.name_data, str_bytes))
+        if (!mb::create_buffer(mem.name_data, str_bytes))
         {
-            destroy_tag_table(table);
+            destroy_tag_memory(mem);
             return false;
         }
 
-        mb::zero_buffer(table.scan_data );
-        mb::zero_buffer(table.public_tag_data );
-        mb::zero_buffer(table.name_data);
+        mb::zero_buffer(mem.scan_data);
+        mb::zero_buffer(mem.public_tag_data);
+        mb::zero_buffer(mem.name_data);
 
-        table.connections.reserve(entries.size());
-        table.tags.reserve(entries.size());
-        table.n_tags = 0;
+        mem.connections.reserve(entries.size());
+        mem.n_tags = 0;
+
+        tags.reserve(entries.size());
 
         for (auto const& e : entries)
         {
-            add_tag(table, e);
+            add_tag(e, mem, tags);
         }
 
         return true;
@@ -984,23 +1003,12 @@ namespace /* private */
 }
 
 
-/* data type table */
+/* data type memory */
 
 namespace /* private */
 {
-    using DataTypeMap = std::vector<DataType>;
-    using UdtTypeMap = std::vector<UdtType>;
-
-
     template <typename T>
-    static void destroy_map(std::vector<T>& vec)
-    {
-        destroy_vector(vec);
-    }
-
-
-    template <typename T>
-    static bool map_contains(std::vector<T> const& vec, DataTypeId32 type_id)
+    static bool list_contains(std::vector<T> const& vec, DataTypeId32 type_id)
     {
         for (auto const& type : vec)
         {
@@ -1031,45 +1039,37 @@ namespace /* private */
     }
 
 
-    class DataTypeTable
+    class DataTypeMemory
     {
     public:
-        DataTypeMap numeric_type_map;
-        DataTypeMap string_type_map;
-        UdtTypeMap udt_type_map;
-
-        MemoryBuffer<char> str_data;
+        MemoryBuffer<char> type_name_data;
         std::vector<MemoryBuffer<char>> udt_name_data;
     };
 
 
-    static void destroy_data_type_table(DataTypeTable& table)
+    static void destroy_data_type_memory(DataTypeMemory& mem)
     {
-        destroy_map(table.numeric_type_map);
-        destroy_map(table.string_type_map);
-        destroy_map(table.udt_type_map);
+        mb::destroy_buffer(mem.type_name_data);
 
-        mb::destroy_buffer(table.str_data);
-
-        for (auto& buffer : table.udt_name_data)
+        for (auto& buffer : mem.udt_name_data)
         {
             mb::destroy_buffer(buffer);
         }
 
-        destroy_vector(table.udt_name_data);
+        destroy_vector(mem.udt_name_data);
     }
 
 
-    static void add_data_type(DataTypeMap& type_map, MemoryBuffer<char>& name_data, FixedType type)
+    static void add_data_type(List<DataType>& types, DataTypeMemory& mem, FixedType type)
     {        
         auto type_id = (DataTypeId32)type;
 
-        if (map_contains(type_map, type_id))
+        if (list_contains(types, type_id))
         {
             return;
         }
 
-        // how to parse scan data - FixedType
+        auto& name_data = mem.type_name_data;
 
         auto name_str = tag_type_str(type);
         auto desc_str = tag_description_str(type);
@@ -1087,15 +1087,15 @@ namespace /* private */
         copy_unsafe(name_str, dt.data_type_name);
         copy_unsafe(desc_str, dt.data_type_description);
 
-        type_map.push_back(dt);
+        types.push_back(dt);
     }
 
 
-    static void update_data_type_table(DataTypeTable& table, UdtEntry const& entry)
+    static void add_udt_type(List<UdtType>& udt_types, DataTypeMemory& mem, UdtEntry const& entry)
     {
         auto type_id = id32::get_udt_type_id(entry.udt_id);
         
-        if (!type_id || map_contains(table.udt_type_map, type_id))
+        if (!type_id || list_contains(udt_types, type_id))
         {
             return;
         }
@@ -1118,7 +1118,7 @@ namespace /* private */
             return;
         }
 
-        mb::zero_buffer(buffer);        
+        mb::zero_buffer(buffer);
 
         UdtType ut{};
 
@@ -1146,13 +1146,12 @@ namespace /* private */
             ut.fields.push_back(ft);
         }
 
-        table.udt_type_map.push_back(ut);
-
-        table.udt_name_data.push_back(buffer);
+        udt_types.push_back(ut);
+        mem.udt_name_data.push_back(buffer);
     }
 
 
-    static bool create_data_type_table(DataTypeTable& table)
+    static bool create_data_type_memory(DataTypeMemory& mem)
     {
         u32 str_bytes = 0;
 
@@ -1170,24 +1169,30 @@ namespace /* private */
             str_bytes += 2; /* zero terminated */
         }
 
-        if (!mb::create_buffer(table.str_data, str_bytes))
+        if (!mb::create_buffer(mem.type_name_data, str_bytes))
         {
             return false;
         }
 
-        mb::zero_buffer(table.str_data);
+        mb::zero_buffer(mem.type_name_data);
 
+        
+
+        return true;
+    }
+
+
+    static void add_data_types(DataTypeMemory& mem, List<DataType>& data_types)
+    {
         for (auto t : NUMERIC_FIXED_TYPES)
         {
-            add_data_type(table.numeric_type_map, table.str_data, t);
+            add_data_type(data_types, mem, t);
         }
 
         for (auto t : STRING_FIXED_TYPES)
         {
-            add_data_type(table.string_type_map, table.str_data, t);
+            add_data_type(data_types, mem, t);
         }
-
-        return true;
     }
 }
 
@@ -1397,23 +1402,23 @@ namespace
 
 namespace
 {
-    void enumerate_tags(ControllerAttr const& attr, TagTable& tags, DataTypeTable& data_types)
+    static bool enumerate_tags(ControllerAttr const& attr, TagMemory& tag_mem, DataTypeMemory& dt_mem, PlcTagData data)
     {
         MemoryBuffer<u8> entry_buffer;
         
         if (!scan_tag_entry_listing(attr, entry_buffer))
         {
-            return;
+            return false;
         }
 
         auto entry_data = mb::make_view(entry_buffer);
 
         auto tag_entries = parse_tag_entries(entry_data.begin, entry_data.length);
 
-        if (!create_tag_table(tag_entries, tags))
+        if (!create_tags(tag_entries, tag_mem, data.tags))
         {
             mb::destroy_buffer(entry_buffer);
-            return;
+            return false;
         }
 
         std::vector<u16> udt_ids;
@@ -1435,31 +1440,35 @@ namespace
 
             auto entry = parse_udt_entry(udt_buffer.data_);
 
-            update_data_type_table(data_types, entry);
+            add_udt_type(data.udt_types, dt_mem, entry);
+
+            // add new udts as we find them
             append_udt_ids(entry.fields, udt_ids);
 
             mb::destroy_buffer(udt_buffer);
         }
+
+        return true;
     }
 
 
-    static void connect_tags(ControllerAttr const& attr, TagTable& table)
+    static void connect_tags(ControllerAttr const& attr, TagMemory& mem, List<Tag>& tags)
     {
-        for (u32 i = 0; i < table.n_tags; ++i)
+        for (u32 i = 0; i < mem.n_tags; ++i)
         {
-            auto& conn = table.connections[i];
-            auto& tag = table.tags[i];
+            auto& conn = mem.connections[i];
+            auto& tag = tags[i];
 
-            tag.connection_ok = connect_tag(attr, tag, conn);
+            //tag.connection_ok = connect_tag(attr, tag, conn);
         }
     }
 
 
-    static void scan_tags(TagTable& table)
+    static void scan_tags(TagMemory& mem)
     {
         auto timeout = 100;
 
-        for (auto& conn : table.connections)
+        for (auto& conn : mem.connections)
         {
             if (!conn.is_connected())
             {
@@ -1470,24 +1479,24 @@ namespace
             conn.scan_ok = rc == PLCTAG_STATUS_OK;
         }
 
-        for (auto& conn : table.connections)
+        for (auto& conn : mem.connections)
         {
             if (!conn.is_connected() || !conn.scan_ok)
             {
                 continue;
             }
 
-            auto view = mb::make_write_view(table.scan_data , conn.scan_offset);
+            auto view = mb::make_write_view(mem.scan_data , conn.scan_offset);
             auto rc = plc_tag_get_raw_bytes(conn.connection_handle, 0, view.begin, view.length);
             conn.scan_ok = rc == PLCTAG_STATUS_OK;
         }
     }
 
 
-    static void copy_tags(TagTable& table)
+    static void copy_tags(TagMemory& mem)
     {
-        auto src = mb::make_read_view(table.scan_data);
-        auto dst = mb::make_view(table.public_tag_data);
+        auto src = mb::make_read_view(mem.scan_data);
+        auto dst = mb::make_view(mem.public_tag_data);
 
         copy(src, dst);
     }
@@ -1557,4 +1566,67 @@ namespace
 
         return true;
     }
+}
+
+
+/* api */
+
+namespace plcscan
+{
+    static DataTypeMemory g_dt_mem;
+    static TagMemory g_tag_mem;
+
+
+    void disconnect()
+    {
+        destroy_data_type_memory(g_dt_mem);
+        destroy_tag_memory(g_tag_mem);
+        plc_tag_shutdown();
+    }
+
+
+    PlcTagData connect(cstr gateway, cstr path)
+    {
+        PlcTagData data{};
+
+        data.gateway = gateway;
+        data.path = path;
+        data.is_connected = false;
+
+        ControllerAttr attr{};
+        attr.gateway = gateway;
+        attr.path = path;
+
+        if (!init_controller(attr))
+        {
+            disconnect();
+            return data;
+        }
+
+        if (!create_data_type_memory(g_dt_mem))
+        {
+            disconnect();
+            destroy_controller(attr);
+            return data;
+        }
+
+        add_data_types(g_dt_mem, data.data_types);
+
+        if (!enumerate_tags(attr, g_tag_mem, g_dt_mem, data))
+        {
+            disconnect();
+            destroy_controller(attr);
+            return data;
+        }
+
+        connect_tags(attr, g_tag_mem, data.tags);
+
+        destroy_controller(attr);
+
+        data.is_connected = true;
+        return data;
+    }
+
+
+
 }

@@ -10,6 +10,9 @@ namespace mb = memory_buffer;
 using StringView = MemoryView<char>;
 using ByteView = MemoryView<u8>;
 
+template <typename T>
+using List = std::vector<T>;
+
 
 /* types */
 
@@ -30,8 +33,7 @@ namespace plcscan
 
         StringView name;
 
-        bool connection_ok = false;
-        bool scan_ok = false;    
+        // TODO: tag/connection status
 
         u32 size() const { return data.length; }
     };
@@ -54,7 +56,7 @@ namespace plcscan
     class UdtFieldType
     {
     public:
-        DataTypeId32 type_id;
+        DataTypeId32 type_id = 0;
         u32 offset;
 
         u32 array_count = 0;
@@ -76,6 +78,20 @@ namespace plcscan
 
         u32 size = 0;
     };
+
+
+    class PlcTagData
+    {
+    public:
+        List<DataType> data_types;
+        List<UdtType> udt_types;
+        List<Tag> tags;
+
+        cstr gateway = "192.168.123.123";
+        cstr path = "1,0";
+
+        bool is_connected = false;
+    };
 }
 
 
@@ -83,5 +99,12 @@ namespace plcscan
 
 namespace plcscan
 {
+    void disconnect();
     
+    PlcTagData connect(cstr gateway, cstr path);
+
+    
+
+
+
 }
