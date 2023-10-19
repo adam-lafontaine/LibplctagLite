@@ -2,6 +2,7 @@
 #include "../util/memory_buffer.hpp"
 
 #include <vector>
+#include <functional>
 
 
 namespace mb = memory_buffer;
@@ -12,6 +13,9 @@ using ByteView = MemoryView<u8>;
 
 template <typename T>
 using List = std::vector<T>;
+
+using void_f = std::function<void()>;
+using bool_f = std::function<bool()>;
 
 
 /* types */
@@ -103,8 +107,5 @@ namespace plcscan
     
     PlcTagData connect(cstr gateway, cstr path);
 
-    
-
-
-
+    bool scan(void_f const& scan_cb, bool_f const& scan_condition);
 }

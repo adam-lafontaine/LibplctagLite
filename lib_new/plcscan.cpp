@@ -1,4 +1,3 @@
-
 #include "../util/qsprintf.hpp"
 #include "../util/stopwatch.hpp"
 #include "plcscan.hpp"
@@ -8,11 +7,9 @@
 #include <array>
 #include <cassert>
 #include <thread>
-#include <functional>
 
 
 using ByteOffset = MemoryOffset<u8>;
-
 
 using DataTypeId32 = plcscan::DataTypeId32;
 using Tag = plcscan::Tag;
@@ -1500,72 +1497,7 @@ namespace
 
         copy(src, dst);
     }
-
-
-    static bool run_tag_scan(std::function<void()> const& scan_cb)
-    {
-        DataTypeTable data_types{};
-        ControllerAttr attr{};
-        TagTable tags{};
-
-        if (!create_data_type_table(data_types))
-        {
-            return false;
-        }        
-
-        if (!init_controller(attr))
-        {
-            return false;
-        }
-
-        enumerate_tags(attr, tags, data_types);
-
-        connect_tags(attr, tags);
-
-        Stopwatch sw;
-        f64 scan_ms = 0.0;
-        f64 proc_ms = 0.0;
-        f64 total_ms = 0.0;
-
-        auto const scan = [&]()
-        { 
-            scan_tags(tags); 
-            scan_ms = sw.get_time_milli(); 
-        };
-
-        auto const process = [&]()
-        { 
-            copy_tags(tags); 
-            scan_cb(); 
-            proc_ms = sw.get_time_milli(); 
-        };
-
-        int running = 500;
-
-        while (running > 0)
-        {
-            sw.start();
-
-            std::thread scan_th(scan);
-            std::thread process_th(process);
-
-            scan_th.join();
-            process_th.join();
-
-            mb::flip_read_write(tags.scan_data);
-
-            running--;
-            total_ms = sw.get_time_milli();
-
-            tmh::delay_current_thread(sw, 100);
-        }
-
-        destroy_tag_table(tags);
-        destroy_controller(attr);
-        destroy_data_type_table(data_types);
-
-        return true;
-    }
+  
 }
 
 
@@ -1575,12 +1507,14 @@ namespace plcscan
 {
     static DataTypeMemory g_dt_mem;
     static TagMemory g_tag_mem;
+    static ControllerAttr g_attr;
 
 
     void disconnect()
     {
         destroy_data_type_memory(g_dt_mem);
         destroy_tag_memory(g_tag_mem);
+        destroy_controller(g_attr);
         plc_tag_shutdown();
     }
 
@@ -1592,12 +1526,11 @@ namespace plcscan
         data.gateway = gateway;
         data.path = path;
         data.is_connected = false;
+        
+        g_attr.gateway = gateway;
+        g_attr.path = path;
 
-        ControllerAttr attr{};
-        attr.gateway = gateway;
-        attr.path = path;
-
-        if (!init_controller(attr))
+        if (!init_controller(g_attr))
         {
             disconnect();
             return data;
@@ -1606,25 +1539,64 @@ namespace plcscan
         if (!create_data_type_memory(g_dt_mem))
         {
             disconnect();
-            destroy_controller(attr);
             return data;
         }
 
         add_data_types(g_dt_mem, data.data_types);
 
-        if (!enumerate_tags(attr, g_tag_mem, g_dt_mem, data))
+        if (!enumerate_tags(g_attr, g_tag_mem, g_dt_mem, data))
         {
             disconnect();
-            destroy_controller(attr);
             return data;
         }
 
-        connect_tags(attr, g_tag_mem, data.tags);
-
-        destroy_controller(attr);
+        connect_tags(g_attr, g_tag_mem, data.tags);        
 
         data.is_connected = true;
         return data;
+    }
+
+
+    bool scan(void_f const& scan_cb, bool_f const& scan_condition)
+    {
+        constexpr int target_scan_ms = 100;
+
+        Stopwatch sw;
+        f64 scan_ms = 0.0;
+        f64 proc_ms = 0.0;
+        f64 total_ms = 0.0;
+
+        auto const scan = [&]()
+        { 
+            scan_tags(g_tag_mem); 
+            scan_ms = sw.get_time_milli(); 
+        };
+
+        auto const process = [&]()
+        { 
+            copy_tags(g_tag_mem); 
+            scan_cb(); 
+            proc_ms = sw.get_time_milli(); 
+        };
+
+        while(scan_condition())
+        {
+            sw.start();
+
+            std::thread scan_th(scan);
+            std::thread process_th(process);
+
+            scan_th.join();
+            process_th.join();
+
+            mb::flip_read_write(g_tag_mem.scan_data);
+            
+            total_ms = sw.get_time_milli();
+
+            tmh::delay_current_thread(sw, target_scan_ms);
+        }
+
+        return true;
     }
 
 
