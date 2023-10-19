@@ -30,8 +30,6 @@ namespace plcscan
     public:
         DataTypeId32 type_id = 0;
         u32 array_count = 0;
-        // how to parse scan data
-        // fixed type size, udt fields
 
         StringView name;
 
@@ -52,8 +50,6 @@ namespace plcscan
         StringView data_type_description;
 
         u32 size = 0;
-
-        // how to parse scan data
     };
 
 

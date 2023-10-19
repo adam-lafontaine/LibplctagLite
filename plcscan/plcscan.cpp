@@ -2,7 +2,7 @@
 #include "../util/time_helper.hpp"
 #include "plcscan.hpp"
 
-#include "../lib_old/libplctag/libplctag.h"
+#include "../libplctag/libplctag.h"
 
 #include <array>
 #include <cassert>
