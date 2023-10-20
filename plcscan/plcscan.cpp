@@ -7,10 +7,6 @@
 #include <array>
 #include <cassert>
 
-//#define qsnprintf snprintf
-
-
-
 namespace tmh = time_helper;
 
 using ByteOffset = MemoryOffset<u8>;
@@ -1553,7 +1549,7 @@ namespace plcscan
     }
 
 
-    void scan(void_f const& scan_cb, bool_f const& scan_condition)
+    void scan(data_f const& scan_cb, bool_f const& scan_condition, PlcTagData& data)
     {
         constexpr int target_scan_ms = 100;
 
@@ -1571,7 +1567,7 @@ namespace plcscan
         auto const process = [&]()
         { 
             copy_tags(g_tag_mem); 
-            scan_cb(); 
+            scan_cb(data); 
             proc_ms = sw.get_time_milli(); 
         };
 

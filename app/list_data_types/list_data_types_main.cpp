@@ -7,6 +7,12 @@ int main()
 {
 	auto data = plcscan::init();
 
+	if (!data.is_init)
+	{
+		printf("Error. Unable to initialize library.\n");
+		return 1;
+	}
+
 	auto& types = data.data_types;
 
 	if (types.empty())

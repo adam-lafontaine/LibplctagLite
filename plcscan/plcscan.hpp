@@ -16,9 +16,6 @@ using ByteView = MemoryView<u8>;
 template <typename T>
 using List = std::vector<T>;
 
-using void_f = std::function<void()>;
-using bool_f = std::function<bool()>;
-
 
 /* types */
 
@@ -113,13 +110,17 @@ namespace plcscan
 
 namespace plcscan
 {
+    using data_f = std::function<void(PlcTagData&)>;
+    using bool_f = std::function<bool()>;
+
+
     void disconnect();
 
     PlcTagData init();
     
     bool connect(cstr gateway, cstr path, PlcTagData& data);
 
-    void scan(void_f const& scan_cb, bool_f const& scan_condition);
+    void scan(data_f const& scan_cb, bool_f const& scan_condition, PlcTagData& data);
 
     DataTypeCategory get_type_category(DataTypeId32 type_id);
 }
