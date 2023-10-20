@@ -13,5 +13,75 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source Files\util">
+      <UniqueIdentifier>{25597456-9bca-47b3-879b-652524002ec1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\libplctag">
+      <UniqueIdentifier>{8263b196-1cf6-4eb1-99ad-7f34127cf7e6}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\util\qsprintf.cpp">
+      <Filter>Source Files\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\libplctag\libplctag.c">
+      <Filter>Source Files\libplctag</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\libplctag\platform_windows.c">
+      <Filter>Source Files\libplctag</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\libplctag\protocols\modbus.c">
+      <Filter>Source Files\libplctag</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\libplctag\protocols\system.c">
+      <Filter>Source Files\libplctag</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\libplctag\protocols\ab\ab_common.c">
+      <Filter>Source Files\libplctag</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\libplctag\protocols\ab\cip.c">
+      <Filter>Source Files\libplctag</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\libplctag\protocols\ab\eip_cip.c">
+      <Filter>Source Files\libplctag</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\libplctag\protocols\ab\eip_cip_special.c">
+      <Filter>Source Files\libplctag</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\libplctag\protocols\ab\eip_lgx_pccc.c">
+      <Filter>Source Files\libplctag</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\libplctag\protocols\ab\eip_plc5_dhp.c">
+      <Filter>Source Files\libplctag</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\libplctag\protocols\ab\eip_plc5_pccc.c">
+      <Filter>Source Files\libplctag</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\libplctag\protocols\ab\eip_slc_dhp.c">
+      <Filter>Source Files\libplctag</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\libplctag\protocols\ab\eip_slc_pccc.c">
+      <Filter>Source Files\libplctag</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\libplctag\protocols\ab\error_codes.c">
+      <Filter>Source Files\libplctag</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\libplctag\protocols\ab\pccc.c">
+      <Filter>Source Files\libplctag</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\libplctag\protocols\ab\session.c">
+      <Filter>Source Files\libplctag</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\plcscan\plcscan.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\app\list_tags\list_tags_main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\plcscan\plcscan.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
