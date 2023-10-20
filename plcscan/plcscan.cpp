@@ -1,4 +1,4 @@
-#include "../util/qsprintf.hpp"
+//#include "../util/qsprintf.hpp"
 #include "../util/time_helper.hpp"
 #include "plcscan.hpp"
 
@@ -6,6 +6,10 @@
 
 #include <array>
 #include <cassert>
+
+#define qsnprintf snprintf
+
+
 
 namespace tmh = time_helper;
 
@@ -68,7 +72,7 @@ static void copy_8(u8* src, u8* dst, u32 len8)
 
 static void copy_bytes(u8* src, u8* dst, u32 len)
 {
-    constexpr auto size64 = sizeof(u64);
+    constexpr auto size64 = (u32)sizeof(u64);
 
     auto len64 = len / size64;
     auto src64 = (u64*)src;
@@ -103,7 +107,7 @@ static bool bytes_equal(u8* lhs, u8* rhs, u32 len)
         break;
     }
 
-    constexpr auto size64 = sizeof(u64);
+    constexpr auto size64 = (u32)sizeof(u64);
 
     auto len64 = len / size64;
     auto lhs64 = (u64*)lhs;
@@ -131,8 +135,8 @@ static bool bytes_equal(u8* lhs, u8* rhs, u32 len)
 
 static void copy_unsafe(cstr src, StringView const& dst)
 {
-    auto len = (u32)strlen(src);
-    auto len = len < dst.length ? len : dst.length;
+    auto len = strlen(src);
+    len = len < dst.length ? len : dst.length;
 
     for (u32 i = 0; i < len; ++i)
     {
@@ -143,8 +147,8 @@ static void copy_unsafe(cstr src, StringView const& dst)
 
 static void copy_unsafe(StringView const& src, char* dst)
 {
-    auto len = (u32)strlen(dst);
-    auto len = len < src.length ? len : src.length;
+    auto len = strlen(dst);
+    len = len < src.length ? len : src.length;
 
     for (u32 i = 0; i < len; ++i)
     {
@@ -171,25 +175,7 @@ static void copy(ByteView const& src, ByteView const& dst)
 
 static void zero_string(StringView const& str)
 {
-    constexpr auto size64 = sizeof(u64);
-
-    auto len = str.length;
-
-    auto len64 = len / size64;
-    auto dst64 = (u64*)str.begin;
-
-    auto len8 = len - len64 * size64;
-    auto dst8 = (u8*)(dst64 + len64);
-
-    for (size_t i = 0; i < len64; ++i)
-    {
-        dst64[i] = 0;
-    }
-
-    for (size_t i = 0; i < len8; ++i)
-    {
-        dst8[i] = 0;
-    }
+    mb::zero_view(str);
 }
 
 
@@ -230,12 +216,6 @@ static bool vector_contains(std::vector<T> const& vec, T value)
 
     return false;
 }
-
-
-
-
-
-
 
 
 /* 16 bin ids */
@@ -372,7 +352,7 @@ namespace /* private */
     {
         switch (t)
         {
-        case FixedType::SYSTEM:               return "SYS"; // ?
+        case FixedType::SYSTEM:               return "SYSTEM"; // ?
         case FixedType::BOOL:                 return "BOOL";
         case FixedType::SINT:                 return "SINT";
         case FixedType::INT:                  return "INT";
@@ -394,15 +374,15 @@ namespace /* private */
         case FixedType::STRING_32:            return "STRING_32";
         case FixedType::STRING_64:            return "STRING_64";
         case FixedType::WIDE_STRING:          return "WIDE_STRING";        
-        case FixedType::HIGH_RES_DURATION:    return "High resolution duration value";
-        case FixedType::MED_RES_DURATION:     return "Medium resolution duration value";
-        case FixedType::LOW_RES_DURATION:     return "Low resolution duration value";
-        case FixedType::N_BYTE_STRING:        return "N-byte per char character string";
-        case FixedType::COUNTED_CHAR_STRING:  return "Counted character sting with 1 byte per character and 1 byte length indicator";
-        case FixedType::DURATION_MS:          return "Duration in milliseconds";
-        case FixedType::CIP_PATH:             return "CIP path segment(s)";
-        case FixedType::ENGINEERING_UNITS:    return "Engineering units";
-        case FixedType::INTERNATIONAL_STRING: return "International character string (encoding?)";
+        case FixedType::HIGH_RES_DURATION:    return "HIGH_RES_DURATION";
+        case FixedType::MED_RES_DURATION:     return "MED_RES_DURATION";
+        case FixedType::LOW_RES_DURATION:     return "LOW_RES_DURATION";
+        case FixedType::N_BYTE_STRING:        return "N_BYTE_STRING";
+        case FixedType::COUNTED_CHAR_STRING:  return "COUNTED_CHAR_STRING";
+        case FixedType::DURATION_MS:          return "DURATION_MS";
+        case FixedType::CIP_PATH:             return "CIP_PATH";
+        case FixedType::ENGINEERING_UNITS:    return "ENGINEERING_UNITS";
+        case FixedType::INTERNATIONAL_STRING: return "INTERNATIONAL_STRING";
         
         default:                               return "UNKNOWN";
         }
@@ -686,7 +666,7 @@ namespace /* private */
 
         int offset = H_size;
 
-        entry.name = mb::make_view((char*)(entry_data + offset),  h.string_len);
+        entry.name = mb::make_view((char*)(entry_data + offset),  (u32)h.string_len);
 
         if (is_valid_tag_name(entry.name))
         {
@@ -705,7 +685,7 @@ namespace /* private */
 
         int offset = 0;
 
-        while (offset < data_size)
+        while ((u32)offset < data_size)
         {
             offset += append_tag_entry(list, entry_data + offset);
         }
@@ -954,7 +934,7 @@ namespace /* private */
 
         auto string_data = (char*)(udt_data + offset);
         auto string_len = strlen(string_data);
-        int str_offset = 0;
+        size_t str_offset = 0;
 
         u32 name_len = 0;
         char end = ';';
@@ -1143,7 +1123,7 @@ namespace /* private */
 
     static bool create_data_type_memory(DataTypeMemory& mem)
     {
-        u32 str_bytes = 0;
+        u64 str_bytes = 0;
 
         for (auto t : NUMERIC_FIXED_TYPES)
         {

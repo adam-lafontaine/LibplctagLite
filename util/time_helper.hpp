@@ -70,3 +70,4 @@ namespace time_helper
 		return chr::duration_cast<chr::milliseconds>(chr::system_clock::now().time_since_epoch()).count();
 	}
 }
+

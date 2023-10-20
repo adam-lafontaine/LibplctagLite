@@ -18,30 +18,11 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\..\lib\libplctag\libplctaglite.h" />
-    <ClInclude Include="..\..\lib\libplctag\libplctaglite_internal.h" />
-    <ClInclude Include="..\..\lib\libplctag\protocols\ab\ab_byte_order.h" />
-    <ClInclude Include="..\..\lib\libplctag\protocols\ab\ab_vtable.h" />
-    <ClInclude Include="..\..\lib\plctag.hpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="..\..\examples\cpp\list_tags_logix.cpp" />
-    <ClCompile Include="..\..\lib\libplctag\libplctaglite.c" />
-    <ClCompile Include="..\..\lib\libplctag\platform_windows.c" />
-    <ClCompile Include="..\..\lib\libplctag\protocols\ab\ab_common.c" />
-    <ClCompile Include="..\..\lib\libplctag\protocols\ab\cip.c" />
-    <ClCompile Include="..\..\lib\libplctag\protocols\ab\eip_cip.c" />
-    <ClCompile Include="..\..\lib\libplctag\protocols\ab\eip_cip_special.c" />
-    <ClCompile Include="..\..\lib\libplctag\protocols\ab\error_codes.c" />
-    <ClCompile Include="..\..\lib\libplctag\protocols\ab\session.c" />
-    <ClCompile Include="..\..\lib\plctag.cpp" />
-  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{00fb16c7-4293-4892-98af-ff9ae256af9c}</ProjectGuid>
-    <RootNamespace>ListTagsLogix</RootNamespace>
+    <ProjectGuid>{72146c2f-a101-42c4-8e2d-d690cc223acb}</ProjectGuid>
+    <RootNamespace>ListTagTypes</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -95,8 +76,6 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp20</LanguageStandard>
-      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -111,8 +90,6 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp20</LanguageStandard>
-      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -127,8 +104,6 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp20</LanguageStandard>
-      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -143,8 +118,6 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp20</LanguageStandard>
-      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -153,6 +126,30 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\app\list_data_types\list_data_types_main.cpp" />
+    <ClCompile Include="..\..\libplctag\libplctag.c" />
+    <ClCompile Include="..\..\libplctag\platform_windows.c" />
+    <ClCompile Include="..\..\libplctag\protocols\ab\ab_common.c" />
+    <ClCompile Include="..\..\libplctag\protocols\ab\cip.c" />
+    <ClCompile Include="..\..\libplctag\protocols\ab\eip_cip.c" />
+    <ClCompile Include="..\..\libplctag\protocols\ab\eip_cip_special.c" />
+    <ClCompile Include="..\..\libplctag\protocols\ab\eip_lgx_pccc.c" />
+    <ClCompile Include="..\..\libplctag\protocols\ab\eip_plc5_dhp.c" />
+    <ClCompile Include="..\..\libplctag\protocols\ab\eip_plc5_pccc.c" />
+    <ClCompile Include="..\..\libplctag\protocols\ab\eip_slc_dhp.c" />
+    <ClCompile Include="..\..\libplctag\protocols\ab\eip_slc_pccc.c" />
+    <ClCompile Include="..\..\libplctag\protocols\ab\error_codes.c" />
+    <ClCompile Include="..\..\libplctag\protocols\ab\pccc.c" />
+    <ClCompile Include="..\..\libplctag\protocols\ab\session.c" />
+    <ClCompile Include="..\..\libplctag\protocols\modbus.c" />
+    <ClCompile Include="..\..\libplctag\protocols\system.c" />
+    <ClCompile Include="..\..\plcscan\plcscan.cpp" />
+    <ClCompile Include="..\..\util\stb_sprintf.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\plcscan\plcscan.hpp" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

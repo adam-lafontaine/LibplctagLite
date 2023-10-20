@@ -1997,9 +1997,9 @@ LIB_EXPORT int plc_tag_get_int_attribute(int32_t id, const char *attrib_name, in
 
         critical_block(tag->api_mutex) {
             /* match the generic ones first. */
-            if (str_cmp_i(attrib_name, "size") == 0) {
+            if(str_cmp_i(attrib_name, "size") == 0) {
                 tag->status = PLCTAG_STATUS_OK;
-                res = (int)tag->size;            
+                res = (int)tag->size;
             } else if(str_cmp_i(attrib_name, "read_cache_ms") == 0) {
                 /* FIXME - what happens if this overflows? */
                 tag->status = PLCTAG_STATUS_OK;

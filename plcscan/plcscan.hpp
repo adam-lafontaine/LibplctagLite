@@ -1,3 +1,5 @@
+#pragma once
+
 #include "../util/types.hpp"
 #include "../util/memory_buffer.hpp"
 
@@ -37,7 +39,7 @@ namespace plcscan
 
         // TODO: tag/connection status
 
-        u32 size() const { return data.length; }
+        u32 size() const { return (u32)data.length; }
     };
 
 

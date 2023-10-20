@@ -9,8 +9,8 @@ class MemoryBuffer
 {
 public:
 	T* data_ = nullptr;
-	size_t capacity_ = 0;
-	size_t size_ = 0;
+	unsigned capacity_ = 0;
+	unsigned size_ = 0;
 };
 
 
@@ -19,7 +19,7 @@ class MemoryView
 {
 public:
 	T* begin = nullptr;
-	size_t length = 0;
+	unsigned length = 0;
 };
 
 
@@ -27,8 +27,8 @@ template <typename T>
 class MemoryOffset
 {
 public:
-	u32 begin = 0;
-	u32 length = 0;
+	unsigned begin = 0;
+	unsigned length = 0;
 };
 
 
@@ -38,17 +38,17 @@ class ParallelBuffer
 public:
 	T* p_data_[2] = { 0 };
 
-	size_t p_capacity_ = 0;
-	size_t p_size_ = 0;
+	unsigned p_capacity_ = 0;
+	unsigned p_size_ = 0;
 
-	u8 read_id = 0;
+	int read_id = 0;
 };
 
 
 namespace memory_buffer
 {
 	template <typename T>
-	bool create_buffer(MemoryBuffer<T>& buffer, size_t n_elements)
+	bool create_buffer(MemoryBuffer<T>& buffer, unsigned n_elements)
 	{
 		assert(n_elements > 0);
 		assert(!buffer.data_);
@@ -58,7 +58,7 @@ namespace memory_buffer
 			return false;
 		}
 
-		buffer.data_ = (T*)std::malloc(n_elements * sizeof(T));		
+		buffer.data_ = (T*)std::malloc(n_elements * sizeof(T));
 		assert(buffer.data_);
 
 		if (!buffer.data_)
@@ -74,7 +74,35 @@ namespace memory_buffer
 
 
 	template <typename T>
-	void zero_buffer(MemoryBuffer<T>& buffer)
+	bool create_buffer(MemoryBuffer<T>& buffer, size_t n_elements)
+	{
+		return create_buffer(buffer, (unsigned)n_elements);
+	}
+
+
+	template <typename T>
+	void destroy_buffer(MemoryBuffer<T>& buffer)
+	{
+		if (buffer.data_)
+		{
+			std::free(buffer.data_);
+		}
+
+		buffer.data_ = nullptr;
+		buffer.capacity_ = 0;
+		buffer.size_ = 0;
+	}
+
+
+	template <typename T>
+	void reset_buffer(MemoryBuffer<T>& buffer)
+	{
+		buffer.size_ = 0;
+	}
+
+
+	template <typename T>
+	void zero_buffer(MemoryBuffer<T> const& buffer)
 	{
 		assert(buffer.capacity_ > 0);
 		assert(buffer.data_);
@@ -93,7 +121,7 @@ namespace memory_buffer
 		auto len64 = total_bytes / size64;
 		auto begin64 = (size_t*)buffer.data_;
 
-		auto len8 = total_bytes - len64 * size64;		
+		auto len8 = total_bytes - len64 * size64;
 		auto begin8 = (byte*)(begin64 + len64);
 
 		for (size_t i = 0; i < len64; ++i)
@@ -109,28 +137,7 @@ namespace memory_buffer
 
 
 	template <typename T>
-	void destroy_buffer(MemoryBuffer<T>& buffer)
-	{
-		if (buffer.data_)
-		{
-			std::free(buffer.data_);
-		}		
-
-		buffer.data_ = nullptr;
-		buffer.capacity_ = 0;
-		buffer.size_ = 0;
-	}
-
-
-	template <typename T>
-	void reset_buffer(MemoryBuffer<T>& buffer)
-	{
-		buffer.size_ = 0;
-	}
-
-
-	template <typename T>
-	T* push_elements(MemoryBuffer<T>& buffer, size_t n_elements)
+	T* push_elements(MemoryBuffer<T>& buffer, unsigned n_elements)
 	{
 		assert(n_elements > 0);
 
@@ -164,7 +171,14 @@ namespace memory_buffer
 
 
 	template <typename T>
-	void pop_elements(MemoryBuffer<T>& buffer, size_t n_elements)
+	T* push_elements(MemoryBuffer<T>& buffer, size_t n_elements)
+	{
+		return push_elements(buffer, (unsigned)n_elements);
+	}
+
+
+	template <typename T>
+	void pop_elements(MemoryBuffer<T>& buffer, unsigned n_elements)
 	{
 		if (!n_elements)
 		{
@@ -175,7 +189,7 @@ namespace memory_buffer
 		assert(buffer.capacity_);
 		assert(n_elements <= buffer.size_);
 
-		if(n_elements > buffer.size_)
+		if (n_elements > buffer.size_)
 		{
 			buffer.size_ = 0;
 		}
@@ -187,28 +201,18 @@ namespace memory_buffer
 
 
 	template <typename T>
-	bool create_buffer(MemoryBuffer<T>& buffer, unsigned n_elements)
+	void pop_elements(MemoryBuffer<T>& buffer, size_t n_elements)
 	{
-		return create_buffer(buffer, (size_t)n_elements);
+		pop_elements(buffer, (unsigned)n_elements);
 	}
 
+}
 
+
+namespace memory_buffer
+{
 	template <typename T>
-	T* push_elements(MemoryBuffer<T>& buffer, unsigned n_elements)
-	{
-		return push_elements(buffer, (size_t)n_elements);
-	}
-
-
-	template <typename T>
-	void pop_elements(MemoryBuffer<T>& buffer, unsigned n_elements)
-	{
-		pop_elements(buffer, (size_t)n_elements);
-	}
-
-
-	template <typename T>
-	MemoryView<T> push_view(MemoryBuffer<T>& buffer, size_t n_elements)
+	MemoryView<T> push_view(MemoryBuffer<T>& buffer, unsigned n_elements)
 	{
 		assert(n_elements > 0);
 		assert(buffer.data_);
@@ -226,7 +230,41 @@ namespace memory_buffer
 	}
 
 
-	MemoryView<char> push_cstr_view(MemoryBuffer<char>& buffer, unsigned total_bytes)
+	template <typename T>
+	MemoryView<T> push_view(MemoryBuffer<T>& buffer, size_t n_elements)
+	{
+		return push_view(buffer, (unsigned)n_elements);
+	}
+
+
+	template <typename T>
+	void zero_view(MemoryView<T> const& view)
+	{
+		using byte = unsigned char;
+
+		constexpr auto size64 = sizeof(size_t);
+
+		auto len = view.length;
+
+		auto len64 = len / size64;
+		auto dst64 = (size_t*)view.begin;
+
+		auto len8 = len - len64 * size64;
+		auto dst8 = (byte*)(dst64 + len64);
+
+		for (size_t i = 0; i < len64; ++i)
+		{
+			dst64[i] = 0;
+		}
+
+		for (size_t i = 0; i < len8; ++i)
+		{
+			dst8[i] = 0;
+		}
+	}
+
+
+	inline MemoryView<char> push_cstr_view(MemoryBuffer<char>& buffer, unsigned total_bytes)
 	{
 		assert(total_bytes > 0);
 		assert(buffer.data_);
@@ -241,6 +279,12 @@ namespace memory_buffer
 		view.length = total_bytes - 1; /* zero terminated */
 
 		return view;
+	}
+
+
+	inline MemoryView<char> push_cstr_view(MemoryBuffer<char>& buffer, size_t total_bytes)
+	{
+		return push_cstr_view(buffer, (unsigned)total_bytes);
 	}
 
 
@@ -276,24 +320,19 @@ namespace memory_buffer
 
 
 	template <typename T>
-	MemoryOffset<T> push_offset(MemoryBuffer<T>& buffer, unsigned n_elements)
+	MemoryView<T> make_view(T* data, size_t n_elements)
 	{
-		assert(n_elements > 0);
-		assert(buffer.data_);
-		assert(buffer.capacity_);
+		return make_view(data, (unsigned)n_elements);
+	}
 
-		assert((buffer.capacity_ - buffer.size_) >= n_elements);
 
+	template <typename T>
+	MemoryOffset<T> get_offset(MemoryView<T>& view)
+	{
 		MemoryOffset<T> offset{};
 
-		offset.begin = buffer.size_;
-		offset.length = n_elements;
-
-		if (push_elements(buffer, n_elements))
-		{
-			// error
-			assert(false);
-		}
+		offset.begin = view.begin;
+		offset.length = view.length;
 
 		return offset;
 	}
@@ -321,10 +360,10 @@ namespace memory_buffer
 namespace memory_buffer
 {
 	template <typename T>
-	bool create_buffer(ParallelBuffer<T>& buffer, size_t n_elements)
+	bool create_buffer(ParallelBuffer<T>& buffer, unsigned n_elements)
 	{
 		assert(n_elements > 0);
-		assert(!buffer.n_data_[0]);
+		assert(!buffer.p_data_[0]);
 
 		if (n_elements == 0 || buffer.p_data_[0])
 		{
@@ -349,6 +388,13 @@ namespace memory_buffer
 
 
 	template <typename T>
+	bool create_buffer(ParallelBuffer<T>& buffer, size_t n_elements)
+	{
+		return create_buffer(buffer, (unsigned)n_elements);
+	}
+
+
+	template <typename T>
 	void zero_buffer(ParallelBuffer<T>& buffer)
 	{
 		assert(buffer.p_capacity_ > 0);
@@ -366,7 +412,7 @@ namespace memory_buffer
 		auto total_bytes = buffer.p_capacity_ * sizeof(T) * 2;
 
 		auto len64 = total_bytes / size64;
-		auto begin64 = (size_t*)buffer.data_[0];
+		auto begin64 = (size_t*)buffer.p_data_[0];
 
 		auto len8 = total_bytes - len64 * size64;
 		auto begin8 = (byte*)(begin64 + len64);
@@ -417,7 +463,7 @@ namespace memory_buffer
 			buffer.p_capacity_ &&
 			buffer.p_size_ < buffer.p_capacity_;
 
-		auto elements_available = (buffer.p_capacity_ - p_buffer.size_) >= n_elements;
+		auto elements_available = (buffer.p_capacity_ - buffer.p_size_) >= n_elements;
 		assert(elements_available);
 
 		if (!is_valid || !elements_available)
@@ -433,6 +479,13 @@ namespace memory_buffer
 		buffer.p_size_ += n_elements;
 
 		return offset;
+	}
+
+
+	template <typename T>
+	MemoryOffset<T> push_offset(ParallelBuffer<T>& buffer, size_t n_elements)
+	{
+		return push_offset(buffer, (unsigned)n_elements);
 	}
 
 
@@ -488,6 +541,6 @@ namespace memory_buffer
 	template <typename T>
 	void flip_read_write(ParallelBuffer<T>& buffer)
 	{
-		buffer.read_id = (u8)(!buffer.read_id);
+		buffer.read_id = (int)(!buffer.read_id);
 	}
 }
