@@ -37,7 +37,7 @@ int main()
 		printf("%s\n", udt.name());
 		for (auto const& field : udt.fields)
 		{
-			printf("    %s\n", field.name());
+			printf("    %s: %s\n", field.name(), plcscan::get_fast_type_name(field.type_id));
 		}
 		printf("\n");
 	}

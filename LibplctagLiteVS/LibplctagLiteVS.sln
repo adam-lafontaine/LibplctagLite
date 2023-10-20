@@ -9,6 +9,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SimpleScan", "SimpleScan\Si
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ListUdtTypes", "ListUdtTypes\ListUdtTypes.vcxproj", "{D8167F08-19FE-4707-B15E-DCC7918CD060}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ListTags", "ListTags\ListTags.vcxproj", "{6BF3C8AD-4F50-4E1C-A090-1F1633B3EDD6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -41,6 +43,14 @@ Global
 		{D8167F08-19FE-4707-B15E-DCC7918CD060}.Release|x64.Build.0 = Release|x64
 		{D8167F08-19FE-4707-B15E-DCC7918CD060}.Release|x86.ActiveCfg = Release|Win32
 		{D8167F08-19FE-4707-B15E-DCC7918CD060}.Release|x86.Build.0 = Release|Win32
+		{6BF3C8AD-4F50-4E1C-A090-1F1633B3EDD6}.Debug|x64.ActiveCfg = Debug|x64
+		{6BF3C8AD-4F50-4E1C-A090-1F1633B3EDD6}.Debug|x64.Build.0 = Debug|x64
+		{6BF3C8AD-4F50-4E1C-A090-1F1633B3EDD6}.Debug|x86.ActiveCfg = Debug|Win32
+		{6BF3C8AD-4F50-4E1C-A090-1F1633B3EDD6}.Debug|x86.Build.0 = Debug|Win32
+		{6BF3C8AD-4F50-4E1C-A090-1F1633B3EDD6}.Release|x64.ActiveCfg = Release|x64
+		{6BF3C8AD-4F50-4E1C-A090-1F1633B3EDD6}.Release|x64.Build.0 = Release|x64
+		{6BF3C8AD-4F50-4E1C-A090-1F1633B3EDD6}.Release|x86.ActiveCfg = Release|Win32
+		{6BF3C8AD-4F50-4E1C-A090-1F1633B3EDD6}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -533,11 +533,11 @@ namespace id32
             return get_udt_type_id(type_code);
         }
 
-        u16 numeric_type = type_code & id16::FIXED_TYPE_ID_MASK;
+        u16 fixed_type = type_code & id16::FIXED_TYPE_ID_MASK;
 
-        if (numeric_type >= id16::FIXED_TYPE_ID_MIN && numeric_type <= id16::FIXED_TYPE_ID_MAX)
+        if (fixed_type >= id16::FIXED_TYPE_ID_MIN && fixed_type <= id16::FIXED_TYPE_ID_MAX)
         {
-            return (DataTypeId32)numeric_type;
+            return (DataTypeId32)fixed_type;
         }
 
         return UNKNOWN_TYPE_ID;
@@ -1611,5 +1611,16 @@ namespace plcscan
         }
 
         return DataTypeCategory::Other;
+    }
+
+
+    cstr get_fast_type_name(DataTypeId32 type_id)
+    {
+        if (id32::is_udt_type(type_id))
+        {
+            return "UDT";
+        }
+
+        return tag_type_str((FixedType)type_id);
     }
 }

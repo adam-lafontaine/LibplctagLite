@@ -133,4 +133,6 @@ namespace plcscan
     void scan(data_f const& scan_cb, bool_f const& scan_condition, PlcTagData& data);
 
     DataTypeCategory get_type_category(DataTypeId32 type_id);
+
+    cstr get_fast_type_name(DataTypeId32 type_id);
 }
