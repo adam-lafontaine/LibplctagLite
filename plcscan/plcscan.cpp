@@ -754,7 +754,7 @@ namespace /* private */
         tag.type_id = id32::get_data_type_id(entry.type_code);
         tag.array_count = entry.elem_count;
         tag.name = mb::push_cstr_view(mem.name_data, name_alloc_len);
-        tag.data = mb::make_view(mem.public_tag_data, conn.scan_offset);
+        tag.bytes = mb::make_view(mem.public_tag_data, conn.scan_offset);
 
         copy(entry.name, tag.name);
 
@@ -1230,7 +1230,7 @@ namespace
         auto dst = attr.connection_string.begin;
         cstr fmt = "%s%s%s%s%s%s";
 
-        qsnprintf(dst, base_len, fmt, base, gateway_key, attr.gateway, path_key, attr.path, name_key);
+        qsnprintf(dst, (int)base_len, fmt, base, gateway_key, attr.gateway, path_key, attr.path, name_key);
 
         return true;
     }

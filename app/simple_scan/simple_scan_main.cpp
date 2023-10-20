@@ -2,7 +2,6 @@
 #include "../../util/qsprintf.hpp"
 
 #include <cstdio>
-#include <thread>
 
 
 // PLC IP and path
@@ -53,13 +52,19 @@ int main()
 
 	if (!plc_data.is_init)
 	{
-		printf("Error. Unable to initialize library.\n");
+		printf("Error. Unable to initialize library\n");
 		return 1;
 	}
 
 	if (!plcscan::connect(PLC_IP, PLC_PATH, plc_data))
 	{
 		printf("Error. Could not connect to PLC\n");
+		return 1;
+	}
+
+	if (plc_data.tags.empty())
+	{
+		printf("Error. No tags found\n");
 		return 1;
 	}
 

@@ -9,7 +9,7 @@ int main()
 
 	if (!data.is_init)
 	{
-		printf("Error. Unable to initialize library.\n");
+		printf("Error. Unable to initialize library\n");
 		return 1;
 	}
 
@@ -17,7 +17,7 @@ int main()
 
 	if (types.empty())
 	{
-		printf("Error. No PLC data types found.\n");
+		printf("Error. No PLC data types found\n");
 		return 1;
 	}
 

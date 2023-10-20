@@ -7,6 +7,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ListTagTypes", "ListTagType
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SimpleScan", "SimpleScan\SimpleScan.vcxproj", "{8DC680DE-ED9D-4B03-9FFB-0AC11CC19708}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ListUdtTypes", "ListUdtTypes\ListUdtTypes.vcxproj", "{D8167F08-19FE-4707-B15E-DCC7918CD060}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -31,6 +33,14 @@ Global
 		{8DC680DE-ED9D-4B03-9FFB-0AC11CC19708}.Release|x64.Build.0 = Release|x64
 		{8DC680DE-ED9D-4B03-9FFB-0AC11CC19708}.Release|x86.ActiveCfg = Release|Win32
 		{8DC680DE-ED9D-4B03-9FFB-0AC11CC19708}.Release|x86.Build.0 = Release|Win32
+		{D8167F08-19FE-4707-B15E-DCC7918CD060}.Debug|x64.ActiveCfg = Debug|x64
+		{D8167F08-19FE-4707-B15E-DCC7918CD060}.Debug|x64.Build.0 = Debug|x64
+		{D8167F08-19FE-4707-B15E-DCC7918CD060}.Debug|x86.ActiveCfg = Debug|Win32
+		{D8167F08-19FE-4707-B15E-DCC7918CD060}.Debug|x86.Build.0 = Debug|Win32
+		{D8167F08-19FE-4707-B15E-DCC7918CD060}.Release|x64.ActiveCfg = Release|x64
+		{D8167F08-19FE-4707-B15E-DCC7918CD060}.Release|x64.Build.0 = Release|x64
+		{D8167F08-19FE-4707-B15E-DCC7918CD060}.Release|x86.ActiveCfg = Release|Win32
+		{D8167F08-19FE-4707-B15E-DCC7918CD060}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
