@@ -45,7 +45,14 @@ int main()
 
 	for (auto const& tag : tags)
 	{
-		printf("%*s: %s\n", (int)max_len, tag.name(), plcscan::get_fast_type_name(tag.type_id));
+		if (tag.array_count > 1)
+		{
+			printf("%*s: %s[%d]\n", (int)max_len, tag.name(), plcscan::get_fast_type_name(tag.type_id), (int)tag.array_count);
+		}
+		else
+		{
+			printf("%*s: %s\n", (int)max_len, tag.name(), plcscan::get_fast_type_name(tag.type_id));
+		}		
 	}
 
 	plcscan::disconnect();

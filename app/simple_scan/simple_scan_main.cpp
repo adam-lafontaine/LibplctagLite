@@ -18,28 +18,54 @@ bool still_scanning()
 }
 
 
-void print_all_tags_as_hex(plcscan::PlcTagData& data)
+inline void print_tag_as_string(plcscan::Tag const& tag)
+{
+	printf("%s\n", (cstr)tag.data());
+}
+
+
+inline void print_tag_as_hex(plcscan::Tag const& tag)
 {
 	constexpr int out_len = 20;
 	char buffer[out_len + 1] = { 0 };
 
+	auto len = (int)tag.size();
+	if (len < out_len / 2)
+	{
+		len = out_len / 2;
+	}
+
+	for (int i = 0; i < len; i++)
+	{
+		auto src = tag.data() + i;
+		auto dst = buffer + i * 2;
+		qsnprintf(dst, 3, "%02x", src);
+	}
+	buffer[len] = NULL;
+
+	printf("%s: %s\n", tag.name(), buffer);
+}
+
+
+void print_tags(plcscan::PlcTagData& data)
+{
+	using Cat = plcscan::DataTypeCategory;
+
 	for (auto const& tag : data.tags)
 	{
-		auto len = (int)tag.size();
-		if (len < out_len / 2)
+		switch (plcscan::get_type_category(tag.type_id))
 		{
-			len = out_len / 2;
-		}
+		case Cat::Numeric:
 
-		for (int i = 0; i < len; i++)
-		{
-			auto src = tag.data() + i;
-			auto dst = buffer + i * 2;
-			qsnprintf(dst, 3, "%02x", src);
-		}
-		buffer[len] = NULL;
+			break;
 
-		printf("%s: %s\n", tag.name(), buffer);
+		case Cat::String:
+			print_tag_as_string(tag);
+			break;
+
+		default:
+			print_tag_as_hex(tag);
+		}
 	}
 
 	n_scans--;
@@ -68,7 +94,7 @@ int main()
 		return 1;
 	}
 
-	plcscan::scan(print_all_tags_as_hex, still_scanning, plc_data);
+	plcscan::scan(print_tags, still_scanning, plc_data);
 
 	plcscan::disconnect();
 	return 0;

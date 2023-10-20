@@ -1187,81 +1187,58 @@ namespace
         cstr path = "1,0";
 
         StringView connection_string;
-        StringView tag_name;
 
-        MemoryBuffer<char> string_data;
+        char string_data[100 + MAX_TAG_NAME_LENGTH]; // should be enough
     };
 
 
-    static void destroy_controller(ControllerAttr& attr)
-    {
-        mb::destroy_buffer(attr.string_data);
+    static void init_controller(ControllerAttr& attr)
+    {        
+        attr.connection_string.begin = attr.string_data;
+        attr.connection_string.length = (u32)strlen(attr.string_data);
+
+        zero_string(attr.connection_string);
     }
 
 
-    static bool init_controller(ControllerAttr& attr)
+    static void set_connection_string(ControllerAttr const& attr, cstr tag_name, int elem_size, int elem_count)
     {
-        cstr base = "protocol=ab-eip&plc=controllogix"; // 32
+        constexpr auto fmt =
+            "protocol=ab-eip"
+            "&plc=controllogix"
+            "&gateway=%s"
+            "&path=%s"
+            "&name=%s"
+            "&elem_size=%d"
+            "&elem_count=%d";
 
-        cstr gateway_key = "&gateway="; // 9
-        cstr path_key = "&path="; // 6
-        cstr name_key = "&name="; // 6
-
-        auto base_len = 
-            strlen(base) + 
-            strlen(gateway_key) +
-            strlen(attr.gateway) + 
-            strlen(path_key) + 
-            strlen(attr.path) +
-            strlen(name_key);
-
-        auto total_size = base_len + MAX_TAG_NAME_LENGTH + 1; /* zero terminated */
-
-        if (!mb::create_buffer(attr.string_data, total_size))
-        {
-            return false;
-        }
-
-        mb::zero_buffer(attr.string_data);
-
-        attr.connection_string = mb::push_view(attr.string_data, base_len);
-        attr.tag_name = mb::push_cstr_view(attr.string_data, MAX_TAG_NAME_LENGTH + 1);
+        zero_string(attr.connection_string);
 
         auto dst = attr.connection_string.begin;
-        cstr fmt = "%s%s%s%s%s%s";
+        auto max_len = (int)attr.connection_string.length;
 
-        qsnprintf(dst, (int)base_len, fmt, base, gateway_key, attr.gateway, path_key, attr.path, name_key);
-
-        return true;
+        qsnprintf(dst, max_len, fmt, attr.gateway, attr.path, tag_name, elem_size, elem_count);
     }
 
 
-    static bool set_tag_name(ControllerAttr const& attr, Tag const& tag)
+    static void set_tag(ControllerAttr const& attr, Tag const& tag)
     {
-        zero_string(attr.tag_name);
+        auto el_count = (int)tag.array_count;
+        auto el_size = (int)(tag.size() / tag.array_count);
 
-        copy(tag.tag_name, attr.tag_name);
-
-        return true;
+        set_connection_string(attr, tag.name(), el_size, el_count);
     }
 
 
-    static bool set_tag_name(ControllerAttr const& attr, cstr name)
+    static void set_tag(ControllerAttr const& attr, cstr tag_name)
     {
-        zero_string(attr.tag_name);
-
-        copy_unsafe(name, attr.tag_name);
-
-        return true;
+        set_connection_string(attr, tag_name, 1, 1);
     }
 
 
     static bool connect_tag(ControllerAttr const& attr, Tag const& tag, TagConnection& conn)
     {
-        if (!set_tag_name(attr, tag))
-        {
-            return false;
-        }
+        set_tag(attr, tag);
 
         auto timeout = 100;
 
@@ -1340,10 +1317,7 @@ namespace
 
     static bool scan_to_buffer(ControllerAttr const& attr, cstr tag_name, MemoryBuffer<u8>& dst)
     {
-        if (!set_tag_name(attr, tag_name))
-        {
-            return false;
-        }
+        set_tag(attr, tag_name);
 
         auto timeout = 100;
 
@@ -1497,7 +1471,6 @@ namespace plcscan
     {
         destroy_data_type_memory(g_dt_mem);
         destroy_tag_memory(g_tag_mem);
-        destroy_controller(g_attr);
         plc_tag_shutdown();
     }
 
@@ -1530,11 +1503,7 @@ namespace plcscan
         g_attr.gateway = gateway;
         g_attr.path = path;
 
-        if (!init_controller(g_attr))
-        {
-            disconnect();
-            return false;
-        }
+        init_controller(g_attr);
 
         if (!enumerate_tags(g_attr, g_tag_mem, g_dt_mem, data))
         {
