@@ -32,11 +32,12 @@ namespace plcscan
 
         StringView name;
 
-        ByteView data;
+        ByteView bytes;
 
         // TODO: tag/connection status
 
-        u32 size() const { return (u32)data.length; }
+        u8* data() const { return bytes.begin; }
+        u32 size() const { return (u32)bytes.length; }
     };
 
 
