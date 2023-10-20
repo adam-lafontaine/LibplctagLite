@@ -1,13 +1,13 @@
-//#include "../util/qsprintf.hpp"
+#include "../libplctag/libplctag.h"
+
+#include "../util/qsprintf.hpp"
 #include "../util/time_helper.hpp"
 #include "plcscan.hpp"
-
-#include "../libplctag/libplctag.h"
 
 #include <array>
 #include <cassert>
 
-#define qsnprintf snprintf
+//#define qsnprintf snprintf
 
 
 
