@@ -753,10 +753,10 @@ namespace /* private */
         Tag tag{};
         tag.type_id = id32::get_data_type_id(entry.type_code);
         tag.array_count = entry.elem_count;
-        tag.name = mb::push_cstr_view(mem.name_data, name_alloc_len);
+        tag.tag_name = mb::push_cstr_view(mem.name_data, name_alloc_len);
         tag.bytes = mb::make_view(mem.public_tag_data, conn.scan_offset);
 
-        copy(entry.name, tag.name);
+        copy(entry.name, tag.tag_name);
 
         mem.connections.push_back(conn);
         tags.push_back(tag);
@@ -1240,7 +1240,7 @@ namespace
     {
         zero_string(attr.tag_name);
 
-        copy(tag.name, attr.tag_name);
+        copy(tag.tag_name, attr.tag_name);
 
         return true;
     }

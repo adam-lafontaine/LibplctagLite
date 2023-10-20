@@ -30,12 +30,13 @@ namespace plcscan
         DataTypeId32 type_id = 0;
         u32 array_count = 0;
 
-        StringView name;
+        StringView tag_name;
 
         ByteView bytes;
 
         // TODO: tag/connection status
 
+        cstr name() const { return tag_name.begin; }
         u8* data() const { return bytes.begin; }
         u32 size() const { return (u32)bytes.length; }
     };
@@ -50,6 +51,9 @@ namespace plcscan
         StringView data_type_description;
 
         u32 size = 0;
+
+        cstr name() const { return data_type_name.begin; }
+        cstr description() const { return data_type_description.begin; }
     };
 
 
@@ -63,6 +67,8 @@ namespace plcscan
         u32 bit_number = 0;
 
         StringView field_name;
+
+        cstr name() const { return field_name.begin; }
     };
 
 
@@ -77,6 +83,9 @@ namespace plcscan
         std::vector<UdtFieldType> fields;
 
         u32 size = 0;
+
+        cstr name() const { return udt_name.begin; }
+        cstr description() const { return udt_description.begin; }
     };
 
 

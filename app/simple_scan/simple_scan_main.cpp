@@ -39,7 +39,7 @@ void print_all_tags_as_hex(plcscan::PlcTagData& data)
 		}
 		buffer[len] = NULL;
 
-		printf("%s: %s\n", tag.name.begin, buffer);
+		printf("%s: %s\n", tag.name(), buffer);
 	}
 
 	n_scans--;

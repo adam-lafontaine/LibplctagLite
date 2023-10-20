@@ -34,7 +34,7 @@ int main()
 
 	for (auto const& type : types)
 	{
-		printf("%*s: %s\n", (int)max_len, type.data_type_name.begin, type.data_type_description.begin);
+		printf("%*s: %s\n", (int)max_len, type.name(), type.description());
 	}
 
 	plcscan::disconnect();

@@ -32,20 +32,14 @@ int main()
 		return 1;
 	}
 
-	auto max_len = udts[0].udt_name.length;
 	for (auto const& udt : udts)
 	{
-		if (udt.udt_name.length > max_len)
+		printf("%s\n", udt.name());
+		for (auto const& field : udt.fields)
 		{
-			max_len = udt.udt_name.length;
+			printf("    %s\n", field.name());
 		}
-	}
-
-	max_len++;
-
-	for (auto const& udt : udts)
-	{
-		printf("%*s: %s\n", (int)max_len, udt.udt_name.begin, udt.udt_description.begin);
+		printf("\n");
 	}
 
 	plcscan::disconnect();
