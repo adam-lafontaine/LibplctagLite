@@ -145,7 +145,7 @@
     <ClCompile Include="..\..\libplctag\protocols\modbus.c" />
     <ClCompile Include="..\..\libplctag\protocols\system.c" />
     <ClCompile Include="..\..\plcscan\plcscan.cpp" />
-    <ClCompile Include="..\..\util\stb_sprintf.cpp" />
+    <ClCompile Include="..\..\util\qsprintf.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\plcscan\plcscan.hpp" />
