@@ -117,7 +117,7 @@ auto type = plcscan::get_tag_type(tag.type_id);
 auto name = "";
 auto description = "";
 
-auto const seach_predicate = [&](auto const& t){ return t.type_id == tag.type_id; };
+auto const search_predicate = [&](auto const& t){ return t.type_id == tag.type_id; };
 
 if (type == plcscan::TagType::UDT)
 {
@@ -281,13 +281,13 @@ plcscan::shutdown();
     * Problems have occured when multiple PLCs have tags with the same name
     * More investigation is necessary
 
-### Example: List data types
+### Example 1: List data types
 
 Demonstrates how to access the basic Allen-Bradley datatype information after the library is initialized.
 
 `/sample_apps/plcscan_list_data_types/list_data_types_main.cpp`
 
-### Example: List UDT types
+### Example 2: List UDT types
 
 Demonstrates how to access UDT information when connected to a PLC.
 
@@ -295,7 +295,7 @@ Demonstrates how to access UDT information when connected to a PLC.
 
 * untested (2023-10-21)
 
-### Example: List tags
+### Example 3: List tags
 
 Demonstrates how to access tag information when connected to a PLC.
 
@@ -303,7 +303,7 @@ Demonstrates how to access tag information when connected to a PLC.
 
 * untested (2023-10-21)
 
-### Example: Simple scan
+### Example 4: Simple scan
 
 Demonstrates how to setup an application to scan and process tags continuously.  Displays tag values based on their data type.
 
