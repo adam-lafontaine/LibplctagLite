@@ -257,7 +257,7 @@ auto const process_data = [](plcscan::PlcTagData& data){ /* process */ };
 auto const is_scanning = [&](){ return !scan_terminated; };
 
 // start scanning in a background thread
-std::thread scan_th([](){ plcscan::scan(process_data, is_scanning, plc_data); });
+std::thread scan_th([&](){ plcscan::scan(process_data, is_scanning, plc_data); });
 
 while (!app_terminated)
 {
