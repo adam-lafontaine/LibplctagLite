@@ -21,8 +21,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{8dc680de-ed9d-4b03-9ffb-0ac11cc19708}</ProjectGuid>
-    <RootNamespace>SimpleScan</RootNamespace>
+    <ProjectGuid>{9f43a8b8-bcb4-4ea0-afc9-59f8d41b932f}</ProjectGuid>
+    <RootNamespace>PlcScan01ListDataTypes</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -127,28 +127,28 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\app\simple_scan\simple_scan_main.cpp" />
-    <ClCompile Include="..\..\libplctag\libplctag.c" />
-    <ClCompile Include="..\..\libplctag\platform_windows.c" />
-    <ClCompile Include="..\..\libplctag\protocols\ab\ab_common.c" />
-    <ClCompile Include="..\..\libplctag\protocols\ab\cip.c" />
-    <ClCompile Include="..\..\libplctag\protocols\ab\eip_cip.c" />
-    <ClCompile Include="..\..\libplctag\protocols\ab\eip_cip_special.c" />
-    <ClCompile Include="..\..\libplctag\protocols\ab\eip_lgx_pccc.c" />
-    <ClCompile Include="..\..\libplctag\protocols\ab\eip_plc5_dhp.c" />
-    <ClCompile Include="..\..\libplctag\protocols\ab\eip_plc5_pccc.c" />
-    <ClCompile Include="..\..\libplctag\protocols\ab\eip_slc_dhp.c" />
-    <ClCompile Include="..\..\libplctag\protocols\ab\eip_slc_pccc.c" />
-    <ClCompile Include="..\..\libplctag\protocols\ab\error_codes.c" />
-    <ClCompile Include="..\..\libplctag\protocols\ab\pccc.c" />
-    <ClCompile Include="..\..\libplctag\protocols\ab\session.c" />
-    <ClCompile Include="..\..\libplctag\protocols\modbus.c" />
-    <ClCompile Include="..\..\libplctag\protocols\system.c" />
-    <ClCompile Include="..\..\plcscan\plcscan.cpp" />
-    <ClCompile Include="..\..\util\qsprintf.cpp" />
+    <ClInclude Include="..\..\src\plcscan\plcscan.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\plcscan\plcscan.hpp" />
+    <ClCompile Include="..\..\sample_apps\plcscan_list_data_types\list_data_types_main.cpp" />
+    <ClCompile Include="..\..\src\libplctag\libplctag.c" />
+    <ClCompile Include="..\..\src\libplctag\platform_windows.c" />
+    <ClCompile Include="..\..\src\libplctag\protocols\ab\ab_common.c" />
+    <ClCompile Include="..\..\src\libplctag\protocols\ab\cip.c" />
+    <ClCompile Include="..\..\src\libplctag\protocols\ab\eip_cip.c" />
+    <ClCompile Include="..\..\src\libplctag\protocols\ab\eip_cip_special.c" />
+    <ClCompile Include="..\..\src\libplctag\protocols\ab\eip_lgx_pccc.c" />
+    <ClCompile Include="..\..\src\libplctag\protocols\ab\eip_plc5_dhp.c" />
+    <ClCompile Include="..\..\src\libplctag\protocols\ab\eip_plc5_pccc.c" />
+    <ClCompile Include="..\..\src\libplctag\protocols\ab\eip_slc_dhp.c" />
+    <ClCompile Include="..\..\src\libplctag\protocols\ab\eip_slc_pccc.c" />
+    <ClCompile Include="..\..\src\libplctag\protocols\ab\error_codes.c" />
+    <ClCompile Include="..\..\src\libplctag\protocols\ab\pccc.c" />
+    <ClCompile Include="..\..\src\libplctag\protocols\ab\session.c" />
+    <ClCompile Include="..\..\src\libplctag\protocols\modbus.c" />
+    <ClCompile Include="..\..\src\libplctag\protocols\system.c" />
+    <ClCompile Include="..\..\src\plcscan\plcscan.cpp" />
+    <ClCompile Include="..\..\src\util\qsprintf.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
