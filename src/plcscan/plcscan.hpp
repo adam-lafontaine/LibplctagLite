@@ -137,15 +137,17 @@ namespace plcscan
     using bool_f = std::function<bool()>;
 
 
-    void disconnect();
+    void shutdown();
 
     PlcTagData init();
     
     bool connect(cstr gateway, cstr path, PlcTagData& data);
 
-    void scan(data_f const& scan_cb, bool_f const& scan_condition, PlcTagData& data);
-
     TagType get_tag_type(DataTypeId32 type_id);
 
     cstr get_fast_type_name(DataTypeId32 type_id);
+
+    void scan(data_f const& scan_cb, bool_f const& scan_condition, PlcTagData& data);
+
+    
 }

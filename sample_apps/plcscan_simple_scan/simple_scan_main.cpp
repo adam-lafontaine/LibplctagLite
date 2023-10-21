@@ -3,20 +3,26 @@
 
 #include <cstdio>
 
+/*
+
+1. Initialize the library
+2. Connect to the PLC
+3. Verify that tag infomation has been generated
+4. Setup output formatting
+5. Scan and process tag values until told to stop
+6. Shutdown the library
+
+*/
+
 
 // PLC IP and path
 constexpr auto PLC_IP = "192.168.123.123";
 constexpr auto PLC_PATH = "1,0";
 
 
-// run 50 scans
-int n_scans = 50;
+/* helpers */
 
-bool still_scanning()
-{
-	return n_scans > 0;
-}
-
+unsigned name_len = 0; // output formatting
 
 inline void print_tag_as_hex(plcscan::Tag const& tag)
 {
@@ -37,7 +43,7 @@ inline void print_tag_as_hex(plcscan::Tag const& tag)
 	}
 	buffer[len] = NULL;
 
-	printf("%s: %s\n", tag.name(), buffer);
+	printf("%*s: %s\n", (int)name_len, tag.name(), buffer);
 }
 
 
@@ -130,10 +136,21 @@ inline void print_tag_as_number(plcscan::Tag const& tag)
 		break;
 	}
 
-	printf("%s\n", buffer);
+	printf("%*s: %s\n", (int)name_len, tag.name(), buffer);
 }
 
 
+/* scan callback functions */
+
+// Scanning will stop when this returns false
+int n_scans = 50;
+bool still_scanning()
+{
+	return n_scans > 0;
+}
+
+
+// print each tag value based on its data type
 void print_tags(plcscan::PlcTagData& data)
 {
 	using T = plcscan::TagType;
@@ -143,13 +160,13 @@ void print_tags(plcscan::PlcTagData& data)
 		switch (plcscan::get_tag_type(tag.type_id))
 		{
 		case T::STRING:
-			printf("%s\n", (cstr)tag.data());
+			printf("%*s: %s\n", (int)name_len, tag.name(), (cstr)tag.data());
 			break;
 
 		case T::UDT:
 		case T::OTHER:
 			print_tag_as_hex(tag);
-			break;			
+			break;
 
 		default:
 			print_tag_as_number(tag);
@@ -162,6 +179,7 @@ void print_tags(plcscan::PlcTagData& data)
 
 int main()
 {
+	// 1. Initialize the library
 	auto plc_data = plcscan::init();
 
 	if (!plc_data.is_init)
@@ -170,20 +188,38 @@ int main()
 		return 1;
 	}
 
+	// 2. Connect to the PLC
 	if (!plcscan::connect(PLC_IP, PLC_PATH, plc_data))
 	{
 		printf("Error. Could not connect to PLC\n");
 		return 1;
 	}
 
-	if (plc_data.tags.empty())
+	auto& tags = plc_data.tags;
+
+	// 3. Verify that tag infomation has been generated
+	if (tags.empty())
 	{
 		printf("Error. No tags found\n");
 		return 1;
 	}
 
+	// 4. Setup output formatting
+	name_len = tags[0].tag_name.length;
+	for (auto const& tag : tags)
+	{
+		if (tag.tag_name.length > name_len)
+		{
+			name_len = tag.tag_name.length;
+		}
+	}
+
+	name_len++;
+
+	// 5. Scan and process tag values until told to stop
 	plcscan::scan(print_tags, still_scanning, plc_data);
 
-	plcscan::disconnect();
+	// 6. Shutdown the library
+	plcscan::shutdown();
 	return 0;
 }

@@ -1467,7 +1467,7 @@ namespace plcscan
     static ControllerAttr g_attr;
 
 
-    void disconnect()
+    void shutdown()
     {
         destroy_data_type_memory(g_dt_mem);
         destroy_tag_memory(g_tag_mem);
@@ -1481,7 +1481,7 @@ namespace plcscan
 
         if (!create_data_type_memory(g_dt_mem))
         {
-            disconnect();
+            shutdown();
             return data;
         }
 
@@ -1496,7 +1496,7 @@ namespace plcscan
     {     
         if (!data.is_init)
         {
-            disconnect();
+            shutdown();
             return false;
         }   
 
@@ -1507,7 +1507,7 @@ namespace plcscan
 
         if (!enumerate_tags(g_attr, g_tag_mem, g_dt_mem, data))
         {
-            disconnect();
+            shutdown();
             return false;
         }
 
@@ -1518,6 +1518,43 @@ namespace plcscan
     }
 
 
+    TagType get_tag_type(DataTypeId32 type_id)
+    {
+        if (id32::is_udt_type(type_id))
+        {
+            return TagType::UDT;
+        }
+
+        if (type_id >= (DataTypeId32)FixedType::BOOL && type_id <= (DataTypeId32)FixedType::LREAL)
+        {
+            auto offset = (u32)type_id - (u32)FixedType::BOOL;
+
+            return (TagType)((u32)TagType::BOOL + offset);
+        }        
+
+        for (auto t : STRING_FIXED_TYPES)
+        {
+            if (type_id == (DataTypeId32)t)
+            {
+                return TagType::STRING;
+            }
+        }
+
+        return TagType::OTHER;
+    }
+
+
+    cstr get_fast_type_name(DataTypeId32 type_id)
+    {
+        if (id32::is_udt_type(type_id))
+        {
+            return "UDT";
+        }
+
+        return tag_type_str((FixedType)type_id);
+    }
+    
+    
     void scan(data_f const& scan_cb, bool_f const& scan_condition, PlcTagData& data)
     {
         constexpr int target_scan_ms = 100;
@@ -1559,39 +1596,5 @@ namespace plcscan
     }
 
 
-    TagType get_tag_type(DataTypeId32 type_id)
-    {
-        if (id32::is_udt_type(type_id))
-        {
-            return TagType::UDT;
-        }
-
-        if (type_id >= (DataTypeId32)FixedType::BOOL && type_id <= (DataTypeId32)FixedType::LREAL)
-        {
-            auto offset = (u32)type_id - (u32)FixedType::BOOL;
-
-            return (TagType)((u32)TagType::BOOL + offset);
-        }        
-
-        for (auto t : STRING_FIXED_TYPES)
-        {
-            if (type_id == (DataTypeId32)t)
-            {
-                return TagType::STRING;
-            }
-        }
-
-        return TagType::OTHER;
-    }
-
-
-    cstr get_fast_type_name(DataTypeId32 type_id)
-    {
-        if (id32::is_udt_type(type_id))
-        {
-            return "UDT";
-        }
-
-        return tag_type_str((FixedType)type_id);
-    }
+    
 }
