@@ -106,12 +106,25 @@ namespace plcscan
 
 namespace plcscan
 {
-    enum class DataTypeCategory : int
+    enum class TagType : int
     {
-        Numeric,
-        String,
-        Udt,
-        Other
+        BOOL,
+        SINT,
+        INT,
+        DINT,
+        LINT,
+        USINT,
+        UINT,
+        UDINT,
+        ULINT,
+        REAL,
+        LREAL,
+
+        STRING,
+
+        UDT,
+
+        OTHER
     };
 }
 
@@ -132,7 +145,7 @@ namespace plcscan
 
     void scan(data_f const& scan_cb, bool_f const& scan_condition, PlcTagData& data);
 
-    DataTypeCategory get_type_category(DataTypeId32 type_id);
+    TagType get_tag_type(DataTypeId32 type_id);
 
     cstr get_fast_type_name(DataTypeId32 type_id);
 }

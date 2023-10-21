@@ -1559,27 +1559,29 @@ namespace plcscan
     }
 
 
-    DataTypeCategory get_type_category(DataTypeId32 type_id)
+    TagType get_tag_type(DataTypeId32 type_id)
     {
-        if (type_id >= (DataTypeId32)FixedType::BOOL && type_id <= (DataTypeId32)FixedType::LREAL)
-        {
-            return DataTypeCategory::Numeric;
-        }
-
         if (id32::is_udt_type(type_id))
         {
-            return DataTypeCategory::Udt;
+            return TagType::UDT;
         }
+
+        if (type_id >= (DataTypeId32)FixedType::BOOL && type_id <= (DataTypeId32)FixedType::LREAL)
+        {
+            auto offset = (u32)type_id - (u32)FixedType::BOOL;
+
+            return (TagType)((u32)TagType::BOOL + offset);
+        }        
 
         for (auto t : STRING_FIXED_TYPES)
         {
             if (type_id == (DataTypeId32)t)
             {
-                return DataTypeCategory::String;
+                return TagType::STRING;
             }
         }
 
-        return DataTypeCategory::Other;
+        return TagType::OTHER;
     }
 
 

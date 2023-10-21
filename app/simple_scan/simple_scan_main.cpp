@@ -18,12 +18,6 @@ bool still_scanning()
 }
 
 
-inline void print_tag_as_string(plcscan::Tag const& tag)
-{
-	printf("%s\n", (cstr)tag.data());
-}
-
-
 inline void print_tag_as_hex(plcscan::Tag const& tag)
 {
 	constexpr int out_len = 20;
@@ -47,24 +41,118 @@ inline void print_tag_as_hex(plcscan::Tag const& tag)
 }
 
 
+template <typename T>
+static T cast_bytes(u8* src, u32 size)
+{
+	u8 b1 = 0;
+	u16 b2 = 0;
+	u32 b4 = 0;
+	u64 b8 = 0;
+
+	assert(size >= (u32)sizeof(T));
+
+	switch (size) // sizeof(T) ?
+	{
+	case 1:
+		b1 = *src;
+		return *(T*)&b1;
+	case 2:
+		b2 = *(u16*)src;
+		return *(T*)&b2;
+	case 4:
+		b4 = *(u32*)src;
+		return *(T*)&b4;
+	case 8:
+		b8 = *(u64*)src;
+		return *(T*)&b8;
+	}
+
+	assert(false);
+	return (T)(*src);
+}
+
+
+inline void print_tag_as_number(plcscan::Tag const& tag)
+{
+	constexpr int out_len = 20;
+	char buffer[out_len + 1] = { 0 };
+
+	auto size = tag.size();
+	auto src = tag.data();
+
+	using T = plcscan::TagType;
+
+	switch (plcscan::get_tag_type(tag.type_id))
+	{
+	case T::BOOL:
+	case T::USINT:	
+		qsnprintf(buffer, out_len, "%hhu", cast_bytes<u8>(src, size));
+		break;
+
+	case T::SINT:
+		qsnprintf(buffer, out_len, "%hhd", cast_bytes<i8>(src, size));
+		break;
+
+	case T::UINT:
+		qsnprintf(buffer, out_len, "%hu", cast_bytes<u16>(src, size));
+		break;
+
+	case T::INT:
+		qsnprintf(buffer, out_len, "%hd", cast_bytes<i16>(src, size));
+		break;
+
+	case T::UDINT:
+		qsnprintf(buffer, out_len, "%u", cast_bytes<u32>(src, size));
+		break;
+
+	case T::DINT:
+		qsnprintf(buffer, out_len, "%d", cast_bytes<i32>(src, size));
+		break;
+
+	case T::ULINT:
+		qsnprintf(buffer, out_len, "%llu", cast_bytes<u64>(src, size));
+		break;
+
+	case T::LINT:
+		qsnprintf(buffer, out_len, "%lld", cast_bytes<i64>(src, size));
+		break;	
+
+	case T::REAL:
+		qsnprintf(buffer, out_len, "%f", cast_bytes<f32>(src, size));
+		break;
+
+	case T::LREAL:
+		qsnprintf(buffer, out_len, "%lf", cast_bytes<f64>(src, size));
+		break;
+
+	default:
+		qsnprintf(buffer, out_len, "error");
+		break;
+	}
+
+	printf("%s\n", buffer);
+}
+
+
 void print_tags(plcscan::PlcTagData& data)
 {
-	using Cat = plcscan::DataTypeCategory;
+	using T = plcscan::TagType;
 
 	for (auto const& tag : data.tags)
 	{
-		switch (plcscan::get_type_category(tag.type_id))
+		switch (plcscan::get_tag_type(tag.type_id))
 		{
-		case Cat::Numeric:
-
+		case T::STRING:
+			printf("%s\n", (cstr)tag.data());
 			break;
 
-		case Cat::String:
-			print_tag_as_string(tag);
-			break;
+		case T::UDT:
+		case T::OTHER:
+			print_tag_as_hex(tag);
+			break;			
 
 		default:
-			print_tag_as_hex(tag);
+			print_tag_as_number(tag);
 		}
 	}
 
