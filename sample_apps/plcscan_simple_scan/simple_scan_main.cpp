@@ -1,5 +1,5 @@
-#include "../../plcscan/plcscan.hpp"
-#include "../../util/qsprintf.hpp"
+#include "../../src/plcscan/plcscan.hpp"
+#include "../../src/util/qsprintf.hpp"
 
 #include <cstdio>
 
