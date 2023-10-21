@@ -2,6 +2,20 @@
 
 ### Minimal C++ wrapper(s) for [libplctag](https://github.com/libplctag/libplctag)
 
+**ATTENTION: Testers wanted!** 
+
+**If you have access to a Allen-Bradley Controllogix PLC, please clone/download this repository and do your best to break it.**
+
+**A Visual Studio solution is provided with (hopefully) working examples.**
+
+**Enter the IP Address and path for the PLC in each example and run the programs.**
+
+```cpp
+// PLC IP and path
+constexpr auto PLC_IP = "192.168.123.123";
+constexpr auto PLC_PATH = "1,0";
+```
+
 ## plcscan
 
 Enables continuously scanning a ControlLogix PLC for updated tag values.
