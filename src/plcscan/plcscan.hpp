@@ -1,7 +1,6 @@
 #pragma once
 /* LICENSE: See end of file for license information. */
 
-
 #include "../util/types.hpp"
 #include "../util/memory_buffer.hpp"
 
@@ -104,7 +103,7 @@ namespace plcscan
 }
 
 
-/* enum */
+/* api */
 
 namespace plcscan
 {
@@ -128,13 +127,8 @@ namespace plcscan
 
         OTHER
     };
-}
 
 
-/* api */
-
-namespace plcscan
-{
     using data_f = std::function<void(PlcTagData&)>;
     using bool_f = std::function<bool()>;
 
@@ -149,10 +143,9 @@ namespace plcscan
 
     cstr get_fast_type_name(DataTypeId32 type_id);
 
-    void scan(data_f const& scan_cb, bool_f const& scan_condition, PlcTagData& data);
-
-    
+    void scan(data_f const& scan_cb, bool_f const& scan_condition, PlcTagData& data);    
 }
+
 
 /*
 MIT License
