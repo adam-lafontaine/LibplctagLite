@@ -177,6 +177,16 @@ static void zero_string(StringView const& str)
 }
 
 
+static StringView to_string_view_unsafe(cstr str)
+{
+    StringView view{};
+    view.begin = (char*)str;
+    view.length = (u32)strlen(str);
+
+    return view;
+}
+
+
 static bool string_contains(cstr str, char c)
 {
     auto len = strlen(str);
@@ -755,7 +765,7 @@ namespace /* private */
         Tag tag{};
         tag.type_id = id32::get_data_type_id(entry.type_code);
         tag.array_count = entry.elem_count;
-        tag.tag_name = mb::push_cstr_view(mem.name_data, name_alloc_len);
+        tag.tag_name = mb::push_cstr_view(mem.name_data, name_alloc_len);        
         tag.bytes = mb::make_view(mem.public_tag_data, conn.scan_offset);
 
         copy(entry.name, tag.tag_name);
@@ -811,6 +821,48 @@ namespace /* private */
         }
 
         return true;
+    }
+
+
+    static StringView get_data_type_name(DataTypeId32 type_id, List<UdtType> const& udts)
+    {
+        constexpr auto udt_type = "UDT";
+
+        if (!id32::is_udt_type(type_id))
+        {
+            return to_string_view_unsafe(tag_type_str((FixedType)type_id));
+        }
+        
+        for (auto const& udt : udts)
+        {
+            if (type_id == udt.type_id)
+            {
+                return udt.udt_name;
+            }
+        }
+
+        return to_string_view_unsafe(udt_type);
+    }
+    
+    
+    static void set_tag_data_type_names(List<Tag>& tags, List<UdtType> const& udts)
+    {
+        for (auto& tag : tags)
+        {
+            tag.data_type_name = get_data_type_name(tag.type_id, udts);
+        }
+    }
+
+
+    static void set_udt_field_data_type_names(List<UdtType>& udts)
+    {
+        for (auto& udt : udts)
+        {
+            for (auto& field : udt.fields)
+            {
+                field.data_type_name = get_data_type_name(field.type_id, udts);
+            }
+        }
     }
 }
 
@@ -987,23 +1039,6 @@ namespace /* private */
         }
 
         return false;
-    }
-
-
-    template <typename T>
-    T lookup_type(std::vector<T> const& type_map, DataTypeId32 type_id)
-    {
-        assert(type_map.size());
-
-        for (auto const& type : type_map)
-        {
-            if (type.type_id == type_id)
-            {
-                return type;
-            }
-        }
-
-        return type_map.back();
     }
 
 
@@ -1195,9 +1230,8 @@ namespace
 
 
     static void init_controller(ControllerAttr& attr)
-    {        
-        attr.connection_string.begin = attr.string_data;
-        attr.connection_string.length = (u32)strlen(attr.string_data);
+    {
+        attr.connection_string = to_string_view_unsafe(attr.string_data);
 
         zero_string(attr.connection_string);
     }
@@ -1401,6 +1435,9 @@ namespace
 
             mb::destroy_buffer(udt_buffer);
         }
+
+        set_tag_data_type_names(data.tags, data.udt_types);
+        set_udt_field_data_type_names(data.udt_types);
 
         return true;
     }

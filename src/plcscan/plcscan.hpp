@@ -32,12 +32,14 @@ namespace plcscan
         u32 array_count = 0;
 
         StringView tag_name;
+        StringView data_type_name;
 
         ByteView bytes;
 
         // TODO: tag/connection status
 
         cstr name() const { return tag_name.begin; }
+        cstr type() const { return data_type_name.begin; }
         u8* data() const { return bytes.begin; }
         u32 size() const { return (u32)bytes.length; }
     };
@@ -68,8 +70,10 @@ namespace plcscan
         i32 bit_number = -1;
 
         StringView field_name;
+        StringView data_type_name;
 
         cstr name() const { return field_name.begin; }
+        cstr type() const { return data_type_name.begin; }
 
         bool is_array() const { return array_count > 1; }
 

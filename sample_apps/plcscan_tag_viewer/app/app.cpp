@@ -23,6 +23,8 @@ namespace
 		cstr name = 0;
 		cstr type = 0;
 
+		plcscan::DataTypeId32 data_type_id = 0;
+
 		u32 offset = 0;
 
 		u32 array_count = 0;
@@ -139,6 +141,7 @@ namespace scan
 				UI_UdtField f{};
 				f.name = field.name();
 				f.offset = field.offset;
+				f.data_type_id = field.type_id;
 
 				f.type = get_type_str(field);
 				if (field.is_array())
@@ -219,6 +222,12 @@ namespace render
 	constexpr auto RED = ImVec4(1, 0, 0, 1);
 
 
+	static void tag_value()
+	{
+
+	}
+
+
 	static void command_window(UI_Command& cmd, UI_Input& input)
 	{
 		ImGui::Begin("Commands");
@@ -287,7 +296,7 @@ namespace render
 
 		auto text_color = WHITE;
 
-		if (ImGui::BeginTable("UDTEnteryTable", n_columns, table_flags, table_dims))
+		if (ImGui::BeginTable("UDTTable", n_columns, table_flags, table_dims))
 		{
 			ImGui::TableSetupScrollFreeze(0, 1);
 			ImGui::TableSetupColumn("UDT", ImGuiTableColumnFlags_WidthStretch);
@@ -357,6 +366,18 @@ namespace render
 	static void tag_window()
 	{
 		ImGui::Begin("Tags");
+
+		constexpr int n_columns = 4;
+		constexpr int col_name = 0;
+		constexpr int col_offset = 1;
+		constexpr int col_size = 2;
+		constexpr int col_type = 3;
+
+
+		auto table_flags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
+		auto table_dims = ImGui::GetContentRegionAvail();
+
+		auto text_color = WHITE;
 
 		ImGui::End();
 	}

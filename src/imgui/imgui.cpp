@@ -1863,7 +1863,8 @@ const char* ImStrSkipBlank(const char* str)
 #ifdef IMGUI_STB_SPRINTF_FILENAME
 #include IMGUI_STB_SPRINTF_FILENAME
 #else
-#include "stb_sprintf.h"
+//#include "stb_sprintf.h"
+#include "../util/stb_sprintf.h"
 #endif
 #endif
 
