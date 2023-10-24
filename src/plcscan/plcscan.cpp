@@ -187,6 +187,16 @@ static StringView to_string_view_unsafe(cstr str)
 }
 
 
+static StringView to_string_view_unsafe(char* str, u32 len)
+{
+    StringView view{};
+    view.begin = str;
+    view.length = len;
+
+    return view;
+}
+
+
 static bool string_contains(cstr str, char c)
 {
     auto len = strlen(str);
@@ -674,7 +684,7 @@ namespace /* private */
 
         int offset = H_size;
 
-        entry.name = mb::make_view((char*)(entry_data + offset),  (u32)h.string_len);
+        entry.name = to_string_view_unsafe((char*)(entry_data + offset), (u32)h.string_len);
 
         if (is_valid_tag_name(entry.name))
         {
@@ -766,7 +776,7 @@ namespace /* private */
         tag.type_id = id32::get_data_type_id(entry.type_code);
         tag.array_count = entry.elem_count;
         tag.tag_name = mb::push_cstr_view(mem.name_data, name_alloc_len);        
-        tag.bytes = mb::make_view(mem.public_tag_data, conn.scan_offset);
+        tag.bytes = mb::sub_view(mem.public_tag_data, conn.scan_offset);
 
         copy(entry.name, tag.tag_name);
 
@@ -993,13 +1003,13 @@ namespace /* private */
             ++name_len;
         }
 
-        entry.udt_name = mb::make_view(string_data, name_len);
+        entry.udt_name = to_string_view_unsafe(string_data, name_len);
 
         str_offset = string_len + 1;
         for (auto& field : entry.fields)
         {
             auto str = string_data + str_offset;
-            field.field_name = mb::make_view(str, strlen(str));
+            field.field_name = to_string_view_unsafe(str);
             str_offset++;
         }
 

@@ -18,6 +18,9 @@ template <typename T>
 class MemoryView
 {
 public:
+	//T* data_ = nullptr;
+	//unsigned capacity_ = 0;
+
 	T* begin = nullptr;
 	unsigned length = 0;
 };
@@ -223,6 +226,9 @@ namespace memory_buffer
 
 		MemoryView<T> view{};
 
+		//view.data_ = buffer.data_;
+		//view.capacity_ = buffer.capacity_;
+
 		view.begin = push_elements(buffer, n_elements);
 		view.length = n_elements;
 
@@ -275,6 +281,9 @@ namespace memory_buffer
 
 		MemoryView<char> view{};
 
+		//view.data_ = buffer.data_;
+		//view.capacity_ = buffer.capacity_;
+
 		view.begin = push_elements(buffer, total_bytes);
 		view.length = total_bytes - 1; /* zero terminated */
 
@@ -297,6 +306,9 @@ namespace memory_buffer
 
 		MemoryView<T> view{};
 
+		//view.data_ = buffer.data_;
+		//view.capacity_ = buffer.capacity_;
+
 		view.begin = buffer.data_;
 		view.length = buffer.size_;
 
@@ -304,7 +316,7 @@ namespace memory_buffer
 	}
 
 
-	template <typename T>
+	/*template <typename T>
 	MemoryView<T> make_view(T* data, unsigned n_elements)
 	{
 		assert(n_elements > 0);
@@ -323,7 +335,7 @@ namespace memory_buffer
 	MemoryView<T> make_view(T* data, size_t n_elements)
 	{
 		return make_view(data, (unsigned)n_elements);
-	}
+	}*/
 
 
 	template <typename T>
@@ -339,19 +351,39 @@ namespace memory_buffer
 
 
 	template <typename T>
-	MemoryView<T> make_view(MemoryBuffer<T> const& buffer, MemoryOffset<T> const& offset)
+	MemoryView<T> sub_view(MemoryBuffer<T> const& buffer, MemoryOffset<T> const& offset)
 	{
 		assert(buffer.data_);
 		assert(buffer.capacity_);
 
-		assert((buffer.size_ - offset.begin) >= offset.length);
+		assert((buffer.capacity_ - offset.begin) >= offset.length);
 
 		MemoryView<T> view{};
+
+		//view.data_ = buffer.data_;
+		//view.capacity_ = buffer.capacity_;
 
 		view.begin = buffer.data_ + offset.begin;
 		view.length = offset.length;
 
 		return view;
+	}
+
+
+	template <typename T>
+	MemoryView<T> sub_view(MemoryView<T> const& view, MemoryOffset<T> const& offset)
+	{
+		assert((view.length - offset.begin) >= offset.length);
+
+		MemoryView<T> sub_view{};
+
+		//sub_view.data_ = view.data_;
+		//sub_view.capacity_ = view.capacity_;
+
+		sub_view.begin = view.begin + offset.begin;
+		sub_view.length = offset.length;
+
+		return sub_view;
 	}
 
 }

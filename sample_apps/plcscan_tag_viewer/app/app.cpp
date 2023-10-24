@@ -2,6 +2,7 @@
 #include "../../../src/imgui/imgui.h"
 #include "../../../src/plcscan/plcscan.hpp"
 #include "../../../src/util/time_helper.hpp"
+#include "../../../src/util/qsprintf.hpp"
 
 namespace tmh = time_helper;
 
@@ -221,11 +222,214 @@ namespace render
 	constexpr auto GREEN = ImVec4(0, 1, 0, 1);
 	constexpr auto RED = ImVec4(1, 0, 0, 1);
 
+	using ImColor = ImVec4;
 
-	static void tag_value()
+
+	template <typename T>
+	static T cast_bytes(u8* src, u32 size)
 	{
+		u8 b1 = 0;
+		u16 b2 = 0;
+		u32 b4 = 0;
+		u64 b8 = 0;
 
+		assert(size >= (u32)sizeof(T));
+
+		switch (size) // sizeof(T) ?
+		{
+		case 1:
+			b1 = *src;
+			return *(T*)&b1;
+		case 2:
+			b2 = *(u16*)src;
+			return *(T*)&b2;
+		case 4:
+			b4 = *(u32*)src;
+			return *(T*)&b4;
+		case 8:
+			b8 = *(u64*)src;
+			return *(T*)&b8;
+		}
+
+		assert(false);
+		return (T)(*src);
 	}
+
+
+	static void bytes_as_number(ByteView const& bytes, plcscan::TagType type, ImColor const& text_color)
+	{
+		using T = plcscan::TagType;
+
+		auto size = bytes.length;
+		auto src = bytes.begin;
+
+		switch (type)
+		{
+		case T::BOOL:
+		case T::USINT:
+			ImGui::TextColored(text_color, "%hhu", cast_bytes<u8>(src, size));
+			break;
+
+		case T::SINT:
+			ImGui::TextColored(text_color, "%hhd", cast_bytes<i8>(src, size));
+			break;
+
+		case T::UINT:
+			ImGui::TextColored(text_color, "%hu", cast_bytes<u16>(src, size));
+			break;
+
+		case T::INT:
+			ImGui::TextColored(text_color, "%hd", cast_bytes<i16>(src, size));
+			break;
+
+		case T::UDINT:
+			ImGui::TextColored(text_color, "%u", cast_bytes<u32>(src, size));
+			break;
+
+		case T::DINT:
+			ImGui::TextColored(text_color, "%d", cast_bytes<i32>(src, size));
+			break;
+
+		case T::ULINT:
+			ImGui::TextColored(text_color, "%llu", cast_bytes<u64>(src, size));
+			break;
+
+		case T::LINT:
+			ImGui::TextColored(text_color, "%lld", cast_bytes<i64>(src, size));
+			break;
+
+		case T::REAL:
+			ImGui::TextColored(text_color, "%f", cast_bytes<f32>(src, size));
+			break;
+
+		case T::LREAL:
+			ImGui::TextColored(text_color, "%lf", cast_bytes<f64>(src, size));
+			break;
+
+		default:
+			ImGui::TextColored(text_color, "error");
+			break;
+		}
+	}
+
+
+	static void bytes_as_hex(ByteView const& bytes, ImColor const& text_color)
+	{
+		constexpr int out_len = 20;
+		char buffer[out_len + 1] = { 0 };
+
+		auto len = (int)bytes.length;
+		if (len < out_len / 2)
+		{
+			len = out_len / 2;
+		}
+
+		for (int i = 0; i < len; i++)
+		{
+			auto src = bytes.begin + i;
+			auto dst = buffer + i * 2;
+			qsnprintf(dst, 3, "%02x", src);
+		}
+		buffer[len] = NULL;
+
+		ImGui::TextColored(text_color, buffer);
+	}
+
+
+	static void bytes_as_string(ByteView const& bytes, ImColor const& text_color)
+	{
+		ImGui::TextColored(text_color, (cstr)bytes.begin);
+	}
+
+
+	static void bytes_as_value(ByteView const& bytes, plcscan::TagType type, ImColor const& text_color)
+	{
+		using T = plcscan::TagType;
+
+		switch (type)
+		{
+		case T::STRING:
+			bytes_as_string(bytes, text_color);
+			break;
+
+		case T::UDT:
+			assert(type != T::UDT && "UDT tags not displayed as values");
+			break;
+
+		case T::OTHER:
+			bytes_as_hex(bytes, text_color);
+			break;
+
+		default:
+			bytes_as_number(bytes, type, text_color);
+		}
+	}
+
+	static void bytes_as_udt(ByteView const& bytes, ImColor const& text_color);
+
+
+	static void bytes_as_array(ByteView const& bytes, plcscan::TagType type, u32 array_count, ImColor const& text_color, int id_col, int val_col)
+	{
+		auto is_udt = type == plcscan::TagType::UDT;
+
+		MemoryOffset<u8> offset{};
+		offset.begin = 0;
+		offset.length = bytes.length / array_count;
+
+		if (ImGui::TreeNode("array[]"))
+		{
+			for (u32 i = 0; i < array_count; ++i)
+			{
+				ImGui::TableNextRow();
+
+				ImGui::TableSetColumnIndex(id_col);
+				ImGui::TextColored(text_color, "%u", i);
+
+				ImGui::TableSetColumnIndex(val_col);
+				auto elem_bytes = mb::sub_view(bytes, offset);
+				if (is_udt)
+				{
+					bytes_as_udt(elem_bytes, text_color);
+				}
+				else
+				{
+					bytes_as_value(elem_bytes, type, text_color);
+				}
+
+				offset.begin += offset.length;
+			}
+
+			ImGui::TreePop();
+		}
+	}
+
+
+	static void bytes_as_udt(ByteView const& bytes, ImColor const& text_color)
+	{
+		ImGui::TextColored(text_color, "TODO");
+	}
+
+
+	static void tag_as_value(plcscan::Tag const& tag, ImColor const& text_color)
+	{
+		auto type = plcscan::get_tag_type(tag.type_id);
+
+		bytes_as_value(tag.bytes, type, text_color);
+	}
+
+
+	static void tag_as_array(plcscan::Tag const& tag, ImColor const& text_color, int id_col, int val_col)
+	{
+		auto type = plcscan::get_tag_type(tag.type_id);
+		
+		bytes_as_array(tag.bytes, type, tag.array_count, text_color, id_col, val_col);
+	}
+
+
+	static void tag_as_udt(plcscan::Tag const& tag, ImColor const& text_color)
+	{
+		bytes_as_udt(tag.bytes, text_color);
+	}	
 
 
 	static void command_window(UI_Command& cmd, UI_Input& input)
@@ -348,6 +552,8 @@ namespace render
 								ImGui::TextColored(text_color, "%s[%u]", f.type, f.array_count);
 							}							
 						}
+
+						ImGui::TreePop();
 					}					
 				}
 				else
