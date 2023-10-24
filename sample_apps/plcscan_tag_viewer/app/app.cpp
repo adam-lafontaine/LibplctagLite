@@ -24,6 +24,8 @@ namespace
 		cstr type = 0;
 
 		u32 offset = 0;
+
+		u32 array_count = 0;
 	};
 
 
@@ -105,28 +107,21 @@ namespace scan
 				return "bit";
 			}
 
-			auto type_str = "";
-
 			auto type = plcscan::get_tag_type(field.type_id);
 			if (type != plcscan::TagType::UDT)
 			{
-				type_str = plcscan::get_fast_type_name(field.type_id);
+				return plcscan::get_fast_type_name(field.type_id);
 			}
-			else
-			{
-				for (auto const& udt : udts)
-				{
-					if (field.type_id == udt.type_id)
-					{
-						type_str = udt.name();
-					}
-				}
-
-				type_str = plcscan::get_fast_type_name(field.type_id);
-			}
-
-
 			
+			for (auto const& udt : udts)
+			{
+				if (field.type_id == udt.type_id)
+				{
+					return udt.name();
+				}
+			}
+
+			return plcscan::get_fast_type_name(field.type_id);
 		};
 
 		List<UI_UdtType> list;
@@ -146,6 +141,10 @@ namespace scan
 				f.offset = field.offset;
 
 				f.type = get_type_str(field);
+				if (field.is_array())
+				{
+					f.array_count = field.array_count;
+				}
 
 				ui.fields.push_back(f);
 			}
@@ -331,7 +330,14 @@ namespace render
 							ImGui::TextDisabled("--");
 
 							ImGui::TableSetColumnIndex(col_type);
-							ImGui::TextColored(text_color, f.type);
+							if (f.array_count > 0)
+							{
+								ImGui::TextColored(text_color, f.type);
+							}
+							else
+							{
+								ImGui::TextColored(text_color, "%s[%u]", f.type, f.array_count);
+							}							
 						}
 					}					
 				}
