@@ -9,7 +9,7 @@ namespace app
 
 	constexpr auto MAIN_WINDOW_TITLE = L"Tag Viewer";
 
-	constexpr int MAIN_WINDOW_WIDTH = 1200;
+	constexpr int MAIN_WINDOW_WIDTH = 1400;
 	constexpr int MAIN_WINDW_HEIGHT = 800;
 
 	

@@ -17,6 +17,7 @@ namespace
 	class PLC_State
 	{
 	public:
+
 		plcscan::PlcTagData data;
 
 		bool is_initializing = false;
@@ -37,10 +38,10 @@ namespace
 	class App_State
 	{
 	public:
-		UI_Input user_input;
+		
 		PLC_State plc;
 
-		bool app_running;
+		bool app_running = false;
 		
 	};
 
@@ -65,6 +66,7 @@ namespace
 
 
 static App_State g_app_state;
+static UI_Input g_user_input;
 
 
 namespace scan
@@ -78,8 +80,8 @@ namespace scan
 	static void start()
 	{
 		auto& state = g_app_state;
+		auto& input = g_user_input;
 		auto& plc = state.plc;
-		auto& input = state.user_input;
 
 		Stopwatch sw;
 
@@ -123,7 +125,76 @@ namespace scan
 }
 
 
+namespace render
+{
+	constexpr auto WHITE = ImVec4(1, 1, 1, 1);
+	constexpr auto GREEN = ImVec4(0, 1, 0, 1);
+	constexpr auto RED = ImVec4(1, 0, 0, 1);
 
+
+	static void command_window(UI_Command& cmd, UI_Input& input)
+	{
+		ImGui::Begin("Commands");
+
+		ImGui::End();
+	}
+
+
+	static void data_type_window(List<plcscan::DataType> const& data_types)
+	{
+		ImGui::Begin("Data Types");
+
+		constexpr int n_columns = 3;
+		auto table_flags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
+		auto table_dims = ImGui::GetContentRegionAvail();
+
+		auto text_color = WHITE;
+
+		if (ImGui::BeginTable("DataTypeTable", n_columns, table_flags, table_dims))
+		{
+			ImGui::TableSetupScrollFreeze(0, 1);
+
+			ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableSetupColumn("Description", ImGuiTableColumnFlags_WidthStretch);
+			ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableHeadersRow();
+
+			for (auto const& dt : data_types)
+			{
+				ImGui::TableNextRow();
+
+				ImGui::TableSetColumnIndex(0);
+				ImGui::TextColored(text_color, "%s", dt.name());
+
+				ImGui::TableSetColumnIndex(1);
+				ImGui::TextColored(text_color, "%s", dt.description());
+
+				ImGui::TableSetColumnIndex(2);
+				ImGui::TextColored(text_color, "%u", dt.size);
+			}
+
+			ImGui::EndTable();
+		}
+
+		ImGui::End();
+	}
+
+
+	static void udt_type_window()
+	{
+		ImGui::Begin("UDTs");
+
+		ImGui::End();
+	}
+
+
+	static void tag_window()
+	{
+		ImGui::Begin("Tags");
+
+		ImGui::End();
+	}
+}
 
 
 
@@ -151,18 +222,30 @@ namespace app
 
 	bool render_ui()
 	{
+		auto& state = g_app_state;
+		auto& input = g_user_input;
+
 		UI_Command cmd{};
 
+		ImGui::DockSpaceOverViewport(nullptr, ImGuiDockNodeFlags_None);
 
-		if (!cmd.has_command())
-		{
-			return true;
-		}
+		render::command_window(cmd, input);
 
-		if (cmd.stop_app_running)
+		if (cmd.has_command())
 		{
-			return false;
-		}
+			if (cmd.stop_app_running)
+			{
+				return false;
+			}
+
+
+		}		
+
+		render::data_type_window(state.plc.data.data_types);
+
+		render::udt_type_window();
+
+		render::tag_window();
 
 		return true;
 	}
