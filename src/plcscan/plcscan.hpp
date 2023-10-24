@@ -65,11 +65,15 @@ namespace plcscan
         u32 offset;
 
         u32 array_count = 0;
-        u32 bit_number = 0;
+        i32 bit_number = -1;
 
         StringView field_name;
 
         cstr name() const { return field_name.begin; }
+
+        bool is_array() const { return array_count > 1; }
+
+        bool is_bit() const { return bit_number >= 0; }
     };
 
 

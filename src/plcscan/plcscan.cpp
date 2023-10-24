@@ -823,7 +823,7 @@ namespace /* private */
     {
     public:
         u16 elem_count = 0;
-        u16 bit_number = 0;
+        i32 bit_number = -1;
 
         u16 type_code = 0;
         u16 offset = 0;
@@ -922,7 +922,7 @@ namespace /* private */
             }
             else if (id16::is_bit_field(f.type_code))
             {
-                field.bit_number = f.metadata;
+                field.bit_number = (i32)f.metadata;
             }
 
             entry.fields.push_back(field);
@@ -1073,7 +1073,7 @@ namespace /* private */
         auto desc_str = "User defined type";
 
         auto name_len = entry.udt_name.length;
-        auto desc_len = strlen(desc_str);
+        auto desc_len = (u32)strlen(desc_str);
 
         auto buffer_len = desc_len + name_len + 2; /* zero terminated */
         for (auto const& f : entry.fields)

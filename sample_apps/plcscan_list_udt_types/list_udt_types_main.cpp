@@ -52,7 +52,7 @@ int main()
 		printf("%s\n", udt.name());
 		for (auto const& field : udt.fields)
 		{
-			if (field.array_count > 1)
+			if (field.is_array())
 			{
 				printf("    %s: %s[%d]\n", field.name(), plcscan::get_fast_type_name(field.type_id), (int)field.array_count);
 			}
