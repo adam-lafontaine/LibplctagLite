@@ -165,30 +165,7 @@ printf("Type: %s / %s\n", name, description);
 plcscan::shutdown();
 ```
 
-Use `get_fast_type_name()` as an easier alternative to simply get the type name;
-
-```cpp
-auto plc_data = plcscan::init();
-if (!plcscan::connect(PLC_IP, PLC_PATH, plc_data))
-{
-    // error
-}
-
-// just get the first tag
-auto tag = plc_data.tags[0];
-
-const char* type_name = plcscan::get_fast_type_name(tag.type_id);
-
-printf("Type: %s\n", type_name);
-
-// ...
-
-plcscan::shutdown();
-```
-
-Note: At this time `get_fast_type_name()` will only return the string "UDT" for UDT types.
-
-Have the library continuously scan the PLC for tag values by providing a callback function for processing tag data and a callback function to signal when scanning should stop.
+Have the library continuously scan the PLC for tag values by providing a callback function for processing tag data, and a callback function to signal when scanning should stop.
 
 ```cpp
 void process_plc_scan(plcscan::PlcTagData& data)

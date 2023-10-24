@@ -1591,17 +1591,6 @@ namespace plcscan
 
         return TagType::OTHER;
     }
-
-
-    cstr get_fast_type_name(DataTypeId32 type_id)
-    {
-        if (id32::is_udt_type(type_id))
-        {
-            return "UDT";
-        }
-
-        return tag_type_str((FixedType)type_id);
-    }
     
     
     void scan(data_f const& scan_cb, bool_f const& scan_condition, PlcTagData& data)

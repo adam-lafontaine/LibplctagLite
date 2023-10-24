@@ -104,30 +104,6 @@ namespace scan
 {
 	static List<UI_UdtType> transform_udts(List<plcscan::UdtType> const& udts)
 	{
-		auto const get_type_str = [&](plcscan::UdtFieldType const& field) 
-		{
-			if (field.is_bit())
-			{
-				return "bit";
-			}
-
-			auto type = plcscan::get_tag_type(field.type_id);
-			if (type != plcscan::TagType::UDT)
-			{
-				return plcscan::get_fast_type_name(field.type_id);
-			}
-			
-			for (auto const& udt : udts)
-			{
-				if (field.type_id == udt.type_id)
-				{
-					return udt.name();
-				}
-			}
-
-			return plcscan::get_fast_type_name(field.type_id);
-		};
-
 		List<UI_UdtType> list;
 
 		list.reserve(udts.size());
@@ -145,7 +121,7 @@ namespace scan
 				f.offset = field.offset;
 				f.data_type_id = field.type_id;
 
-				f.type = get_type_str(field);
+				f.type = field.type();
 				if (field.is_array())
 				{
 					f.array_count = field.array_count;

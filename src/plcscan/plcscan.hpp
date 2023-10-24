@@ -149,8 +149,6 @@ namespace plcscan
 
     TagType get_tag_type(DataTypeId32 type_id);
 
-    cstr get_fast_type_name(DataTypeId32 type_id);
-
     void scan(data_f const& scan_cb, bool_f const& scan_condition, PlcTagData& data);    
 }
 
