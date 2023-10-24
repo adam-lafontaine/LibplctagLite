@@ -16,6 +16,7 @@ constexpr auto DEFAULT_CONNECT_TIMEOUT = "1000";
 namespace
 {
 	using UI_DataType = plcscan::DataType;
+	using UI_Tag = plcscan::Tag;
 
 
 	class UI_UdtField
@@ -376,59 +377,34 @@ namespace render
 		offset.begin = 0;
 		offset.length = bytes.length / array_count;
 
-		if (ImGui::TreeNode("array[]"))
+		for (u32 i = 0; i < array_count; ++i)
 		{
-			for (u32 i = 0; i < array_count; ++i)
+			ImGui::TableNextRow();
+
+			ImGui::TableSetColumnIndex(id_col);
+			ImGui::TextColored(text_color, "%u", i);
+
+			ImGui::TableSetColumnIndex(val_col);
+			auto elem_bytes = mb::sub_view(bytes, offset);
+			if (is_udt)
 			{
-				ImGui::TableNextRow();
-
-				ImGui::TableSetColumnIndex(id_col);
-				ImGui::TextColored(text_color, "%u", i);
-
-				ImGui::TableSetColumnIndex(val_col);
-				auto elem_bytes = mb::sub_view(bytes, offset);
-				if (is_udt)
-				{
-					bytes_as_udt(elem_bytes, text_color);
-				}
-				else
-				{
-					bytes_as_value(elem_bytes, type, text_color);
-				}
-
-				offset.begin += offset.length;
+				bytes_as_udt(elem_bytes, text_color);
+			}
+			else
+			{
+				bytes_as_value(elem_bytes, type, text_color);
 			}
 
-			ImGui::TreePop();
+			offset.begin += offset.length;
 		}
+
+		
 	}
 
 
 	static void bytes_as_udt(ByteView const& bytes, ImColor const& text_color)
 	{
 		ImGui::TextColored(text_color, "TODO");
-	}
-
-
-	static void tag_as_value(plcscan::Tag const& tag, ImColor const& text_color)
-	{
-		auto type = plcscan::get_tag_type(tag.type_id);
-
-		bytes_as_value(tag.bytes, type, text_color);
-	}
-
-
-	static void tag_as_array(plcscan::Tag const& tag, ImColor const& text_color, int id_col, int val_col)
-	{
-		auto type = plcscan::get_tag_type(tag.type_id);
-		
-		bytes_as_array(tag.bytes, type, tag.array_count, text_color, id_col, val_col);
-	}
-
-
-	static void tag_as_udt(plcscan::Tag const& tag, ImColor const& text_color)
-	{
-		bytes_as_udt(tag.bytes, text_color);
 	}	
 
 
@@ -524,7 +500,7 @@ namespace render
 				ImGui::TableSetColumnIndex(col_type);
 				ImGui::TextDisabled("--");
 
-				ImGui::TableSetColumnIndex(0);
+				ImGui::TableSetColumnIndex(col_name);
 				if (has_fields)
 				{
 					if (ImGui::TreeNode(udt.name))
@@ -533,7 +509,7 @@ namespace render
 						{
 							ImGui::TableNextRow();
 
-							ImGui::TableSetColumnIndex(0);
+							ImGui::TableSetColumnIndex(col_name);
 							ImGui::TextColored(text_color, f.name);
 
 							ImGui::TableSetColumnIndex(col_offset);
@@ -569,21 +545,81 @@ namespace render
 	}
 
 
-	static void tag_window()
+	static void tag_window(List<UI_Tag> const& tags)
 	{
 		ImGui::Begin("Tags");
 
-		constexpr int n_columns = 4;
+		constexpr int n_columns = 5;
 		constexpr int col_name = 0;
-		constexpr int col_offset = 1;
-		constexpr int col_size = 2;
-		constexpr int col_type = 3;
+		constexpr int col_type = 1;
+		constexpr int col_size = 2;		
+		constexpr int col_id = 3;
+		constexpr int col_value = 4;
 
 
 		auto table_flags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
 		auto table_dims = ImGui::GetContentRegionAvail();
 
 		auto text_color = WHITE;
+
+		if (ImGui::BeginTable("TagTable", n_columns, table_flags, table_dims))
+		{
+			ImGui::TableSetupScrollFreeze(0, 1);
+			ImGui::TableSetupColumn("Tag", ImGuiTableColumnFlags_WidthStretch);
+			ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableSetupColumn("Index", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableHeadersRow();
+
+			for (auto const& tag : tags)
+			{
+				auto type = plcscan::get_tag_type(tag.type_id);
+
+				ImGui::TableNextRow();				
+
+				if (tag.array_count > 1)
+				{
+					ImGui::TableSetColumnIndex(col_type);
+					ImGui::TextColored(text_color, "%s[%u]", tag.type(), tag.array_count);
+
+					ImGui::TableSetColumnIndex(col_size);
+					ImGui::TextColored(text_color, "%u", tag.size());
+
+					ImGui::TableSetColumnIndex(col_name);
+					if (ImGui::TreeNode(tag.name()))
+					{
+						bytes_as_array(tag.bytes, type, tag.array_count, text_color, col_id, col_value);
+
+						ImGui::TreePop();
+					}
+				}
+				else if (type == plcscan::TagType::UDT)
+				{
+					ImGui::TableSetColumnIndex(col_type);
+					ImGui::TextColored(text_color, tag.type());
+
+					ImGui::TableSetColumnIndex(col_size);
+					ImGui::TextColored(text_color, "%u", tag.size());
+
+					ImGui::TableSetColumnIndex(col_value);
+					bytes_as_udt(tag.bytes, text_color);
+				}
+				else
+				{
+					ImGui::TableSetColumnIndex(col_type);
+					ImGui::TextColored(text_color, tag.type());
+
+					ImGui::TableSetColumnIndex(col_size);
+					ImGui::TextColored(text_color, "%u", tag.size());
+
+					ImGui::TableSetColumnIndex(col_value);
+					bytes_as_value(tag.bytes, type, text_color);
+				}
+			}
+
+			ImGui::EndTable();
+		}
 
 		ImGui::End();
 	}
@@ -647,7 +683,7 @@ namespace app
 
 		render::udt_type_window(state.plc.udts);
 
-		render::tag_window();
+		render::tag_window(state.plc.data.tags);
 
 		return true;
 	}
