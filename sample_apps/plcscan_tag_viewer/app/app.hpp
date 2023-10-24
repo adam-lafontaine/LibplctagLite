@@ -1,5 +1,7 @@
 #pragma once
 
+#include <thread>
+
 
 namespace app
 {
@@ -15,8 +17,10 @@ namespace app
 
 	void shutdown();
 
+	std::thread start_worker();
+
 	bool render_ui();
 }
 
 
-#define PLC_IMGUI_SHOW_DEMO
+//#define PLC_IMGUI_SHOW_DEMO

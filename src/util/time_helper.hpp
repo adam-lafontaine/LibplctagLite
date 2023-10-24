@@ -54,7 +54,7 @@ namespace time_helper
 {
     namespace chr = std::chrono;
 
-	inline void delay_current_thread(Stopwatch& sw, double min_delay_ms = 20.0)
+	inline void delay_current_thread_ms(Stopwatch& sw, double min_delay_ms = 20.0)
 	{
 		auto ms = sw.get_time_milli();
 		if (ms < min_delay_ms)

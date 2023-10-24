@@ -1593,7 +1593,7 @@ namespace plcscan
             
             total_ms = sw.get_time_milli();
 
-            tmh::delay_current_thread(sw, target_scan_ms);
+            tmh::delay_current_thread_ms(sw, target_scan_ms);
         }
     }
 

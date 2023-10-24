@@ -149,6 +149,8 @@ int main(int, char**)
 
     app::init();
 
+    auto app_th = app::start_worker();
+
     // Main loop
     bool running = true;
     while (running)
@@ -271,6 +273,7 @@ int main(int, char**)
 
     WaitForLastSubmittedFrame();
 
+    app_th.join();
     app::shutdown();
 
     // Cleanup
