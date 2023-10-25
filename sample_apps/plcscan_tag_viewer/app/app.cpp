@@ -7,7 +7,6 @@
 namespace tmh = time_helper;
 
 
-
 constexpr auto DEFAULT_PLC_IP = "192.168.123.123";
 constexpr auto DEFAULT_PLC_PATH = "1,0";
 constexpr auto DEFAULT_CONNECT_TIMEOUT = "1000";
@@ -19,6 +18,18 @@ namespace
 	using UI_UdtType = plcscan::UdtType;
 	using UI_UdtFieldType = plcscan::UdtFieldType;
 	using UI_Tag = plcscan::Tag;
+
+
+	class UI_StringTag
+	{
+	public:
+		u32 tag_id;
+
+		cstr name = 0;
+		cstr type = 0;
+		u32 size = 0;
+		cstr value = 0;
+	};
 
 
 	class PLC_State
@@ -48,8 +59,9 @@ namespace
 		
 		PLC_State plc;
 
-		bool app_running = false;
-		
+		List<UI_StringTag> string_tags;
+
+		bool app_running = false;		
 	};
 
 
@@ -69,6 +81,59 @@ namespace
 				stop_scanning;
 		}
 	};
+}
+
+
+/* transform */
+
+namespace
+{
+	static void map_value(plcscan::Tag const& src, UI_StringTag& dst, u32 tag_id)
+	{
+		assert(dst.tag_id == tag_id);
+
+		if (dst.tag_id != tag_id)
+		{
+			return;
+		}
+
+		dst.value = (cstr)src.bytes.begin;
+	}
+
+
+	UI_StringTag to_ui_string_tag(plcscan::Tag const& tag, u32 tag_id)
+	{
+		assert(plcscan::get_tag_type(tag.type_id) == plcscan::TagType::STRING);
+
+		UI_StringTag ui{};
+
+		ui.tag_id = tag_id;
+		ui.name = tag.name();
+		ui.type = tag.type();
+		ui.size = tag.size();
+		
+		map_value(tag, ui, tag_id);
+
+		return ui;
+	}
+
+
+	static void create_ui_tags(List<plcscan::Tag> const& tags, App_State& state)
+	{
+		using T = plcscan::TagType;
+
+		for (u32 tag_id = 0; tag_id < (u32)tags.size(); ++tag_id)
+		{
+			auto& tag = tags[tag_id];
+
+			switch (plcscan::get_tag_type(tag.type_id))
+			{
+			case T::STRING:
+				state.string_tags.push_back(to_ui_string_tag(tag, tag_id));
+				break;
+			}
+		}
+	}
 }
 
 
@@ -220,6 +285,7 @@ namespace render
 			bytes_as_number(bytes, type, text_color);
 		}
 	}
+
 
 	static void bytes_as_udt(ByteView const& bytes, ImColor const& text_color);
 
@@ -478,6 +544,55 @@ namespace render
 
 		ImGui::End();
 	}
+
+
+	static void string_tag_window(List<UI_StringTag> const& tags)
+	{
+		ImGui::Begin("Strings");
+		
+		constexpr int col_name = 0;
+		constexpr int col_type = 1;
+		constexpr int col_size = 2;
+		constexpr int col_value = 3;
+		constexpr int n_columns = 4;
+
+
+		auto table_flags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
+		auto table_dims = ImGui::GetContentRegionAvail();
+
+		auto text_color = WHITE;
+
+		if (ImGui::BeginTable("StringTagTable", n_columns, table_flags, table_dims))
+		{
+			ImGui::TableSetupScrollFreeze(0, 1);
+			ImGui::TableSetupColumn("Tag", ImGuiTableColumnFlags_WidthStretch);
+			ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableHeadersRow();
+
+			for (auto const& tag : tags)
+			{
+				ImGui::TableNextRow();
+
+				ImGui::TableSetColumnIndex(col_name);
+				ImGui::TextColored(text_color, "%s", tag.name);
+
+				ImGui::TableSetColumnIndex(col_type);
+				ImGui::TextColored(text_color, "%s", tag.type);
+
+				ImGui::TableSetColumnIndex(col_size);
+				ImGui::TextColored(text_color, "%u", tag.size);
+
+				ImGui::TableSetColumnIndex(col_value);
+				ImGui::TextColored(text_color, "%s", tag.value);
+			}
+
+			ImGui::EndTable();
+		}
+
+		ImGui::End();
+	}
 }
 
 
@@ -487,9 +602,26 @@ static UI_Input g_user_input;
 
 namespace scan
 {
-	static void tag_values_to_string(plcscan::PlcTagData& data)
+	static void map_ui_tag_values(plcscan::PlcTagData& data)
 	{
+		using T = plcscan::TagType;
 
+		auto& tags = data.tags;
+		auto& state = g_app_state;
+
+		u32 string_id = 0;
+
+		for (u32 tag_id = 0; tag_id < (u32)tags.size(); ++tag_id)
+		{
+			auto& tag = tags[tag_id];
+
+			switch (plcscan::get_tag_type(tag.type_id))
+			{
+			case T::STRING:
+				map_value(tag, state.string_tags[string_id++], tag_id);
+				break;
+			}
+		}
 	}
 
 
@@ -532,9 +664,11 @@ namespace scan
 			return;
 		}
 
+		create_ui_tags(plc.data.tags, state);
+
 		auto const is_scanning = [&]() { return plc.is_scanning && state.app_running; };
 
-		plcscan::scan(tag_values_to_string, is_scanning, plc.data);
+		plcscan::scan(map_ui_tag_values, is_scanning, plc.data);
 
 		// TODO: stop/start
 	}
@@ -598,7 +732,7 @@ namespace app
 
 		render::udt_type_window(state.plc.data.udt_types);
 
-		render::tag_window(state.plc.data.tags);
+		render::string_tag_window(state.string_tags);
 
 		return true;
 	}
