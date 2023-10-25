@@ -69,5 +69,11 @@ namespace time_helper
 	{
 		return chr::duration_cast<chr::milliseconds>(chr::system_clock::now().time_since_epoch()).count();
 	}
+
+
+	inline void delay_current_thread_ms(unsigned long long delay_ms = 20)
+	{
+		std::this_thread::sleep_for(chr::milliseconds(delay_ms));
+	}
 }
 

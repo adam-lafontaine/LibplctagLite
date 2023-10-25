@@ -1597,37 +1597,28 @@ namespace plcscan
     {
         constexpr int target_scan_ms = 100;
 
-        Stopwatch sw;
-        f64 scan_ms = 0.0;
-        f64 proc_ms = 0.0;
-        f64 total_ms = 0.0;
+        bool do_scan = false;
+        bool do_proc = false;
 
         auto const scan = [&]()
         { 
-            scan_tags(g_tag_mem); 
-            scan_ms = sw.get_time_milli(); 
+            scan_tags(g_tag_mem);
         };
 
-        auto const process = [&]()
-        { 
-            copy_tags(g_tag_mem); 
-            scan_cb(data); 
-            proc_ms = sw.get_time_milli(); 
-        };
+        Stopwatch sw;
 
         while(scan_condition())
         {
             sw.start();
-
+            
+            // TODO: better parallelism
             std::thread scan_th(scan);
-            std::thread process_th(process);
+            copy_tags(g_tag_mem); 
+            scan_cb(data);
 
             scan_th.join();
-            process_th.join();
 
             mb::flip_read_write(g_tag_mem.scan_data);
-            
-            total_ms = sw.get_time_milli();
 
             tmh::delay_current_thread_ms(sw, target_scan_ms);
         }
