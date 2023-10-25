@@ -32,6 +32,19 @@ namespace
 	};
 
 
+	class UI_StringArrayTag
+	{
+	public:
+		u32 tag_id;
+
+		cstr name = 0;
+		cstr type = 0;
+		u32 size = 0;
+
+		List<cstr> values;
+	};
+
+
 	class PLC_State
 	{
 	public:
@@ -60,6 +73,7 @@ namespace
 		PLC_State plc;
 
 		List<UI_StringTag> string_tags;
+		List<UI_StringArrayTag> string_array_tags;
 
 		bool app_running = false;		
 	};
@@ -88,64 +102,6 @@ namespace
 
 namespace
 {
-	static void map_value(plcscan::Tag const& src, UI_StringTag& dst, u32 tag_id)
-	{
-		assert(dst.tag_id == tag_id);
-
-		if (dst.tag_id != tag_id)
-		{
-			return;
-		}
-
-		dst.value = (cstr)src.bytes.begin;
-	}
-
-
-	UI_StringTag to_ui_string_tag(plcscan::Tag const& tag, u32 tag_id)
-	{
-		assert(plcscan::get_tag_type(tag.type_id) == plcscan::TagType::STRING);
-
-		UI_StringTag ui{};
-
-		ui.tag_id = tag_id;
-		ui.name = tag.name();
-		ui.type = tag.type();
-		ui.size = tag.size();
-		
-		map_value(tag, ui, tag_id);
-
-		return ui;
-	}
-
-
-	static void create_ui_tags(List<plcscan::Tag> const& tags, App_State& state)
-	{
-		using T = plcscan::TagType;
-
-		for (u32 tag_id = 0; tag_id < (u32)tags.size(); ++tag_id)
-		{
-			auto& tag = tags[tag_id];
-
-			switch (plcscan::get_tag_type(tag.type_id))
-			{
-			case T::STRING:
-				state.string_tags.push_back(to_ui_string_tag(tag, tag_id));
-				break;
-			}
-		}
-	}
-}
-
-
-namespace render
-{
-	constexpr auto WHITE = ImVec4(1, 1, 1, 1);
-	constexpr auto GREEN = ImVec4(0, 1, 0, 1);
-	constexpr auto RED = ImVec4(1, 0, 0, 1);
-
-	using ImColor = ImVec4;
-
-
 	template <typename T>
 	static T cast_bytes(u8* src, u32 size)
 	{
@@ -177,12 +133,108 @@ namespace render
 	}
 
 
+	static void map_value(plcscan::Tag const& src, UI_StringTag& dst, u32 tag_id)
+	{
+		assert(plcscan::get_tag_type(src.type_id) == plcscan::TagType::STRING);
+		assert(dst.tag_id == tag_id);
+
+		if (dst.tag_id != tag_id)
+		{
+			return;
+		}
+
+		dst.value = (cstr)src.bytes.data;
+	}
+
+
+	static void map_value(plcscan::Tag const& src, UI_StringArrayTag& dst, u32 tag_id)
+	{
+		assert(plcscan::get_tag_type(src.type_id) == plcscan::TagType::STRING);
+		assert(dst.tag_id == tag_id);
+		assert(src.is_array());
+		assert((u32)dst.values.size() == src.array_count);
+
+		if (dst.tag_id != tag_id || (u32)dst.values.size() != src.array_count)
+		{
+			return;
+		}
+
+		MemoryOffset<u8> offset{};
+		offset.begin = 0;
+		offset.length = src.bytes.length / src.array_count;
+
+		for (u32 i = 0; i < src.array_count; ++i)
+		{
+			auto elem_bytes = mb::sub_view(src.bytes, offset);
+
+			dst.values[i] = (cstr)elem_bytes.data;
+
+			offset.begin += offset.length;
+		}
+	}
+
+
+
+	template <class UI_Tag>
+	UI_Tag to_ui_tag(plcscan::Tag const& tag, u32 tag_id)
+	{
+		UI_Tag ui{};
+
+		ui.tag_id = tag_id;
+		ui.name = tag.name();
+		ui.type = tag.type();
+		ui.size = tag.size();
+
+		map_value(tag, ui, tag_id);
+
+		return ui;
+	}
+
+
+	static void create_ui_tags(List<plcscan::Tag> const& tags, App_State& state)
+	{
+		using T = plcscan::TagType;
+
+		for (u32 tag_id = 0; tag_id < (u32)tags.size(); ++tag_id)
+		{
+			auto& tag = tags[tag_id];
+
+			switch (plcscan::get_tag_type(tag.type_id))
+			{
+			case T::STRING:
+				if (tag.is_array())
+				{
+					state.string_array_tags.push_back(to_ui_tag<UI_StringArrayTag>(tag, tag_id));
+				}
+				else
+				{
+					state.string_tags.push_back(to_ui_tag<UI_StringTag>(tag, tag_id));
+				}				
+				break;
+			}
+		}
+	}
+}
+
+
+namespace render
+{
+	constexpr auto WHITE = ImVec4(1, 1, 1, 1);
+	constexpr auto GREEN = ImVec4(0, 1, 0, 1);
+	constexpr auto RED = ImVec4(1, 0, 0, 1);
+
+	using ImColor = ImVec4;
+
+
+	
+
+
 	static void bytes_as_number(ByteView const& bytes, plcscan::TagType type, ImColor const& text_color)
 	{
 		using T = plcscan::TagType;
 
 		auto size = bytes.length;
-		auto src = bytes.begin;
+		auto src = bytes.data;
 
 		switch (type)
 		{
@@ -247,7 +299,7 @@ namespace render
 
 		for (int i = 0; i < len; i++)
 		{
-			auto src = bytes.begin + i;
+			auto src = bytes.data + i;
 			auto dst = buffer + i * 2;
 			qsnprintf(dst, 3, "%02x", src);
 		}
@@ -259,7 +311,7 @@ namespace render
 
 	static void bytes_as_string(ByteView const& bytes, ImColor const& text_color)
 	{
-		ImGui::TextColored(text_color, (cstr)bytes.begin);
+		ImGui::TextColored(text_color, (cstr)bytes.data);
 	}
 
 
@@ -331,7 +383,7 @@ namespace render
 
 	static void command_window(UI_Command& cmd, UI_Input& input)
 	{
-		ImGui::Begin("Commands");
+		ImGui::Begin("Controller");
 
 		ImGui::End();
 	}
@@ -593,6 +645,76 @@ namespace render
 
 		ImGui::End();
 	}
+
+
+	static void string_array_tag_window(List<UI_StringArrayTag> const& tags)
+	{
+		ImGui::Begin("String Arrays");
+
+		constexpr int col_name = 0;
+		constexpr int col_type = 1;
+		constexpr int col_size = 2;
+		constexpr int col_index = 3;
+		constexpr int col_value = 4;
+		constexpr int n_columns = 5;
+
+		auto table_flags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
+		auto table_dims = ImGui::GetContentRegionAvail();
+
+		auto text_color = WHITE;
+
+		if (ImGui::BeginTable("StringTagTable", n_columns, table_flags, table_dims))
+		{
+			ImGui::TableSetupScrollFreeze(0, 1);
+			ImGui::TableSetupColumn("Tag", ImGuiTableColumnFlags_WidthStretch);
+			ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableSetupColumn("Index", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableHeadersRow();
+
+			for (auto const& tag : tags)
+			{
+				auto array_count = (u32)tag.values.size();
+				
+				ImGui::TableNextRow();
+
+				ImGui::TableSetColumnIndex(col_type);
+				ImGui::TextColored(text_color, "%s", tag.type);
+
+				ImGui::TableSetColumnIndex(col_size);
+				ImGui::TextColored(text_color, "%u", tag.size);
+
+				ImGui::TableSetColumnIndex(col_index);
+				ImGui::TextColored(text_color, "[%u]", array_count);
+
+				ImGui::TableSetColumnIndex(col_value);
+				ImGui::TextDisabled("--");
+
+				ImGui::TableSetColumnIndex(col_name);
+				if (ImGui::TreeNode(tag.name))
+				{
+					for (u32 i = 0; i < array_count; ++i)
+					{
+						ImGui::TableNextRow();
+
+						ImGui::TableSetColumnIndex(col_index);
+						ImGui::TextColored(text_color, "[%u]", i);
+
+						ImGui::TableSetColumnIndex(col_value);
+						ImGui::TextColored(text_color, "%s", tag.values[i]);
+					}
+
+					ImGui::TreePop();
+				}
+			}
+
+			ImGui::EndTable();
+		}
+
+
+		ImGui::End();
+	}
 }
 
 
@@ -610,6 +732,7 @@ namespace scan
 		auto& state = g_app_state;
 
 		u32 string_id = 0;
+		u32 string_array_id = 0;
 
 		for (u32 tag_id = 0; tag_id < (u32)tags.size(); ++tag_id)
 		{
@@ -618,7 +741,14 @@ namespace scan
 			switch (plcscan::get_tag_type(tag.type_id))
 			{
 			case T::STRING:
-				map_value(tag, state.string_tags[string_id++], tag_id);
+				if (tag.is_array())
+				{
+					map_value(tag, state.string_array_tags[string_array_id++], tag_id);
+				}
+				else
+				{
+					map_value(tag, state.string_tags[string_id++], tag_id);
+				}				
 				break;
 			}
 		}
@@ -733,6 +863,7 @@ namespace app
 		render::udt_type_window(state.plc.data.udt_types);
 
 		render::string_tag_window(state.string_tags);
+		render::string_array_tag_window(state.string_array_tags);
 
 		return true;
 	}

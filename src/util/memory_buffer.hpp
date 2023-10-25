@@ -21,7 +21,7 @@ public:
 	//T* data_ = nullptr;
 	//unsigned capacity_ = 0;
 
-	T* begin = nullptr;
+	T* data = nullptr;
 	unsigned length = 0;
 };
 
@@ -229,7 +229,7 @@ namespace memory_buffer
 		//view.data_ = buffer.data_;
 		//view.capacity_ = buffer.capacity_;
 
-		view.begin = push_elements(buffer, n_elements);
+		view.data = push_elements(buffer, n_elements);
 		view.length = n_elements;
 
 		return view;
@@ -253,7 +253,7 @@ namespace memory_buffer
 		auto len = view.length;
 
 		auto len64 = len / size64;
-		auto dst64 = (size_t*)view.begin;
+		auto dst64 = (size_t*)view.data;
 
 		auto len8 = len - len64 * size64;
 		auto dst8 = (byte*)(dst64 + len64);
@@ -284,7 +284,7 @@ namespace memory_buffer
 		//view.data_ = buffer.data_;
 		//view.capacity_ = buffer.capacity_;
 
-		view.begin = push_elements(buffer, total_bytes);
+		view.data = push_elements(buffer, total_bytes);
 		view.length = total_bytes - 1; /* zero terminated */
 
 		return view;
@@ -309,7 +309,7 @@ namespace memory_buffer
 		//view.data_ = buffer.data_;
 		//view.capacity_ = buffer.capacity_;
 
-		view.begin = buffer.data_;
+		view.data = buffer.data_;
 		view.length = buffer.size_;
 
 		return view;
@@ -324,7 +324,7 @@ namespace memory_buffer
 
 		MemoryView<T> view{};
 
-		view.begin = data;
+		view.data = data;
 		view.length = n_elements;
 
 		return view;
@@ -343,7 +343,7 @@ namespace memory_buffer
 	{
 		MemoryOffset<T> offset{};
 
-		offset.begin = view.begin;
+		offset.begin = view.data;
 		offset.length = view.length;
 
 		return offset;
@@ -363,7 +363,7 @@ namespace memory_buffer
 		//view.data_ = buffer.data_;
 		//view.capacity_ = buffer.capacity_;
 
-		view.begin = buffer.data_ + offset.begin;
+		view.data = buffer.data_ + offset.begin;
 		view.length = offset.length;
 
 		return view;
@@ -380,7 +380,7 @@ namespace memory_buffer
 		//sub_view.data_ = view.data_;
 		//sub_view.capacity_ = view.capacity_;
 
-		sub_view.begin = view.begin + offset.begin;
+		sub_view.data = view.data + offset.begin;
 		sub_view.length = offset.length;
 
 		return sub_view;
@@ -529,7 +529,7 @@ namespace memory_buffer
 
 		MemoryView<T> view{};
 
-		view.begin = buffer.p_data_[buffer.read_id];
+		view.data = buffer.p_data_[buffer.read_id];
 		view.length = buffer.p_size_;
 
 		return view;
@@ -546,7 +546,7 @@ namespace memory_buffer
 
 		MemoryView<T> view{};
 
-		view.begin = buffer.p_data_[buffer.read_id] + offset.begin;
+		view.data = buffer.p_data_[buffer.read_id] + offset.begin;
 		view.length = offset.length;
 
 		return view;
@@ -563,7 +563,7 @@ namespace memory_buffer
 
 		auto write_id = (int)(!buffer.read_id);
 
-		view.begin = buffer.p_data_[write_id] + offset.begin;
+		view.data = buffer.p_data_[write_id] + offset.begin;
 		view.length = offset.length;
 
 		return view;

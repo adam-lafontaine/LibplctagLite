@@ -138,7 +138,7 @@ static void copy_unsafe(cstr src, StringView const& dst)
 
     for (u32 i = 0; i < len; ++i)
     {
-        dst.begin[i] = src[i];
+        dst.data[i] = src[i];
     }
 }
 
@@ -150,7 +150,7 @@ static void copy_unsafe(StringView const& src, char* dst)
 
     for (u32 i = 0; i < len; ++i)
     {
-        dst[i] = src.begin[i];
+        dst[i] = src.data[i];
     }
 }
 
@@ -159,7 +159,7 @@ static void copy(StringView const& src, StringView const& dst)
 {
     auto len = src.length < dst.length ? src.length : dst.length;
 
-    copy_bytes((u8*)src.begin, (u8*)dst.begin, len);
+    copy_bytes((u8*)src.data, (u8*)dst.data, len);
 }
 
 
@@ -167,7 +167,7 @@ static void copy(ByteView const& src, ByteView const& dst)
 {
     assert(src.length <= dst.length);
 
-    copy_bytes(src.begin, dst.begin, src.length);
+    copy_bytes(src.data, dst.data, src.length);
 }
 
 
@@ -180,7 +180,7 @@ static void zero_string(StringView const& str)
 static StringView to_string_view_unsafe(cstr str)
 {
     StringView view{};
-    view.begin = (char*)str;
+    view.data = (char*)str;
     view.length = (u32)strlen(str);
 
     return view;
@@ -190,7 +190,7 @@ static StringView to_string_view_unsafe(cstr str)
 static StringView to_string_view_unsafe(char* str, u32 len)
 {
     StringView view{};
-    view.begin = str;
+    view.data = str;
     view.length = len;
 
     return view;
@@ -1235,7 +1235,7 @@ namespace
 
         StringView connection_string;
 
-        char string_data[100 + MAX_TAG_NAME_LENGTH]; // should be enough
+        char string_data[100 + MAX_TAG_NAME_LENGTH] = { 0 }; // should be enough
     };
 
 
@@ -1260,7 +1260,7 @@ namespace
 
         zero_string(attr.connection_string);
 
-        auto dst = attr.connection_string.begin;
+        auto dst = attr.connection_string.data;
         auto max_len = (int)attr.connection_string.length;
 
         qsnprintf(dst, max_len, fmt, attr.gateway, attr.path, tag_name, elem_size, elem_count);
@@ -1288,7 +1288,7 @@ namespace
 
         auto timeout = 100;
 
-        auto rc = plc_tag_create(attr.connection_string.begin, timeout);
+        auto rc = plc_tag_create(attr.connection_string.data, timeout);
         if (rc < 0)
         {
             return false;
@@ -1310,7 +1310,7 @@ namespace
             return false;
         }
 
-        rc = plc_tag_get_raw_bytes(tag_handle, 0, view.begin, view.length);
+        rc = plc_tag_get_raw_bytes(tag_handle, 0, view.data, view.length);
         if (rc != PLCTAG_STATUS_OK)
         {
             return false;
@@ -1351,7 +1351,7 @@ namespace
 
         auto view = mb::push_view(dst, (u32)size);
 
-        rc = plc_tag_get_raw_bytes(tag_handle, 0, view.begin, view.length);
+        rc = plc_tag_get_raw_bytes(tag_handle, 0, view.data, view.length);
         if (rc != PLCTAG_STATUS_OK)
         {
             return false;
@@ -1367,7 +1367,7 @@ namespace
 
         auto timeout = 100;
 
-        auto rc = plc_tag_create(attr.connection_string.begin, timeout);
+        auto rc = plc_tag_create(attr.connection_string.data, timeout);
         if (rc < 0)
         {
             return false;
@@ -1411,7 +1411,7 @@ namespace
 
         auto entry_data = mb::make_view(entry_buffer);
 
-        auto tag_entries = parse_tag_entries(entry_data.begin, entry_data.length);
+        auto tag_entries = parse_tag_entries(entry_data.data, entry_data.length);
 
         if (!create_tags(tag_entries, tag_mem, data.tags))
         {
@@ -1490,7 +1490,7 @@ namespace
             }
 
             auto view = mb::make_write_view(mem.scan_data , conn.scan_offset);
-            auto rc = plc_tag_get_raw_bytes(conn.connection_handle, 0, view.begin, view.length);
+            auto rc = plc_tag_get_raw_bytes(conn.connection_handle, 0, view.data, view.length);
             conn.scan_ok = rc == PLCTAG_STATUS_OK;
         }
     }
