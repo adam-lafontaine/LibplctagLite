@@ -16,31 +16,9 @@ constexpr auto DEFAULT_CONNECT_TIMEOUT = "1000";
 namespace
 {
 	using UI_DataType = plcscan::DataType;
+	using UI_UdtType = plcscan::UdtType;
+	using UI_UdtFieldType = plcscan::UdtFieldType;
 	using UI_Tag = plcscan::Tag;
-
-
-	class UI_UdtField
-	{
-	public:
-		cstr name = 0;
-		cstr type = 0;
-
-		plcscan::DataTypeId32 data_type_id = 0;
-
-		u32 offset = 0;
-
-		u32 array_count = 0;
-	};
-
-
-	class UI_UdtType
-	{
-	public:
-		cstr name = 0;
-		u32 size = 0;
-
-		List<UI_UdtField> fields;
-	};
 
 
 	class PLC_State
@@ -48,8 +26,6 @@ namespace
 	public:
 
 		plcscan::PlcTagData data;
-
-		List<UI_UdtType> udts;
 
 		bool is_initializing = false;
 		bool is_scanning = false;
@@ -93,103 +69,6 @@ namespace
 				stop_scanning;
 		}
 	};
-}
-
-
-static App_State g_app_state;
-static UI_Input g_user_input;
-
-
-namespace scan
-{
-	static List<UI_UdtType> transform_udts(List<plcscan::UdtType> const& udts)
-	{
-		List<UI_UdtType> list;
-
-		list.reserve(udts.size());
-		for (auto const& udt : udts)
-		{
-			UI_UdtType ui{};
-			ui.name = udt.name();
-			ui.size = udt.size;
-
-			ui.fields.reserve(udt.fields.size());
-			for (auto const& field : udt.fields)
-			{
-				UI_UdtField f{};
-				f.name = field.name();
-				f.offset = field.offset;
-				f.data_type_id = field.type_id;
-
-				f.type = field.type();
-				if (field.is_array())
-				{
-					f.array_count = field.array_count;
-				}
-
-				ui.fields.push_back(f);
-			}
-
-			list.push_back(ui);
-		}
-
-		return list;
-	}
-
-
-	static void tag_values_to_string(plcscan::PlcTagData& data)
-	{
-
-	}
-
-
-	static void start()
-	{
-		auto& state = g_app_state;
-		auto& input = g_user_input;
-		auto& plc = state.plc;
-
-		Stopwatch sw;
-
-		plc.is_initializing = true;
-
-		plc.data = plcscan::init();
-		if (!plc.data.is_init)
-		{
-			plc.has_error = true;
-			return;
-		}
-
-		plc.udts = transform_udts(plc.data.udt_types);
-
-		plc.is_initializing = false;
-
-		plc.is_scanning = false;
-
-		while (!plc.is_scanning)
-		{
-			sw.start();
-
-			if (!state.app_running)
-			{
-				return;
-			}
-
-			tmh::delay_current_thread_ms(sw, 20);
-		}
-
-		if (!plcscan::connect(input.plc_ip, input.plc_path, plc.data))
-		{
-			plc.has_error = true;
-			return;
-		}
-
-		auto const is_scanning = [&]() { return plc.is_scanning && state.app_running; };
-
-		plcscan::scan(tag_values_to_string, is_scanning, plc.data);
-
-		// TODO: stop/start
-	}
 }
 
 
@@ -374,14 +253,14 @@ namespace render
 			offset.begin += offset.length;
 		}
 
-		
+
 	}
 
 
 	static void bytes_as_udt(ByteView const& bytes, ImColor const& text_color)
 	{
 		ImGui::TextColored(text_color, "TODO");
-	}	
+	}
 
 
 	static void command_window(UI_Command& cmd, UI_Input& input)
@@ -479,14 +358,14 @@ namespace render
 				ImGui::TableSetColumnIndex(col_name);
 				if (has_fields)
 				{
-					if (ImGui::TreeNode(udt.name))
+					if (ImGui::TreeNode(udt.name()))
 					{
 						for (auto const& f : udt.fields)
 						{
 							ImGui::TableNextRow();
 
 							ImGui::TableSetColumnIndex(col_name);
-							ImGui::TextColored(text_color, f.name);
+							ImGui::TextColored(text_color, f.name());
 
 							ImGui::TableSetColumnIndex(col_offset);
 							ImGui::TextColored(text_color, "%u", f.offset);
@@ -497,20 +376,20 @@ namespace render
 							ImGui::TableSetColumnIndex(col_type);
 							if (f.array_count > 0)
 							{
-								ImGui::TextColored(text_color, f.type);
+								ImGui::TextColored(text_color, f.type());
 							}
 							else
 							{
-								ImGui::TextColored(text_color, "%s[%u]", f.type, f.array_count);
-							}							
+								ImGui::TextColored(text_color, "%s[%u]", f.type(), f.array_count);
+							}
 						}
 
 						ImGui::TreePop();
-					}					
+					}
 				}
 				else
 				{
-					ImGui::TextColored(text_color, udt.name);
+					ImGui::TextColored(text_color, udt.name());
 				}
 			}
 
@@ -528,7 +407,7 @@ namespace render
 		constexpr int n_columns = 5;
 		constexpr int col_name = 0;
 		constexpr int col_type = 1;
-		constexpr int col_size = 2;		
+		constexpr int col_size = 2;
 		constexpr int col_id = 3;
 		constexpr int col_value = 4;
 
@@ -552,7 +431,7 @@ namespace render
 			{
 				auto type = plcscan::get_tag_type(tag.type_id);
 
-				ImGui::TableNextRow();				
+				ImGui::TableNextRow();
 
 				if (tag.array_count > 1)
 				{
@@ -598,6 +477,66 @@ namespace render
 		}
 
 		ImGui::End();
+	}
+}
+
+
+static App_State g_app_state;
+static UI_Input g_user_input;
+
+
+namespace scan
+{
+	static void tag_values_to_string(plcscan::PlcTagData& data)
+	{
+
+	}
+
+
+	static void start()
+	{
+		auto& state = g_app_state;
+		auto& input = g_user_input;
+		auto& plc = state.plc;
+
+		Stopwatch sw;
+
+		plc.is_initializing = true;
+
+		plc.data = plcscan::init();
+		if (!plc.data.is_init)
+		{
+			plc.has_error = true;
+			return;
+		}
+
+		plc.is_initializing = false;
+
+		plc.is_scanning = false;
+
+		while (!plc.is_scanning)
+		{
+			sw.start();
+
+			if (!state.app_running)
+			{
+				return;
+			}
+
+			tmh::delay_current_thread_ms(sw, 20);
+		}
+
+		if (!plcscan::connect(input.plc_ip, input.plc_path, plc.data))
+		{
+			plc.has_error = true;
+			return;
+		}
+
+		auto const is_scanning = [&]() { return plc.is_scanning && state.app_running; };
+
+		plcscan::scan(tag_values_to_string, is_scanning, plc.data);
+
+		// TODO: stop/start
 	}
 }
 
@@ -657,7 +596,7 @@ namespace app
 
 		render::data_type_window(state.plc.data.data_types);
 
-		render::udt_type_window(state.plc.udts);
+		render::udt_type_window(state.plc.data.udt_types);
 
 		render::tag_window(state.plc.data.tags);
 

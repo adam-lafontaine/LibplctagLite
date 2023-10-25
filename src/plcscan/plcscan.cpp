@@ -1597,9 +1597,6 @@ namespace plcscan
     {
         constexpr int target_scan_ms = 100;
 
-        bool do_scan = false;
-        bool do_proc = false;
-
         auto const scan = [&]()
         { 
             scan_tags(g_tag_mem);
@@ -1610,7 +1607,7 @@ namespace plcscan
         while(scan_condition())
         {
             sw.start();
-            
+
             // TODO: better parallelism
             std::thread scan_th(scan);
             copy_tags(g_tag_mem); 
