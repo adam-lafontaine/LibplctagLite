@@ -19,10 +19,10 @@ namespace
 	using UI_DataType = plcscan::DataType;
 	using UI_UdtType = plcscan::UdtType;
 	using UI_UdtFieldType = plcscan::UdtFieldType;
-	using UI_Tag = plcscan::Tag;
 
 
-	class UI_MiscTag
+
+	class UI_Tag
 	{
 	public:
 		u32 tag_id;
@@ -37,64 +37,7 @@ namespace
 	};
 
 
-	class UI_MiscArrayTag
-	{
-	public:
-		u32 tag_id;
-
-		cstr name = 0;
-		cstr type = 0;
-		u32 size = 0;
-
-		List<StringView> values;
-
-		MemoryBuffer<char> value_data;
-	};
-
-
-	class UI_StringTag
-	{
-	public:
-		u32 tag_id;
-
-		cstr name = 0;
-		cstr type = 0;
-		u32 size = 0;
-		cstr value = 0;
-	};
-
-
-	class UI_StringArrayTag
-	{
-	public:
-		u32 tag_id;
-
-		cstr name = 0;
-		cstr type = 0;
-		u32 size = 0;
-
-		List<cstr> values;
-	};
-
-	using UI_NumberTag = UI_MiscTag;
-
-
-	class UI_NumberTag
-	{
-	public:
-		u32 tag_id;
-
-		cstr name = 0;
-		cstr type = 0;
-		u32 size = 0;
-
-		StringView value;
-
-		char display_buffer[21] = { 0 };
-	};
-
-
-	class UI_NumberArrayTag
+	class UI_ArrayTag
 	{
 	public:
 		u32 tag_id;
@@ -146,18 +89,28 @@ namespace
 
 namespace
 {
-	template <class UI_Tag>
-	static void create_ui_tag_value(UI_Tag& ui_tag)
+	static UI_Tag create_ui_tag(plcscan::Tag const& tag, u32 tag_id)
 	{
-		if (!ui_tag.value.data)
-		{
-			ui_tag.value.data = ui_tag.display_buffer;
-			ui_tag.value.length = (u32)(sizeof(ui_tag.display_buffer) - 1);
-		}
+		UI_Tag ui{};
+
+		ui.tag_id = tag_id;
+		ui.name = tag.name();
+		ui.type = tag.type();
+		ui.size = tag.size();
+
+		ui.value.data = ui.display_buffer;
+		ui.value.length = (u32)(sizeof(ui.display_buffer) - 1);
+
+		return ui;
 	}
 
 
-	template <class UI_ArrayTag>
+	static void destroy_ui_tag(UI_Tag& ui_tag)
+	{
+		//...
+	}
+
+
 	static void create_ui_array_tag_values(plcscan::Tag const& tag, UI_ArrayTag& ui_tag, u32 bytes_per_value)
 	{
 		if (!mb::create_buffer(ui_tag.value_data, tag.array_count * bytes_per_value))
@@ -175,8 +128,22 @@ namespace
 	}
 
 
-	template <class UI_ArrayTag>
-	static void destroy_ui_array_tag_values(UI_ArrayTag& ui_tag)
+	UI_ArrayTag create_ui_array_tag(plcscan::Tag const& tag, u32 tag_id, u32 bytes_per_value)
+	{
+		UI_ArrayTag ui{};
+
+		ui.tag_id = tag_id;
+		ui.name = tag.name();
+		ui.type = tag.type();
+		ui.size = tag.size();
+
+		create_ui_array_tag_values(tag, ui, bytes_per_value);
+
+		return ui;
+	}
+
+
+	static void destroy_ui_array_tag(UI_ArrayTag& ui_tag)
 	{
 		ui_tag.values.clear();
 		mb::destroy_buffer(ui_tag.value_data);
@@ -189,6 +156,7 @@ namespace
 namespace
 {
 	constexpr u32 UI_MISC_BYTES_PER_VALUE = 21;
+
 
 	static void map_hex(ByteView const& src, StringView const& dst)
 	{
@@ -210,37 +178,13 @@ namespace
 	}
 
 
-	static void create_value(UI_MiscTag& ui_tag)
-	{
-		create_ui_tag_value(ui_tag);
-	}
-
-
-	static void destroy_value(UI_MiscTag& ui_tag)
-	{
-		//...
-	}
-
-
-	static void map_value(plcscan::Tag const& src, UI_MiscTag& dst, u32 tag_id)
+	static void map_value_hex(plcscan::Tag const& src, UI_Tag& dst, u32 tag_id)
 	{
 		map_hex(src.bytes, dst.value);
 	}
 
 
-	static void create_array_values(plcscan::Tag const& tag, UI_MiscArrayTag& ui_tag)
-	{
-		create_ui_array_tag_values(tag, ui_tag, UI_MISC_BYTES_PER_VALUE);
-	}
-
-
-	static void destroy_array_values(UI_MiscArrayTag& ui_tag)
-	{
-		destroy_ui_array_tag_values(ui_tag);
-	}
-
-
-	static void map_value(plcscan::Tag const& src, UI_MiscArrayTag& dst, u32 tag_id)
+	static void map_value_hex(plcscan::Tag const& src, UI_ArrayTag& dst, u32 tag_id)
 	{
 		assert(dst.tag_id == tag_id);
 		assert(src.is_array());
@@ -271,18 +215,18 @@ namespace
 
 namespace
 {
-	static void create_value(UI_StringTag& ui_tag)
+	constexpr u32 UI_STRING_BYTES_PER_VALUE = 21;
+
+
+	static void map_string(ByteView const& src, StringView const& dst)
 	{
-		ui_tag.value = 0;
+		auto len = src.length < dst.length ? src.length : dst.length;
+
+		qsnprintf(dst.data, (int)len, "%s", (char*)src.data);
 	}
 
 
-	static void destroy_value(UI_StringTag& ui_tag)
-	{
-		ui_tag.value = 0;
-	}
-
-	static void map_value(plcscan::Tag const& src, UI_StringTag& dst, u32 tag_id)
+	static void map_value_string(plcscan::Tag const& src, UI_Tag& dst, u32 tag_id)
 	{
 		assert(plcscan::get_tag_type(src.type_id) == plcscan::TagType::STRING);
 		assert(dst.tag_id == tag_id);
@@ -292,23 +236,12 @@ namespace
 			return;
 		}
 
-		dst.value = (cstr)src.bytes.data;
+		mb::zero_view(dst.value);
+		map_string(src.bytes, dst.value);
 	}
 
 
-	static void create_array_values(plcscan::Tag const& tag, UI_StringArrayTag& ui_tag)
-	{
-		ui_tag.values.resize(tag.array_count);
-	}
-
-
-	static void destroy_array_values(UI_StringArrayTag& ui_tag)
-	{
-		ui_tag.values.clear();
-	}
-
-
-	static void map_value(plcscan::Tag const& src, UI_StringArrayTag& dst, u32 tag_id)
+	static void map_value_string(plcscan::Tag const& src, UI_ArrayTag& dst, u32 tag_id)
 	{
 		assert(plcscan::get_tag_type(src.type_id) == plcscan::TagType::STRING);
 		assert(dst.tag_id == tag_id);
@@ -320,15 +253,17 @@ namespace
 			return;
 		}
 
+		mb::zero_buffer(dst.value_data);
+
 		MemoryOffset<u8> offset{};
 		offset.begin = 0;
 		offset.length = src.bytes.length / src.array_count;
 
 		for (u32 i = 0; i < src.array_count; ++i)
 		{
-			auto elem_bytes = mb::sub_view(src.bytes, offset);
+			auto src_bytes = mb::sub_view(src.bytes, offset);
 
-			dst.values[i] = (cstr)elem_bytes.data;
+			map_string(src_bytes, dst.values[i]);
 
 			offset.begin += offset.length;
 		}
@@ -426,38 +361,15 @@ namespace
 		}
 	}
 
-
-	static void create_value(UI_NumberTag& ui_tag)
+	
+	static void map_value_number(plcscan::Tag const& src, UI_Tag& dst, u32 tag_id)
 	{
-		create_ui_tag_value(ui_tag);
-	}
-
-
-	static void destroy_value(UI_NumberTag& ui_tag)
-	{
-		//...
-	}
-
-
-	static void map_value(plcscan::Tag const& src, UI_NumberTag& dst, u32 tag_id)
-	{
+		mb::zero_view(dst.value);
 		map_number(src.bytes, dst.value, plcscan::get_tag_type(src.type_id));
 	}
 
 
-	static void create_array_values(plcscan::Tag const& tag, UI_NumberArrayTag& ui_tag)
-	{
-		create_ui_array_tag_values(tag, ui_tag, UI_NUMBER_BYTES_PER_VALUE);
-	}
-
-
-	static void destroy_array_values(UI_NumberArrayTag& ui_tag)
-	{
-		destroy_ui_array_tag_values(ui_tag);
-	}
-
-
-	static void map_value(plcscan::Tag const& src, UI_NumberArrayTag& dst, u32 tag_id)
+	static void map_value_number(plcscan::Tag const& src, UI_ArrayTag& dst, u32 tag_id)
 	{
 		assert(dst.tag_id == tag_id);
 		assert(src.is_array());
@@ -487,13 +399,11 @@ namespace
 
 
 
-
-
 /* ui udt */
 
 namespace
 {
-	static void create_value(UI_UdtTag& ui_tag)
+	static void create_value_udt(UI_UdtTag& ui_tag)
 	{
 		if (!ui_tag.value.data)
 		{
@@ -503,19 +413,29 @@ namespace
 	}
 
 
-	static void destroy_value(UI_UdtTag& ui_tag)
+	static UI_UdtTag create_ui_tag_udt(plcscan::Tag const& tag, u32 tag_id)
+	{
+		UI_UdtTag ui{};
+
+		ui.tag_id = tag_id;
+		ui.name = tag.name();
+		ui.type = tag.type();
+		ui.size = tag.size();
+
+		ui.value.data = ui.display_buffer;
+		ui.value.length = (u32)(sizeof(ui.display_buffer) - 1);
+
+		return ui;
+	}
+
+
+	static void destroy_ui_tag_udt(UI_UdtTag& ui_tag)
 	{
 		//...
 	}
 
 
-	static void map_value(plcscan::Tag const& src, UI_UdtTag& dst, u32 tag_id)
-	{
-		map_hex(src.bytes, dst.value);
-	}
-
-
-	static void create_array_values(plcscan::Tag const& tag, UI_UdtArrayTag& ui_tag)
+	static void create_ui_array_tag_values_udt(plcscan::Tag const& tag, UI_UdtArrayTag& ui_tag)
 	{
 		if (!mb::create_buffer(ui_tag.value_data, tag.array_count * UI_UdtArrayTag::bytes_per_value))
 		{
@@ -532,14 +452,35 @@ namespace
 	}
 
 
-	static void destroy_array_values(UI_UdtArrayTag& ui_tag)
+	UI_UdtArrayTag create_ui_array_tag_udt(plcscan::Tag const& tag, u32 tag_id)
+	{
+		UI_UdtArrayTag ui{};
+
+		ui.tag_id = tag_id;
+		ui.name = tag.name();
+		ui.type = tag.type();
+		ui.size = tag.size();
+
+		create_ui_array_tag_values_udt(tag, ui);
+
+		return ui;
+	}
+
+
+	static void destroy_ui_array_tag_udt(UI_UdtArrayTag& ui_tag)
 	{
 		ui_tag.values.clear();
 		mb::destroy_buffer(ui_tag.value_data);
 	}
 
 
-	static void map_value(plcscan::Tag const& src, UI_UdtArrayTag& dst, u32 tag_id)
+	static void map_value_udt(plcscan::Tag const& src, UI_UdtTag& dst, u32 tag_id)
+	{
+		map_hex(src.bytes, dst.value);
+	}
+
+
+	static void map_value_udt(plcscan::Tag const& src, UI_UdtArrayTag& dst, u32 tag_id)
 	{
 		assert(dst.tag_id == tag_id);
 		assert(src.is_array());
@@ -597,14 +538,14 @@ namespace
 		
 		PLC_State plc;
 
-		List<UI_StringTag> string_tags;
-		List<UI_StringArrayTag> string_array_tags;
+		List<UI_Tag> string_tags;
+		List<UI_ArrayTag> string_array_tags;
 
-		List<UI_MiscTag> misc_tags;
-		List<UI_MiscArrayTag> misc_array_tags;
+		List<UI_Tag> misc_tags;
+		List<UI_ArrayTag> misc_array_tags;
 
-		List<UI_NumberTag> number_tags;
-		List<UI_NumberArrayTag> number_array_tags;
+		List<UI_Tag> number_tags;
+		List<UI_ArrayTag> number_array_tags;
 
 		List<UI_UdtTag> udt_tags;
 		List<UI_UdtArrayTag> udt_array_tags;
@@ -636,40 +577,10 @@ namespace
 
 namespace
 {
-	template <class UI_Tag>
-	UI_Tag create_ui_tag(plcscan::Tag const& tag, u32 tag_id)
-	{
-		UI_Tag ui{};
-
-		ui.tag_id = tag_id;
-		ui.name = tag.name();
-		ui.type = tag.type();
-		ui.size = tag.size();
-
-		create_value(ui);
-
-		map_value(tag, ui, tag_id);
-
-		return ui;
-	}
+	
 
 
-	template <class UI_Tag>
-	UI_Tag create_ui_array_tag(plcscan::Tag const& tag, u32 tag_id)
-	{
-		UI_Tag ui{};
-
-		ui.tag_id = tag_id;
-		ui.name = tag.name();
-		ui.type = tag.type();
-		ui.size = tag.size();
-
-		create_array_values(tag, ui);
-
-		map_value(tag, ui, tag_id);
-
-		return ui;
-	}
+	
 
 
 	static void create_ui_tags(List<plcscan::Tag> const& tags, App_State& state)
@@ -685,44 +596,44 @@ namespace
 			case T::STRING:
 				if (tag.is_array())
 				{
-					state.string_array_tags.push_back(create_ui_array_tag<UI_StringArrayTag>(tag, tag_id));
+					state.string_array_tags.push_back(create_ui_array_tag(tag, tag_id, UI_STRING_BYTES_PER_VALUE));
 				}
 				else
 				{
-					state.string_tags.push_back(create_ui_tag<UI_StringTag>(tag, tag_id));
+					state.string_tags.push_back(create_ui_tag(tag, tag_id));
 				}				
 				break;
 
 			case T::UDT:
 				if (tag.is_array())
 				{
-					state.udt_array_tags.push_back(create_ui_array_tag<UI_UdtArrayTag>(tag, tag_id));
+					state.udt_array_tags.push_back(create_ui_array_tag_udt(tag, tag_id));
 				}
 				else
 				{
-					state.udt_tags.push_back(create_ui_tag<UI_UdtTag>(tag, tag_id));
+					state.udt_tags.push_back(create_ui_tag_udt(tag, tag_id));
 				}
 				break;
 
 			case T::OTHER:
 				if (tag.is_array())
 				{
-					state.misc_array_tags.push_back(create_ui_array_tag<UI_MiscArrayTag>(tag, tag_id));
+					state.misc_array_tags.push_back(create_ui_array_tag(tag, tag_id, UI_MISC_BYTES_PER_VALUE));
 				}
 				else
 				{
-					state.misc_tags.push_back(create_ui_tag<UI_MiscTag>(tag, tag_id));
+					state.misc_tags.push_back(create_ui_tag(tag, tag_id));
 				}
 				break;
 
 			default:
 				if (tag.is_array())
 				{
-					state.number_array_tags.push_back(create_ui_array_tag<UI_NumberArrayTag>(tag, tag_id));
+					state.number_array_tags.push_back(create_ui_array_tag(tag, tag_id, UI_NUMBER_BYTES_PER_VALUE));
 				}
 				else
 				{
-					state.number_tags.push_back(create_ui_tag<UI_NumberTag>(tag, tag_id));
+					state.number_tags.push_back(create_ui_tag(tag, tag_id));
 				}
 				break;
 			}
@@ -734,42 +645,42 @@ namespace
 	{
 		for (auto& tag : state.string_tags)
 		{
-			destroy_value(tag);
+			destroy_ui_tag(tag);
 		}
 
 		for (auto& tag : state.string_array_tags)
 		{
-			destroy_array_values(tag);
+			destroy_ui_array_tag(tag);
 		}
 
 		for (auto& tag : state.misc_tags)
 		{
-			destroy_value(tag);
+			destroy_ui_tag(tag);
 		}
 
 		for (auto& tag : state.misc_array_tags)
 		{
-			destroy_array_values(tag);
+			destroy_ui_array_tag(tag);
 		}
 
 		for (auto& tag : state.number_tags)
 		{
-			destroy_value(tag);
+			destroy_ui_tag(tag);
 		}
 
 		for (auto& tag : state.number_array_tags)
 		{
-			destroy_array_values(tag);
+			destroy_ui_array_tag(tag);
 		}
 
 		for (auto& tag : state.udt_tags)
 		{
-			destroy_value(tag);
+			destroy_ui_tag_udt(tag);
 		}
 
 		for (auto& tag : state.udt_array_tags)
 		{
-			destroy_array_values(tag);
+			destroy_ui_array_tag_udt(tag);
 		}
 	}
 }
@@ -920,10 +831,8 @@ namespace render
 	}
 	
 
-	static void string_tag_window(List<UI_StringTag> const& tags)
+	static void ui_tag_table(List<UI_Tag> const& tags, cstr label)
 	{
-		ImGui::Begin("Strings");
-		
 		constexpr int col_name = 0;
 		constexpr int col_type = 1;
 		constexpr int col_size = 2;
@@ -936,7 +845,7 @@ namespace render
 
 		auto text_color = WHITE;
 
-		if (ImGui::BeginTable("StringTagTable", n_columns, table_flags, table_dims))
+		if (ImGui::BeginTable(label, n_columns, table_flags, table_dims))
 		{
 			ImGui::TableSetupScrollFreeze(0, 1);
 			ImGui::TableSetupColumn("Tag", ImGuiTableColumnFlags_WidthStretch);
@@ -964,15 +873,11 @@ namespace render
 
 			ImGui::EndTable();
 		}
-
-		ImGui::End();
 	}
 
 
-	static void string_array_tag_window(List<UI_StringArrayTag> const& tags)
+	static void ui_tag_array_table(List<UI_ArrayTag> const& tags, cstr label)
 	{
-		ImGui::Begin("String Arrays");
-
 		constexpr int col_name = 0;
 		constexpr int col_type = 1;
 		constexpr int col_size = 2;
@@ -985,7 +890,7 @@ namespace render
 
 		auto text_color = WHITE;
 
-		if (ImGui::BeginTable("StringTagTable", n_columns, table_flags, table_dims))
+		if (ImGui::BeginTable(label, n_columns, table_flags, table_dims))
 		{
 			ImGui::TableSetupScrollFreeze(0, 1);
 			ImGui::TableSetupColumn("Tag", ImGuiTableColumnFlags_WidthStretch);
@@ -998,7 +903,7 @@ namespace render
 			for (auto const& tag : tags)
 			{
 				auto array_count = (u32)tag.values.size();
-				
+
 				ImGui::TableNextRow();
 
 				ImGui::TableSetColumnIndex(col_type);
@@ -1033,7 +938,44 @@ namespace render
 
 			ImGui::EndTable();
 		}
+	}
 
+
+	static void number_tag_window(List<UI_Tag> const& tags)
+	{
+		ImGui::Begin("Numeric");
+		
+		ui_tag_table(tags, "NumericTable");
+
+		ImGui::End();
+	}
+
+
+	static void number_array_tag_window(List<UI_ArrayTag> const& tags)
+	{
+		ImGui::Begin("Numeric Arrays");
+
+		ui_tag_array_table(tags, "NumericArrayTable");
+
+		ImGui::End();
+	}
+
+
+	static void string_tag_window(List<UI_Tag> const& tags)
+	{
+		ImGui::Begin("Strings");
+
+		ui_tag_table(tags, "StringTable");
+
+		ImGui::End();
+	}
+
+
+	static void string_array_tag_window(List<UI_ArrayTag> const& tags)
+	{
+		ImGui::Begin("String Arrays");
+
+		ui_tag_array_table(tags, "StringArrayTable");
 
 		ImGui::End();
 	}
@@ -1074,44 +1016,44 @@ namespace scan
 			case T::STRING:
 				if (tag.is_array())
 				{
-					map_value(tag, state.string_array_tags[string_array_id++], tag_id);
+					map_value_string(tag, state.string_array_tags[string_array_id++], tag_id);
 				}
 				else
 				{
-					map_value(tag, state.string_tags[string_id++], tag_id);
+					map_value_string(tag, state.string_tags[string_id++], tag_id);
 				}				
 				break;
 
 			case T::UDT:
 				if (tag.is_array())
 				{
-					map_value(tag, state.udt_array_tags[udt_array_id++], tag_id);
+					map_value_udt(tag, state.udt_array_tags[udt_array_id++], tag_id);
 				}
 				else
 				{
-					map_value(tag, state.udt_tags[udt_id++], tag_id);
+					map_value_udt(tag, state.udt_tags[udt_id++], tag_id);
 				}
 				break;
 
 			case T::OTHER:
 				if (tag.is_array())
 				{
-					map_value(tag, state.misc_array_tags[misc_array_id++], tag_id);
+					map_value_hex(tag, state.misc_array_tags[misc_array_id++], tag_id);
 				}
 				else
 				{
-					map_value(tag, state.udt_tags[udt_id++], tag_id);
+					map_value_hex(tag, state.misc_tags[udt_id++], tag_id);
 				}
 				break;
 
 			default:
 				if (tag.is_array())
 				{
-					map_value(tag, state.number_array_tags[number_array_id++], tag_id);
+					map_value_number(tag, state.number_array_tags[number_array_id++], tag_id);
 				}
 				else
 				{
-					map_value(tag, state.number_tags[number_id++], tag_id);
+					map_value_number(tag, state.number_tags[number_id++], tag_id);
 				}
 				break;
 			}
@@ -1228,6 +1170,8 @@ namespace app
 
 		render::udt_type_window(state.plc.data.udt_types);
 
+		render::number_tag_window(state.number_tags);
+		render::number_array_tag_window(state.number_array_tags);
 		render::string_tag_window(state.string_tags);
 		render::string_array_tag_window(state.string_array_tags);
 
