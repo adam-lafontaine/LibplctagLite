@@ -106,7 +106,7 @@ plcscan::TagType type = plcscan::get_tag_type(tag.type_id);
 plcscan::shutdown();
 ```
 
-The possible `TagType` values are: `BOOL`,`SINT`, `INT`, `DINT`, `LINT`, `USINT`, `UINT`, `UDINT`, `ULINT`, `REAL`, `LREAL`, `STRING`, `UDT`, and `OTHER`.
+The possible `TagType` values are: `BOOL`,`SINT`, `INT`, `DINT`, `LINT`, `USINT`, `UINT`, `UDINT`, `ULINT`, `REAL`, `LREAL`, `STRING`, `UDT`, and `MISC`.
 
 If the tag is not a `UDT` type, use the `type_id` to seach the `data_types` for specific type information.  If it is a `UDT`, then search the `udt_types`.
 
