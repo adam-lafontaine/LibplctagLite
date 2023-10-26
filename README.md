@@ -302,6 +302,15 @@ Demonstrates how to setup an application to scan and process tags continuously. 
 
 * untested (2023-10-21)
 
+### Example 5: Tag Viewer
+
+Displays connected PLC information in a user interface using [Dear Imgui](https://github.com/ocornut/imgui)
+* Enter the PLC IP address and path and click "Go"
+
+`/sample_apps/plcscan_tag_viewer/tag_viewer_win32.cpp`
+
+* untested (2023-10-26)
+
 ## libplctag
 
 Source files are taken from the [libplctag](https://github.com/libplctag/libplctag) library (v2.5.0).  Files have been edited and merged together to allow for simply including the .c files in a project instead of building a library to link to.
