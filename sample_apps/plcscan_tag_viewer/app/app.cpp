@@ -3,8 +3,10 @@
 #include "../../../src/plcscan/plcscan.hpp"
 #include "../../../src/util/time_helper.hpp"
 #include "../../../src/util/qsprintf.hpp"
+#include "../../../src/util/memory_helper.hpp"
 
 namespace tmh = time_helper;
+namespace mh = memory_helper;
 
 
 constexpr auto DEFAULT_PLC_IP = "192.168.123.123";
@@ -509,6 +511,8 @@ namespace
 		plcscan::PlcTagData data;
 
 		bool is_initializing = false;
+		bool start_scanning = false;
+		bool is_connected = false;
 		bool is_scanning = false;
 		bool has_error = false;
 	};
@@ -591,7 +595,8 @@ namespace
 		input.plc_ip = mb::push_cstr_view(input.string_data, UI_PLC_IP_BYTES);
 		input.plc_path = mb::push_cstr_view(input.string_data, UI_PLC_PATH_BYTES);
 
-
+		mh::copy_unsafe(DEFAULT_PLC_IP, input.plc_ip);
+		mh::copy_unsafe(DEFAULT_PLC_PATH, input.plc_path);
 	}
 
 
@@ -704,6 +709,28 @@ namespace
 }
 
 
+/* ui commands */
+
+namespace command
+{
+	static void process_command(UI_Command const& cmd, App_State& state)
+	{
+		if (cmd.stop_app_running)
+		{
+			state.app_running = false;
+		}
+		else if (cmd.start_scanning)
+		{
+			state.plc.start_scanning = true;
+		}
+		else if (cmd.stop_scanning)
+		{
+			state.plc.is_scanning = false;
+		}
+	}
+}
+
+
 namespace render
 {
 	constexpr auto WHITE = ImVec4(1, 1, 1, 1);
@@ -726,15 +753,37 @@ namespace render
 	}
 
 
+	static int numeric_or_comma(ImGuiInputTextCallbackData* data)
+	{
+		auto c = data->EventChar;
+
+		if ((c < '0' || c >'9') && c != ',' && c != '\0')
+		{
+			return 1;
+		}
+
+		return 0;
+	}
+
+
 	static void command_window(UI_Command& cmd, UI_Input& input)
 	{
 		ImGui::Begin("Controller");
 
 		ImGui::SetNextItemWidth(150);
-		ImGui::InputText("Gateway/IP", input.plc_ip.data, input.plc_ip.length, ImGuiInputTextFlags_CallbackCharFilter, numeric_or_dot);
+		ImGui::InputText("IP", input.plc_ip.data, input.plc_ip.length, ImGuiInputTextFlags_CallbackCharFilter, numeric_or_dot);
 
 		ImGui::SetNextItemWidth(150);
+		ImGui::InputText("Path", input.plc_path.data, input.plc_path.length, ImGuiInputTextFlags_CallbackCharFilter, numeric_or_comma);
 
+		ImGui::SameLine();
+		ImGui::SetNextItemWidth(150);
+
+		ImGui::SetCursorPos(ImVec2(250, 39));
+		if (ImGui::Button("Go", ImVec2(50, 30)))
+		{
+			cmd.start_scanning = true;
+		}
 
 		ImGui::End();
 	}
@@ -1106,8 +1155,6 @@ namespace scan
 		auto& input = g_user_input;
 		auto& plc = state.plc;
 
-		Stopwatch sw;
-
 		plc.is_initializing = true;
 
 		plc.data = plcscan::init();
@@ -1119,29 +1166,51 @@ namespace scan
 
 		plc.is_initializing = false;
 
+		plc.start_scanning = false;
 		plc.is_scanning = false;
 
-		while (!plc.is_scanning)
+		while (!plc.start_scanning)
 		{
-			sw.start();
-
 			if (!state.app_running)
 			{
 				return;
 			}
 
-			tmh::delay_current_thread_ms(sw, 20);
+			tmh::delay_current_thread_ms(20);
 		}
 
-		if (!plcscan::connect(input.plc_ip.data, input.plc_path.data, plc.data))
+		plc.is_connected = false;
+
+		while (!plc.is_connected)
 		{
-			plc.has_error = true;
-			return;
+			if (!state.app_running)
+			{
+				return;
+			}
+
+			if (plc.start_scanning)
+			{
+				plc.start_scanning = false;
+
+				if (plcscan::connect(input.plc_ip.data, input.plc_path.data, plc.data))
+				{
+					plc.is_connected = true;
+					plc.has_error = false;
+				}
+				else
+				{
+					plc.has_error = true;
+				}
+			}
+
+			tmh::delay_current_thread_ms(20);
 		}
 
 		create_ui_tags(plc.data.tags, state);
 
 		auto const is_scanning = [&]() { return plc.is_scanning && state.app_running; };
+
+		plc.is_scanning = true;
 
 		plcscan::scan(map_ui_tag_values, is_scanning, plc.data);
 
@@ -1150,31 +1219,21 @@ namespace scan
 }
 
 
-namespace command
-{
-	static void process_command(UI_Command const& cmd)
-	{
-
-	}
-}
-
-
-
 namespace app
 {
 	void init()
 	{
-		auto& state = g_app_state;
-		auto& input = g_user_input;
-
-		
+		create_ui_input(g_user_input);
 	}
 
 
 	void shutdown()
 	{
+		g_app_state.app_running = false;
+
 		plcscan::shutdown();
 		destroy_ui_tags(g_app_state);
+		destroy_ui_input(g_user_input);
 	}
 
 
@@ -1206,7 +1265,7 @@ namespace app
 				return false;
 			}
 
-			command::process_command(cmd);
+			command::process_command(cmd, state);
 		}		
 
 		render::data_type_window(state.plc.data.data_types);

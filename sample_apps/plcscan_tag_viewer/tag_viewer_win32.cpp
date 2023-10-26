@@ -273,8 +273,8 @@ int main(int, char**)
 
     WaitForLastSubmittedFrame();
 
-    app_th.join();
     app::shutdown();
+    app_th.join();    
 
     // Cleanup
     ImGui_ImplDX12_Shutdown();
