@@ -1400,7 +1400,7 @@ namespace plcscan
             }
         }
 
-        return TagType::OTHER;
+        return TagType::MISC;
     }
     
     

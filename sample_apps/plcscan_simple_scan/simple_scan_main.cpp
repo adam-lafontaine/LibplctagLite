@@ -164,7 +164,7 @@ void print_tags(plcscan::PlcTagData& data)
 			break;
 
 		case T::UDT:
-		case T::OTHER:
+		case T::MISC:
 			print_tag_as_hex(tag);
 			break;
 

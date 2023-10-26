@@ -121,6 +121,37 @@ namespace memory_helper
     }
 
 
+    template <typename T>
+    static T cast_bytes(u8* src, u32 size)
+    {
+        u8 b1 = 0;
+        u16 b2 = 0;
+        u32 b4 = 0;
+        u64 b8 = 0;
+
+        assert(size >= (u32)sizeof(T));
+
+        switch (size) // sizeof(T) ?
+        {
+        case 1:
+            b1 = *src;
+            return *(T*)&b1;
+        case 2:
+            b2 = *(u16*)src;
+            return *(T*)&b2;
+        case 4:
+            b4 = *(u32*)src;
+            return *(T*)&b4;
+        case 8:
+            b8 = *(u64*)src;
+            return *(T*)&b8;
+        }
+
+        assert(false);
+        return (T)(*src);
+    }
+
+
     inline void copy_unsafe(cstr src, StringView const& dst)
     {
         auto len = strlen(src);

@@ -127,7 +127,7 @@ namespace plcscan
 
         UDT,
 
-        OTHER
+        MISC
     };
 
 

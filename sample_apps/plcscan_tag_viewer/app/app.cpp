@@ -218,7 +218,7 @@ namespace
 	{
 		auto len = src.length < dst.length ? src.length : dst.length;
 
-		qsnprintf(dst.data, (int)len, "%s", (char*)src.data);
+		mh::copy_bytes(src.data, (u8*)dst.data, len);
 	}
 
 
@@ -271,37 +271,6 @@ namespace
 
 namespace
 {
-	template <typename T>
-	static T cast_bytes(u8* src, u32 size)
-	{
-		u8 b1 = 0;
-		u16 b2 = 0;
-		u32 b4 = 0;
-		u64 b8 = 0;
-
-		assert(size >= (u32)sizeof(T));
-
-		switch (size) // sizeof(T) ?
-		{
-		case 1:
-			b1 = *src;
-			return *(T*)&b1;
-		case 2:
-			b2 = *(u16*)src;
-			return *(T*)&b2;
-		case 4:
-			b4 = *(u32*)src;
-			return *(T*)&b4;
-		case 8:
-			b8 = *(u64*)src;
-			return *(T*)&b8;
-		}
-
-		assert(false);
-		return (T)(*src);
-	}
-
-
 	static void map_number(ByteView const& src, StringView const& dst, plcscan::TagType type)
 	{
 		using T = plcscan::TagType;
@@ -310,43 +279,43 @@ namespace
 		{
 		case T::BOOL:
 		case T::USINT:
-			qsnprintf(dst.data, dst.length, "%hhu", cast_bytes<u8>(src.data, src.length));
+			qsnprintf(dst.data, dst.length, "%hhu", mh::cast_bytes<u8>(src.data, src.length));
 			break;
 
 		case T::SINT:
-			qsnprintf(dst.data, dst.length, "%hhd", cast_bytes<i8>(src.data, src.length));
+			qsnprintf(dst.data, dst.length, "%hhd", mh::cast_bytes<i8>(src.data, src.length));
 			break;
 
 		case T::UINT:
-			qsnprintf(dst.data, dst.length, "%hu", cast_bytes<u16>(src.data, src.length));
+			qsnprintf(dst.data, dst.length, "%hu", mh::cast_bytes<u16>(src.data, src.length));
 			break;
 
 		case T::INT:
-			qsnprintf(dst.data, dst.length, "%hd", cast_bytes<i16>(src.data, src.length));
+			qsnprintf(dst.data, dst.length, "%hd", mh::cast_bytes<i16>(src.data, src.length));
 			break;
 
 		case T::UDINT:
-			qsnprintf(dst.data, dst.length, "%u", cast_bytes<u32>(src.data, src.length));
+			qsnprintf(dst.data, dst.length, "%u", mh::cast_bytes<u32>(src.data, src.length));
 			break;
 
 		case T::DINT:
-			qsnprintf(dst.data, dst.length, "%d", cast_bytes<i32>(src.data, src.length));
+			qsnprintf(dst.data, dst.length, "%d", mh::cast_bytes<i32>(src.data, src.length));
 			break;
 
 		case T::ULINT:
-			qsnprintf(dst.data, dst.length, "%llu", cast_bytes<u64>(src.data, src.length));
+			qsnprintf(dst.data, dst.length, "%llu", mh::cast_bytes<u64>(src.data, src.length));
 			break;
 
 		case T::LINT:
-			qsnprintf(dst.data, dst.length, "%lld", cast_bytes<i64>(src.data, src.length));
+			qsnprintf(dst.data, dst.length, "%lld", mh::cast_bytes<i64>(src.data, src.length));
 			break;
 
 		case T::REAL:
-			qsnprintf(dst.data, dst.length, "%f", cast_bytes<f32>(src.data, src.length));
+			qsnprintf(dst.data, dst.length, "%f", mh::cast_bytes<f32>(src.data, src.length));
 			break;
 
 		case T::LREAL:
-			qsnprintf(dst.data, dst.length, "%lf", cast_bytes<f64>(src.data, src.length));
+			qsnprintf(dst.data, dst.length, "%lf", mh::cast_bytes<f64>(src.data, src.length));
 			break;
 
 		default:
@@ -638,7 +607,7 @@ namespace
 				}
 				break;
 
-			case T::OTHER:
+			case T::MISC:
 				if (tag.is_array())
 				{
 					state.misc_array_tags.push_back(create_ui_array_tag(tag, tag_id, UI_MISC_BYTES_PER_VALUE));
@@ -766,29 +735,6 @@ namespace render
 	}
 
 
-	static void command_window(UI_Command& cmd, UI_Input& input)
-	{
-		ImGui::Begin("Controller");
-
-		ImGui::SetNextItemWidth(150);
-		ImGui::InputText("IP", input.plc_ip.data, input.plc_ip.length, ImGuiInputTextFlags_CallbackCharFilter, numeric_or_dot);
-
-		ImGui::SetNextItemWidth(150);
-		ImGui::InputText("Path", input.plc_path.data, input.plc_path.length, ImGuiInputTextFlags_CallbackCharFilter, numeric_or_comma);
-
-		ImGui::SameLine();
-		ImGui::SetNextItemWidth(150);
-
-		ImGui::SetCursorPos(ImVec2(250, 39));
-		if (ImGui::Button("Go", ImVec2(50, 30)))
-		{
-			cmd.start_scanning = true;
-		}
-
-		ImGui::End();
-	}
-
-
 	static void data_type_table(List<UI_DataType> const& data_types)
 	{		
 		constexpr int col_name = 0;
@@ -909,34 +855,6 @@ namespace render
 		}
 	}
 	
-	
-	static void data_types_window(App_State const& state)
-	{
-		ImGui::Begin("Data Types");
-
-		ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
-		if (ImGui::BeginTabBar("DataTypesTabBar", tab_bar_flags))
-		{
-			if (ImGui::BeginTabItem("Types"))
-			{
-				data_type_table(state.plc.data.data_types);
-
-				ImGui::EndTabItem();
-			}
-
-			if (ImGui::BeginTabItem("UDT"))
-			{
-				udt_type_table(state.plc.data.udt_types);
-
-				ImGui::EndTabItem();
-			}
-
-			ImGui::EndTabBar();
-		}
-
-		ImGui::End();
-	}
-	
 
 	static void ui_tag_table(List<UI_Tag> const& tags, cstr label)
 	{
@@ -1049,6 +967,181 @@ namespace render
 	}
 
 
+	static void ui_udt_tag_table(List<UI_UdtTag> const& tags, cstr label)
+	{
+		constexpr int col_name = 0;
+		constexpr int col_type = 1;
+		constexpr int col_size = 2;
+		constexpr int col_value = 3;
+		constexpr int n_columns = 4;
+
+
+		auto table_flags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
+		auto table_dims = ImGui::GetContentRegionAvail();
+		//table_dims.y /= 2;
+
+		auto text_color = WHITE;
+
+		if (ImGui::BeginTable(label, n_columns, table_flags, table_dims))
+		{
+			ImGui::TableSetupScrollFreeze(0, 1);
+			ImGui::TableSetupColumn("Tag", ImGuiTableColumnFlags_WidthStretch);
+			ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableHeadersRow();
+
+			for (auto const& tag : tags)
+			{
+				ImGui::TableNextRow();				
+
+				ImGui::TableSetColumnIndex(col_type);
+				ImGui::TextColored(text_color, "%s", tag.type);
+
+				ImGui::TableSetColumnIndex(col_size);
+				ImGui::TextColored(text_color, "%u", tag.size);
+
+				ImGui::TableSetColumnIndex(col_value);
+				ImGui::TextDisabled("--");
+
+				ImGui::TableSetColumnIndex(col_name);
+				if (ImGui::TreeNode(tag.name))
+				{
+					// fields
+
+					ImGui::TreePop();
+				}
+			}
+
+			ImGui::EndTable();
+		}
+	}
+
+
+	static void ui_udt_tag_array_table(List<UI_UdtArrayTag> const& tags, cstr label)
+	{
+		constexpr int col_name = 0;
+		constexpr int col_type = 1;
+		constexpr int col_size = 2;
+		constexpr int col_index = 3;
+		constexpr int col_value = 4;
+		constexpr int n_columns = 5;
+
+		auto table_flags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
+		auto table_dims = ImGui::GetContentRegionAvail();
+
+		auto text_color = WHITE;
+
+		if (ImGui::BeginTable(label, n_columns, table_flags, table_dims))
+		{
+			ImGui::TableSetupScrollFreeze(0, 1);
+			ImGui::TableSetupColumn("Tag", ImGuiTableColumnFlags_WidthStretch);
+			ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableSetupColumn("Index", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableHeadersRow();
+
+			for (auto const& tag : tags)
+			{
+				auto array_count = (u32)tag.values.size();
+
+				ImGui::TableNextRow();
+
+				ImGui::TableSetColumnIndex(col_type);
+				ImGui::TextColored(text_color, "%s", tag.type);
+
+				ImGui::TableSetColumnIndex(col_size);
+				ImGui::TextColored(text_color, "%u", tag.size);
+
+				ImGui::TableSetColumnIndex(col_index);
+				ImGui::TextColored(text_color, "[%u]", array_count);
+
+				ImGui::TableSetColumnIndex(col_value);
+				ImGui::TextDisabled("--");
+
+				ImGui::TableSetColumnIndex(col_name);
+				if (ImGui::TreeNode(tag.name))
+				{
+					for (u32 i = 0; i < array_count; ++i)
+					{
+						ImGui::TableNextRow();
+
+						ImGui::TableSetColumnIndex(col_value);
+						ImGui::TextDisabled("--");
+
+						ImGui::TableSetColumnIndex(col_index);
+						ImGui::TextColored(text_color, "[%u]", i);
+
+
+						if (ImGui::TreeNode(tag.name /* does this work?*/, "[%u]", i))
+						{
+							// fields
+
+							ImGui::TreePop();
+						}
+					}
+
+					ImGui::TreePop();
+				}
+			}
+
+			ImGui::EndTable();
+		}
+	}
+	
+	
+	static void command_window(UI_Command& cmd, UI_Input& input)
+	{
+		ImGui::Begin("Controller");
+
+		ImGui::SetNextItemWidth(150);
+		ImGui::InputText("IP", input.plc_ip.data, input.plc_ip.length, ImGuiInputTextFlags_CallbackCharFilter, numeric_or_dot);
+
+		ImGui::SetNextItemWidth(150);
+		ImGui::InputText("Path", input.plc_path.data, input.plc_path.length, ImGuiInputTextFlags_CallbackCharFilter, numeric_or_comma);
+
+		ImGui::SameLine();
+		ImGui::SetNextItemWidth(150);
+
+		ImGui::SetCursorPos(ImVec2(250, 39));
+		if (ImGui::Button("Go", ImVec2(50, 30)))
+		{
+			cmd.start_scanning = true;
+		}
+
+		ImGui::End();
+	}
+
+
+	static void data_types_window(App_State const& state)
+	{
+		ImGui::Begin("Data Types");
+
+		ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
+		if (ImGui::BeginTabBar("DataTypesTabBar", tab_bar_flags))
+		{
+			if (ImGui::BeginTabItem("Types"))
+			{
+				data_type_table(state.plc.data.data_types);
+
+				ImGui::EndTabItem();
+			}
+
+			if (ImGui::BeginTabItem("UDT"))
+			{
+				udt_type_table(state.plc.data.udt_types);
+
+				ImGui::EndTabItem();
+			}
+
+			ImGui::EndTabBar();
+		}
+
+		ImGui::End();
+	}
+
+
 	static void tag_window(App_State const& state)
 	{
 		ImGui::Begin("Tags");
@@ -1090,12 +1183,12 @@ namespace render
 			{
 				if (ImGui::CollapsingHeader("Tags"))
 				{
-					
+					ui_udt_tag_table(state.udt_tags, "UdtTagTable");
 				}
 
 				if (ImGui::CollapsingHeader("Arrays"))
 				{
-					
+					ui_udt_tag_array_table(state.udt_array_tags, "UdtArrayTagTable");
 				}
 
 				ImGui::EndTabItem();
@@ -1180,7 +1273,7 @@ namespace scan
 				}
 				break;
 
-			case T::OTHER:
+			case T::MISC:
 				if (tag.is_array())
 				{
 					map_value_hex(tag, state.misc_array_tags[misc_array_id++], tag_id);
