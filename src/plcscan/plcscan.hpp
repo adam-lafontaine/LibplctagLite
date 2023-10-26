@@ -1,18 +1,11 @@
 #pragma once
 /* LICENSE: See end of file for license information. */
 
-#include "../util/types.hpp"
-#include "../util/memory_buffer.hpp"
+#include "../util/mh_types.hpp"
 
 #include <vector>
 #include <functional>
 
-
-namespace mb = memory_buffer;
-
-
-using StringView = MemoryView<char>;
-using ByteView = MemoryView<u8>;
 
 template <typename T>
 using List = std::vector<T>;

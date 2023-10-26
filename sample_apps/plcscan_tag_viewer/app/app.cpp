@@ -12,7 +12,7 @@ constexpr auto DEFAULT_PLC_PATH = "1,0";
 constexpr auto DEFAULT_CONNECT_TIMEOUT = "1000";
 
 
-/* ui types */
+/* ui tag types */
 
 namespace
 {
@@ -155,9 +155,6 @@ namespace
 
 namespace
 {
-	constexpr u32 UI_MISC_BYTES_PER_VALUE = 21;
-
-
 	static void map_hex(ByteView const& src, StringView const& dst)
 	{
 		auto out_len = dst.length;
@@ -215,9 +212,6 @@ namespace
 
 namespace
 {
-	constexpr u32 UI_STRING_BYTES_PER_VALUE = 21;
-
-
 	static void map_string(ByteView const& src, StringView const& dst)
 	{
 		auto len = src.length < dst.length ? src.length : dst.length;
@@ -275,8 +269,6 @@ namespace
 
 namespace
 {
-	constexpr u32 UI_NUMBER_BYTES_PER_VALUE = 21;
-
 	template <typename T>
 	static T cast_bytes(u8* src, u32 size)
 	{
@@ -396,7 +388,6 @@ namespace
 		}
 	}
 }
-
 
 
 /* ui udt */
@@ -526,9 +517,10 @@ namespace
 	class UI_Input
 	{
 	public:
-		cstr plc_ip = DEFAULT_PLC_IP;
-		cstr plc_path = DEFAULT_PLC_PATH;
+		StringView plc_ip;
+		StringView plc_path;
 
+		MemoryBuffer<char> string_data;
 	};
 
 
@@ -573,14 +565,40 @@ namespace
 }
 
 
-/* transform */
+/* ui state create destroy */
 
 namespace
-{
-	
+{	
+	constexpr u32 UI_PLC_IP_BYTES = (u32)sizeof(DEFAULT_PLC_IP) + 10;
+	constexpr u32 UI_PLC_PATH_BYTES = (u32)sizeof(DEFAULT_PLC_PATH) + 10;
+
+	constexpr u32 UI_MISC_BYTES_PER_VALUE = 20 + 1;
+	constexpr u32 UI_STRING_BYTES_PER_VALUE = 20 + 1;
+	constexpr u32 UI_NUMBER_BYTES_PER_VALUE = 20 + 1;
 
 
-	
+	static void create_ui_input(UI_Input& input)
+	{
+		auto str_bytes = UI_PLC_IP_BYTES + UI_PLC_PATH_BYTES;
+
+		if (!mb::create_buffer(input.string_data, str_bytes))
+		{
+			return;
+		}
+
+		mb::zero_buffer(input.string_data);
+
+		input.plc_ip = mb::push_cstr_view(input.string_data, UI_PLC_IP_BYTES);
+		input.plc_path = mb::push_cstr_view(input.string_data, UI_PLC_PATH_BYTES);
+
+
+	}
+
+
+	static void destroy_ui_input(UI_Input& input)
+	{
+		mb::destroy_buffer(input.string_data);
+	}
 
 
 	static void create_ui_tags(List<plcscan::Tag> const& tags, App_State& state)
@@ -694,9 +712,29 @@ namespace render
 
 	using ImColor = ImVec4;
 
+
+	static int numeric_or_dot(ImGuiInputTextCallbackData* data)
+	{
+		auto c = data->EventChar;
+
+		if ((c < '0' || c >'9') && c != '.' && c != '\0')
+		{
+			return 1;
+		}
+
+		return 0;
+	}
+
+
 	static void command_window(UI_Command& cmd, UI_Input& input)
 	{
 		ImGui::Begin("Controller");
+
+		ImGui::SetNextItemWidth(150);
+		ImGui::InputText("Gateway/IP", input.plc_ip.data, input.plc_ip.length, ImGuiInputTextFlags_CallbackCharFilter, numeric_or_dot);
+
+		ImGui::SetNextItemWidth(150);
+
 
 		ImGui::End();
 	}
@@ -805,13 +843,13 @@ namespace render
 							ImGui::TextDisabled("--");
 
 							ImGui::TableSetColumnIndex(col_type);
-							if (f.array_count > 0)
-							{
-								ImGui::TextColored(text_color, f.type());
-							}
-							else
+							if (f.is_array())
 							{
 								ImGui::TextColored(text_color, "%s[%u]", f.type(), f.array_count);
+							}
+							else
+							{								
+								ImGui::TextColored(text_color, f.type());
 							}
 						}
 
@@ -1095,7 +1133,7 @@ namespace scan
 			tmh::delay_current_thread_ms(sw, 20);
 		}
 
-		if (!plcscan::connect(input.plc_ip, input.plc_path, plc.data))
+		if (!plcscan::connect(input.plc_ip.data, input.plc_path.data, plc.data))
 		{
 			plc.has_error = true;
 			return;
@@ -1126,6 +1164,9 @@ namespace app
 {
 	void init()
 	{
+		auto& state = g_app_state;
+		auto& input = g_user_input;
+
 		
 	}
 
@@ -1139,6 +1180,8 @@ namespace app
 
 	std::thread start_worker()
 	{
+		g_app_state.app_running = true;
+
 		auto worker = std::thread(scan::start);
 
 		return worker;

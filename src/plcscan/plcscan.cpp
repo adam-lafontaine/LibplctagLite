@@ -4,12 +4,15 @@
 
 #include "../util/qsprintf.hpp"
 #include "../util/time_helper.hpp"
+#include "../util/memory_helper.hpp"
 #include "plcscan.hpp"
 
 #include <array>
 #include <cassert>
 
 namespace tmh = time_helper;
+namespace mh = memory_helper;
+
 
 using ByteOffset = MemoryOffset<u8>;
 
@@ -20,197 +23,6 @@ using UdtFieldType = plcscan::UdtFieldType;
 using UdtType = plcscan::UdtType;
 using PlcTagData = plcscan::PlcTagData;
 
-
-static void copy_8(u8* src, u8* dst, u32 len8)
-{
-    switch (len8)
-    {
-    case 1:
-        *dst = *src;
-        return;
-
-    case 2:
-        *(u16*)dst = *(u16*)src;
-        return;
-
-    case 3:
-        *(u16*)dst = *(u16*)src;
-        dst[2] = src[2];
-        return;
-
-    case 4:
-        *(u32*)dst = *(u32*)src;
-        return;
-    
-    case 5:
-        *(u32*)dst = *(u32*)src;
-        dst[4] = src[4];
-        return;
-    
-    case 6:
-        *(u32*)dst = *(u32*)src;
-        *(u16*)(dst + 4) = *(u16*)(src + 4);
-        return;
-    
-    case 7:
-        *(u32*)dst = *(u32*)src;
-        *(u16*)(dst + 4) = *(u16*)(src + 4);
-        dst[6] = src[6];
-        return;
-
-    case 8:
-        *(u64*)dst = *(u64*)src;
-        return;
-
-    default:
-        break;
-    }
-}
-
-
-static void copy_bytes(u8* src, u8* dst, u32 len)
-{
-    constexpr auto size64 = (u32)sizeof(u64);
-
-    auto len64 = len / size64;
-    auto src64 = (u64*)src;
-    auto dst64 = (u64*)dst;
-
-    auto len8 = len - len64 * size64;
-    auto src8 = (u8*)(src64 + len64);
-    auto dst8 = (u8*)(dst64 + len64);
-
-    for (size_t i = 0; i < len64; ++i)
-    {
-        dst64[i] = src64[i];
-    }
-
-    copy_8(src8, dst8, len8);
-}
-
-
-static bool bytes_equal(u8* lhs, u8* rhs, u32 len)
-{
-    switch (len)
-    {
-    case 1: return *lhs == *rhs;
-
-    case 2: return *((u16*)lhs) == *((u16*)rhs);
-
-    case 4: return *((u32*)lhs) == *((u32*)rhs);
-
-    case 8: return *((u64*)lhs) == *((u64*)rhs);
-
-    default:
-        break;
-    }
-
-    constexpr auto size64 = (u32)sizeof(u64);
-
-    auto len64 = len / size64;
-    auto lhs64 = (u64*)lhs;
-    auto rhs64 = (u64*)rhs;
-
-    for (u32 i = 0; i < len64; ++i)
-    {
-        if (lhs64[i] != rhs64[i])
-        {
-            return false;
-        }
-    }
-
-    for (u32 i = len64 * 8; i < len; ++i)
-    {
-        if (lhs[i] != rhs[i])
-        {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-
-static void copy_unsafe(cstr src, StringView const& dst)
-{
-    auto len = strlen(src);
-    len = len < dst.length ? len : dst.length;
-
-    for (u32 i = 0; i < len; ++i)
-    {
-        dst.data[i] = src[i];
-    }
-}
-
-
-static void copy_unsafe(StringView const& src, char* dst)
-{
-    auto len = strlen(dst);
-    len = len < src.length ? len : src.length;
-
-    for (u32 i = 0; i < len; ++i)
-    {
-        dst[i] = src.data[i];
-    }
-}
-
-
-static void copy(StringView const& src, StringView const& dst)
-{
-    auto len = src.length < dst.length ? src.length : dst.length;
-
-    copy_bytes((u8*)src.data, (u8*)dst.data, len);
-}
-
-
-static void copy(ByteView const& src, ByteView const& dst)
-{
-    assert(src.length <= dst.length);
-
-    copy_bytes(src.data, dst.data, src.length);
-}
-
-
-static void zero_string(StringView const& str)
-{
-    mb::zero_view(str);
-}
-
-
-static StringView to_string_view_unsafe(cstr str)
-{
-    StringView view{};
-    view.data = (char*)str;
-    view.length = (u32)strlen(str);
-
-    return view;
-}
-
-
-static StringView to_string_view_unsafe(char* str, u32 len)
-{
-    StringView view{};
-    view.data = str;
-    view.length = len;
-
-    return view;
-}
-
-
-static bool string_contains(cstr str, char c)
-{
-    auto len = strlen(str);
-
-    for (u32 i = 0; i < len; ++i)
-    {
-        if (str[i] == c)
-        {
-            return true;
-        }
-    }
-
-    return false;
-}
 
 
 template <typename T>
@@ -602,7 +414,7 @@ namespace /* private */
         }
 
         auto invalid_begin_chars = "0123456789_";
-        if (string_contains(invalid_begin_chars, tag_name[0]))
+        if (mh::string_contains(invalid_begin_chars, tag_name[0]))
         {
             return false;
         }
@@ -619,7 +431,7 @@ namespace /* private */
         for (u32 i = begin; i < len; ++i)
         {
             auto c = tag_name[i];
-            if (!string_contains(valid_chars, c))
+            if (!mh::string_contains(valid_chars, c))
             {
                 return false;
             }
@@ -632,7 +444,7 @@ namespace /* private */
     static bool is_valid_tag_name(StringView tag_name)
     {
         char buffer[MAX_TAG_NAME_LENGTH + 1] = { 0 };
-        copy_unsafe(tag_name, buffer);
+        mh::copy_unsafe(tag_name, buffer);
 
         return is_valid_tag_name(buffer);
     }
@@ -684,7 +496,7 @@ namespace /* private */
 
         int offset = H_size;
 
-        entry.name = to_string_view_unsafe((char*)(entry_data + offset), (u32)h.string_len);
+        entry.name = mh::to_string_view_unsafe((char*)(entry_data + offset), (u32)h.string_len);
 
         if (is_valid_tag_name(entry.name))
         {
@@ -778,7 +590,7 @@ namespace /* private */
         tag.tag_name = mb::push_cstr_view(mem.name_data, name_alloc_len);        
         tag.bytes = mb::sub_view(mem.public_tag_data, conn.scan_offset);
 
-        copy(entry.name, tag.tag_name);
+        mh::copy(entry.name, tag.tag_name);
 
         mem.connections.push_back(conn);
         tags.push_back(tag);
@@ -840,7 +652,7 @@ namespace /* private */
 
         if (!id32::is_udt_type(type_id))
         {
-            return to_string_view_unsafe(tag_type_str((FixedType)type_id));
+            return mh::to_string_view_unsafe(tag_type_str((FixedType)type_id));
         }
         
         for (auto const& udt : udts)
@@ -851,7 +663,7 @@ namespace /* private */
             }
         }
 
-        return to_string_view_unsafe(udt_type);
+        return mh::to_string_view_unsafe(udt_type);
     }
     
     
@@ -1003,13 +815,13 @@ namespace /* private */
             ++name_len;
         }
 
-        entry.udt_name = to_string_view_unsafe(string_data, name_len);
+        entry.udt_name = mh::to_string_view_unsafe(string_data, name_len);
 
         str_offset = string_len + 1;
         for (auto& field : entry.fields)
         {
             auto str = string_data + str_offset;
-            field.field_name = to_string_view_unsafe(str);
+            field.field_name = mh::to_string_view_unsafe(str);
             str_offset++;
         }
 
@@ -1097,8 +909,8 @@ namespace /* private */
         dt.data_type_name = mb::push_cstr_view(name_data, name_len + 1);
         dt.data_type_description = mb::push_cstr_view(name_data, desc_len + 1);
 
-        copy_unsafe(name_str, dt.data_type_name);
-        copy_unsafe(desc_str, dt.data_type_description);
+        mh::copy_unsafe(name_str, dt.data_type_name);
+        mh::copy_unsafe(desc_str, dt.data_type_description);
 
         types.push_back(dt);
     }
@@ -1141,8 +953,8 @@ namespace /* private */
         ut.udt_name = mb::push_cstr_view(buffer, name_len + 1);
         ut.udt_description = mb::push_cstr_view(buffer, desc_len + 1);
         
-        copy(entry.udt_name, ut.udt_name);
-        copy_unsafe(desc_str, ut.udt_description);
+        mh::copy(entry.udt_name, ut.udt_name);
+        mh::copy_unsafe(desc_str, ut.udt_description);
 
         ut.fields.reserve(entry.fields.size());
         for (auto const& f : entry.fields)
@@ -1154,7 +966,7 @@ namespace /* private */
             ft.bit_number = f.bit_number;
 
             ft.field_name = mb::push_cstr_view(buffer, f.field_name.length + 1);
-            copy(f.field_name, ft.field_name);
+            mh::copy(f.field_name, ft.field_name);
 
             ut.fields.push_back(ft);
         }
@@ -1241,9 +1053,9 @@ namespace
 
     static void init_controller(ControllerAttr& attr)
     {
-        attr.connection_string = to_string_view_unsafe(attr.string_data);
+        attr.connection_string = mh::to_string_view_unsafe(attr.string_data);
 
-        zero_string(attr.connection_string);
+        mh::zero_string(attr.connection_string);
     }
 
 
@@ -1258,7 +1070,7 @@ namespace
             "&elem_size=%d"
             "&elem_count=%d";
 
-        zero_string(attr.connection_string);
+        mh::zero_string(attr.connection_string);
 
         auto dst = attr.connection_string.data;
         auto max_len = (int)attr.connection_string.length;
@@ -1501,7 +1313,7 @@ namespace
         auto src = mb::make_read_view(mem.scan_data);
         auto dst = mb::make_view(mem.public_tag_data);
 
-        copy(src, dst);
+        mh::copy(src, dst);
     }
   
 }
