@@ -789,14 +789,12 @@ namespace render
 	}
 
 
-	static void data_type_window(List<UI_DataType> const& data_types)
-	{
-		ImGui::Begin("Data Types");
-
-		constexpr int n_columns = 3;
+	static void data_type_table(List<UI_DataType> const& data_types)
+	{		
 		constexpr int col_name = 0;
 		constexpr int col_desc = 1;
 		constexpr int col_size = 2;
+		constexpr int n_columns = 3;
 
 		auto table_flags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
 		auto table_dims = ImGui::GetContentRegionAvail();
@@ -828,20 +826,16 @@ namespace render
 
 			ImGui::EndTable();
 		}
-
-		ImGui::End();
 	}
 
 
-	static void udt_type_window(List<UI_UdtType> const& udt_types)
-	{
-		ImGui::Begin("UDTs");
-
-		constexpr int n_columns = 4;
+	static void udt_type_table(List<UI_UdtType> const& udt_types)
+	{	
 		constexpr int col_name = 0;
 		constexpr int col_offset = 1;
 		constexpr int col_size = 2;
 		constexpr int col_type = 3;
+		constexpr int n_columns = 4;
 
 
 		auto table_flags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
@@ -897,7 +891,7 @@ namespace render
 								ImGui::TextColored(text_color, "%s[%u]", f.type(), f.array_count);
 							}
 							else
-							{								
+							{
 								ImGui::TextColored(text_color, f.type());
 							}
 						}
@@ -912,6 +906,32 @@ namespace render
 			}
 
 			ImGui::EndTable();
+		}
+	}
+	
+	
+	static void data_types_window(App_State const& state)
+	{
+		ImGui::Begin("Data Types");
+
+		ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
+		if (ImGui::BeginTabBar("DataTypesTabBar", tab_bar_flags))
+		{
+			if (ImGui::BeginTabItem("Types"))
+			{
+				data_type_table(state.plc.data.data_types);
+
+				ImGui::EndTabItem();
+			}
+
+			if (ImGui::BeginTabItem("UDT"))
+			{
+				udt_type_table(state.plc.data.udt_types);
+
+				ImGui::EndTabItem();
+			}
+
+			ImGui::EndTabBar();
 		}
 
 		ImGui::End();
@@ -929,6 +949,7 @@ namespace render
 
 		auto table_flags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
 		auto table_dims = ImGui::GetContentRegionAvail();
+		table_dims.y /= 2;
 
 		auto text_color = WHITE;
 
@@ -1028,41 +1049,78 @@ namespace render
 	}
 
 
-	static void number_tag_window(List<UI_Tag> const& tags)
+	static void tag_window(App_State const& state)
 	{
-		ImGui::Begin("Numeric");
-		
-		ui_tag_table(tags, "NumericTable");
+		ImGui::Begin("Tags");
 
-		ImGui::End();
-	}
+		ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
+		if (ImGui::BeginTabBar("TagsTabBar", tab_bar_flags))
+		{
+			if (ImGui::BeginTabItem("Numeric"))
+			{
+				if (ImGui::CollapsingHeader("Tags"))
+				{
+					ui_tag_table(state.number_tags, "NumericTagTable");
+				}
+
+				if (ImGui::CollapsingHeader("Arrays"))
+				{
+					ui_tag_array_table(state.number_array_tags, "NumericArrayTagTable");
+				}
+
+				ImGui::EndTabItem();
+			}
+
+			if (ImGui::BeginTabItem("String"))
+			{
+				if (ImGui::CollapsingHeader("Tags"))
+				{
+					ui_tag_table(state.string_tags, "StringTagTable");
+				}
+
+				if (ImGui::CollapsingHeader("Arrays"))
+				{
+					ui_tag_array_table(state.string_array_tags, "StringArrayTagTable");
+				}
+
+				ImGui::EndTabItem();
+			}
+
+			if (ImGui::BeginTabItem("UDT"))
+			{
+				if (ImGui::CollapsingHeader("Tags"))
+				{
+					
+				}
+
+				if (ImGui::CollapsingHeader("Arrays"))
+				{
+					
+				}
+
+				ImGui::EndTabItem();
+			}
 
 
-	static void number_array_tag_window(List<UI_ArrayTag> const& tags)
-	{
-		ImGui::Begin("Numeric Arrays");
+			if (ImGui::BeginTabItem("Misc"))
+			{
+				if (ImGui::CollapsingHeader("Tags"))
+				{
+					ui_tag_table(state.misc_tags, "MiscTableTable");
+				}
 
-		ui_tag_array_table(tags, "NumericArrayTable");
+				if (ImGui::CollapsingHeader("Arrays"))
+				{
+					ui_tag_array_table(state.misc_array_tags, "MiscArrayTagTable");
+				}
 
-		ImGui::End();
-	}
-
-
-	static void string_tag_window(List<UI_Tag> const& tags)
-	{
-		ImGui::Begin("Strings");
-
-		ui_tag_table(tags, "StringTable");
-
-		ImGui::End();
-	}
+				ImGui::EndTabItem();
+			}
 
 
-	static void string_array_tag_window(List<UI_ArrayTag> const& tags)
-	{
-		ImGui::Begin("String Arrays");
+			ImGui::EndTabBar();
+		}
 
-		ui_tag_array_table(tags, "StringArrayTable");
 
 		ImGui::End();
 	}
@@ -1268,14 +1326,9 @@ namespace app
 			command::process_command(cmd, state);
 		}		
 
-		render::data_type_window(state.plc.data.data_types);
+		render::data_types_window(state);
 
-		render::udt_type_window(state.plc.data.udt_types);
-
-		render::number_tag_window(state.number_tags);
-		render::number_array_tag_window(state.number_array_tags);
-		render::string_tag_window(state.string_tags);
-		render::string_array_tag_window(state.string_array_tags);
+		render::tag_window(state);
 
 		return true;
 	}
