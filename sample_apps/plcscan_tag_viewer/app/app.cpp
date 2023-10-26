@@ -1001,16 +1001,24 @@ namespace render
 				ImGui::TableSetColumnIndex(col_size);
 				ImGui::TextColored(text_color, "%u", tag.size);
 
-				ImGui::TableSetColumnIndex(col_value);
-				ImGui::TextDisabled("--");
-
+				// temp
 				ImGui::TableSetColumnIndex(col_name);
-				if (ImGui::TreeNode(tag.name))
-				{
-					// fields
+				ImGui::TextColored(text_color, "%s", tag.name);				
 
-					ImGui::TreePop();
-				}
+				ImGui::TableSetColumnIndex(col_value);
+				ImGui::TextColored(text_color, "%s", tag.value);
+
+				// TODO
+				//ImGui::TableSetColumnIndex(col_value);
+				//ImGui::TextDisabled("--");
+
+				//ImGui::TableSetColumnIndex(col_name);				
+				//if (ImGui::TreeNode(tag.name))
+				//{
+				//	// fields
+
+				//	ImGui::TreePop();
+				//}
 			}
 
 			ImGui::EndTable();
@@ -1065,21 +1073,26 @@ namespace render
 				{
 					for (u32 i = 0; i < array_count; ++i)
 					{
-						ImGui::TableNextRow();
+						ImGui::TableNextRow();						
 
-						ImGui::TableSetColumnIndex(col_value);
-						ImGui::TextDisabled("--");
-
+						// temp
 						ImGui::TableSetColumnIndex(col_index);
 						ImGui::TextColored(text_color, "[%u]", i);
+						
+						ImGui::TableSetColumnIndex(col_value);
+						ImGui::TextColored(text_color, "%s", tag.values[i]);
 
+						// TODO:
+						//ImGui::TableSetColumnIndex(col_value);
+						//ImGui::TextDisabled("--");
 
-						if (ImGui::TreeNode(tag.name /* does this work?*/, "[%u]", i))
-						{
-							// fields
+						//ImGui::TableSetColumnIndex(col_index);						
+						//if (ImGui::TreeNode(tag.name /* does this work?*/, "[%u]", i))
+						//{
+						//	// fields
 
-							ImGui::TreePop();
-						}
+						//	ImGui::TreePop();
+						//}
 					}
 
 					ImGui::TreePop();
