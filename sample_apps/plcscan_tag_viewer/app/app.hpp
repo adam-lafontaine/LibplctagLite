@@ -23,4 +23,4 @@ namespace app
 }
 
 
-//#define PLC_IMGUI_SHOW_DEMO
+#define PLC_IMGUI_SHOW_DEMO

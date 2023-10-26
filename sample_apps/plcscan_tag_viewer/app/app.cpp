@@ -62,6 +62,8 @@ namespace
 		cstr name = 0;
 		cstr type = 0;
 		u32 size = 0;
+
+		// TODO: fields
 		
 		StringView value;
 
@@ -77,6 +79,8 @@ namespace
 		cstr name = 0;
 		cstr type = 0;
 		u32 size = 0;
+
+		// TODO: fields
 		
 		List<StringView> values;
 
@@ -1104,7 +1108,7 @@ namespace render
 	}
 	
 	
-	static void command_window(UI_Command& cmd, UI_Input& input)
+	static void command_window(App_State const& state, UI_Command& cmd, UI_Input& input)
 	{
 		ImGui::Begin("Controller");
 
@@ -1121,6 +1125,18 @@ namespace render
 		if (ImGui::Button("Go", ImVec2(50, 30)))
 		{
 			cmd.start_scanning = true;
+		}
+
+		ImGui::SetCursorPos(ImVec2(320, 57));
+
+		if (state.plc.is_scanning)
+		{
+			ImGui::TextColored(GREEN, "OK");
+		}
+
+		if (state.plc.has_error)
+		{
+			ImGui::TextColored(RED, "ERROR");
 		}
 
 		ImGui::End();
@@ -1420,7 +1436,7 @@ namespace app
 
 		ImGui::DockSpaceOverViewport(nullptr, ImGuiDockNodeFlags_None);
 
-		render::command_window(cmd, input);
+		render::command_window(state, cmd, input);
 
 		if (cmd.has_command())
 		{
