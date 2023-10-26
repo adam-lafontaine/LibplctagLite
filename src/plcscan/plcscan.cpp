@@ -1368,14 +1368,13 @@ namespace plcscan
 
         if (!enumerate_tags(g_attr, g_tag_mem, g_dt_mem, data))
         {
-            shutdown();
             return false;
         }
 
         connect_tags(g_attr, g_tag_mem, data.tags);        
 
         data.is_connected = true;
-        return false;
+        return true;
     }
 
 
