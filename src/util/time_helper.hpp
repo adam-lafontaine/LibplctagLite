@@ -54,7 +54,7 @@ namespace time_helper
 {
     namespace chr = std::chrono;
 
-	inline void delay_current_thread(Stopwatch& sw, double min_delay_ms = 20.0)
+	inline void delay_current_thread_ms(Stopwatch& sw, double min_delay_ms = 20.0)
 	{
 		auto ms = sw.get_time_milli();
 		if (ms < min_delay_ms)
@@ -68,6 +68,12 @@ namespace time_helper
 	inline long long get_timestamp()
 	{
 		return chr::duration_cast<chr::milliseconds>(chr::system_clock::now().time_since_epoch()).count();
+	}
+
+
+	inline void delay_current_thread_ms(unsigned long long delay_ms = 20)
+	{
+		std::this_thread::sleep_for(chr::milliseconds(delay_ms));
 	}
 }
 

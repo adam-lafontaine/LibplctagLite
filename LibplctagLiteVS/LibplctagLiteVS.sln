@@ -11,6 +11,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PlcScan03ListTags", "PlcSca
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PlcScan04SimpleScan", "PlcScan04SimpleScan\PlcScan04SimpleScan.vcxproj", "{9A506A24-6F7A-495A-932D-79FD69F26212}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PlcScan05TagViewer", "PlcScan05TagViewer\PlcScan05TagViewer.vcxproj", "{1DCFC678-9638-43F4-9688-410A2E3051C8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -51,6 +53,14 @@ Global
 		{9A506A24-6F7A-495A-932D-79FD69F26212}.Release|x64.Build.0 = Release|x64
 		{9A506A24-6F7A-495A-932D-79FD69F26212}.Release|x86.ActiveCfg = Release|Win32
 		{9A506A24-6F7A-495A-932D-79FD69F26212}.Release|x86.Build.0 = Release|Win32
+		{1DCFC678-9638-43F4-9688-410A2E3051C8}.Debug|x64.ActiveCfg = Debug|x64
+		{1DCFC678-9638-43F4-9688-410A2E3051C8}.Debug|x64.Build.0 = Debug|x64
+		{1DCFC678-9638-43F4-9688-410A2E3051C8}.Debug|x86.ActiveCfg = Debug|Win32
+		{1DCFC678-9638-43F4-9688-410A2E3051C8}.Debug|x86.Build.0 = Debug|Win32
+		{1DCFC678-9638-43F4-9688-410A2E3051C8}.Release|x64.ActiveCfg = Release|x64
+		{1DCFC678-9638-43F4-9688-410A2E3051C8}.Release|x64.Build.0 = Release|x64
+		{1DCFC678-9638-43F4-9688-410A2E3051C8}.Release|x86.ActiveCfg = Release|Win32
+		{1DCFC678-9638-43F4-9688-410A2E3051C8}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,19 +1,11 @@
 #pragma once
 /* LICENSE: See end of file for license information. */
 
-
-#include "../util/types.hpp"
-#include "../util/memory_buffer.hpp"
+#include "../util/mh_types.hpp"
 
 #include <vector>
 #include <functional>
 
-
-namespace mb = memory_buffer;
-
-
-using StringView = MemoryView<char>;
-using ByteView = MemoryView<u8>;
 
 template <typename T>
 using List = std::vector<T>;
@@ -33,14 +25,17 @@ namespace plcscan
         u32 array_count = 0;
 
         StringView tag_name;
+        StringView data_type_name;
 
         ByteView bytes;
 
         // TODO: tag/connection status
 
-        cstr name() const { return tag_name.begin; }
-        u8* data() const { return bytes.begin; }
+        cstr name() const { return tag_name.data; }
+        cstr type() const { return data_type_name.data; }
+        u8* data() const { return bytes.data; }
         u32 size() const { return (u32)bytes.length; }
+        bool is_array() const { return array_count > 1; }
     };
 
 
@@ -54,8 +49,8 @@ namespace plcscan
 
         u32 size = 0;
 
-        cstr name() const { return data_type_name.begin; }
-        cstr description() const { return data_type_description.begin; }
+        cstr name() const { return data_type_name.data; }
+        cstr description() const { return data_type_description.data; }
     };
 
 
@@ -66,11 +61,17 @@ namespace plcscan
         u32 offset;
 
         u32 array_count = 0;
-        u32 bit_number = 0;
+        i32 bit_number = -1;
 
         StringView field_name;
+        StringView data_type_name;
 
-        cstr name() const { return field_name.begin; }
+        cstr name() const { return field_name.data; }
+        cstr type() const { return data_type_name.data; }
+
+        bool is_array() const { return array_count > 1; }
+
+        bool is_bit() const { return bit_number >= 0; }
     };
 
 
@@ -86,8 +87,8 @@ namespace plcscan
 
         u32 size = 0;
 
-        cstr name() const { return udt_name.begin; }
-        cstr description() const { return udt_description.begin; }
+        cstr name() const { return udt_name.data; }
+        cstr description() const { return udt_description.data; }
     };
 
 
@@ -104,7 +105,7 @@ namespace plcscan
 }
 
 
-/* enum */
+/* api */
 
 namespace plcscan
 {
@@ -126,15 +127,10 @@ namespace plcscan
 
         UDT,
 
-        OTHER
+        MISC
     };
-}
 
 
-/* api */
-
-namespace plcscan
-{
     using data_f = std::function<void(PlcTagData&)>;
     using bool_f = std::function<bool()>;
 
@@ -147,12 +143,9 @@ namespace plcscan
 
     TagType get_tag_type(DataTypeId32 type_id);
 
-    cstr get_fast_type_name(DataTypeId32 type_id);
-
-    void scan(data_f const& scan_cb, bool_f const& scan_condition, PlcTagData& data);
-
-    
+    void scan(data_f const& scan_cb, bool_f const& scan_condition, PlcTagData& data);    
 }
+
 
 /*
 MIT License

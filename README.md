@@ -106,7 +106,7 @@ plcscan::TagType type = plcscan::get_tag_type(tag.type_id);
 plcscan::shutdown();
 ```
 
-The possible `TagType` values are: `BOOL`,`SINT`, `INT`, `DINT`, `LINT`, `USINT`, `UINT`, `UDINT`, `ULINT`, `REAL`, `LREAL`, `STRING`, `UDT`, and `OTHER`.
+The possible `TagType` values are: `BOOL`,`SINT`, `INT`, `DINT`, `LINT`, `USINT`, `UINT`, `UDINT`, `ULINT`, `REAL`, `LREAL`, `STRING`, `UDT`, and `MISC`.
 
 If the tag is not a `UDT` type, use the `type_id` to seach the `data_types` for specific type information.  If it is a `UDT`, then search the `udt_types`.
 
@@ -165,30 +165,7 @@ printf("Type: %s / %s\n", name, description);
 plcscan::shutdown();
 ```
 
-Use `get_fast_type_name()` as an easier alternative to simply get the type name;
-
-```cpp
-auto plc_data = plcscan::init();
-if (!plcscan::connect(PLC_IP, PLC_PATH, plc_data))
-{
-    // error
-}
-
-// just get the first tag
-auto tag = plc_data.tags[0];
-
-const char* type_name = plcscan::get_fast_type_name(tag.type_id);
-
-printf("Type: %s\n", type_name);
-
-// ...
-
-plcscan::shutdown();
-```
-
-Note: At this time `get_fast_type_name()` will only return the string "UDT" for UDT types.
-
-Have the library continuously scan the PLC for tag values by providing a callback function for processing tag data and a callback function to signal when scanning should stop.
+Have the library continuously scan the PLC for tag values by providing a callback function for processing tag data, and a callback function to signal when scanning should stop.
 
 ```cpp
 void process_plc_scan(plcscan::PlcTagData& data)
@@ -324,6 +301,15 @@ Demonstrates how to setup an application to scan and process tags continuously. 
 `/sample_apps/plcscan_simple_scan/simple_scan_main.cpp`
 
 * untested (2023-10-21)
+
+### Example 5: Tag Viewer
+
+Displays connected PLC information in a user interface using [Dear Imgui](https://github.com/ocornut/imgui)
+* Enter the PLC IP address and path and click "Go"
+
+`/sample_apps/plcscan_tag_viewer/tag_viewer_win32.cpp`
+
+* untested (2023-10-26)
 
 ## libplctag
 
