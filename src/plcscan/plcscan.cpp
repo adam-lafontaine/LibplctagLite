@@ -280,7 +280,7 @@ namespace /* private */
     {
         switch (t)
         {
-        case FixedType::SYSTEM:               return 0;
+        case FixedType::SYSTEM:               return MAX_TYPE_BYTES;
         case FixedType::BOOL:                 return 1;
         case FixedType::SINT:                 return 1;
         case FixedType::INT:                  return 2;
@@ -1066,7 +1066,7 @@ namespace
 
     static void init_controller(ControllerAttr& attr)
     {
-        attr.connection_string = mh::to_string_view_unsafe(attr.string_data);
+        attr.connection_string = mh::to_string_view_unsafe(attr.string_data, (u32)sizeof(attr.string_data));
 
         mh::zero_string(attr.connection_string);
     }

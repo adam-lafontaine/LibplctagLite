@@ -271,6 +271,23 @@ namespace memory_helper
 
         return false;
     }
+
+
+    inline bool string_contains(cstr str, char c, u32& pos)
+    {
+        auto len = strlen(str);
+
+        for (u32 i = 0; i < len; ++i)
+        {
+            if (str[i] == c)
+            {
+                pos = i;
+                return true;
+            }
+        }
+
+        return false;
+    }
 }
 
 
