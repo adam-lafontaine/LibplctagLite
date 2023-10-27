@@ -7,6 +7,35 @@
 
 namespace memory_helper
 {
+    inline StringView push_cstr_view(MemoryBuffer<char>& buffer, unsigned total_bytes)
+    {
+        assert(total_bytes > 0);
+        assert(buffer.data_);
+        assert(buffer.capacity_);
+
+        auto bytes_available = (buffer.capacity_ - buffer.size_) >= total_bytes;
+        assert(bytes_available);
+
+        StringView view{};
+
+        view.char_data = mb::push_elements(buffer, total_bytes);
+
+        view.length = total_bytes - 1; /* zero terminated */
+        view.char_data[view.length] = 0;
+
+        return view;
+    }
+
+
+    inline StringView push_cstr_view(MemoryBuffer<char>& buffer, size_t total_bytes)
+    {
+        return push_cstr_view(buffer, (unsigned)total_bytes);
+    }
+}
+
+
+namespace memory_helper
+{
     inline void copy_8(u8* src, u8* dst, u32 len8)
     {
         switch (len8)
@@ -157,10 +186,17 @@ namespace memory_helper
         auto len = strlen(src);
         len = len < dst.length ? len : dst.length;
 
-        for (u32 i = 0; i < len; ++i)
+        u32 i = 0;
+
+        for (; i < len; ++i)
         {
-            dst.data[i] = src[i];
+            dst.char_data[i] = src[i];
         }
+
+        /*for (; i <= dst.length; ++i)
+        {
+            dst.char_data[i] = 0;
+        }*/
     }
 
 
@@ -171,7 +207,7 @@ namespace memory_helper
 
         for (u32 i = 0; i < len; ++i)
         {
-            dst[i] = src.data[i];
+            dst[i] = src.char_data[i];
         }
     }
 
@@ -180,7 +216,7 @@ namespace memory_helper
     {
         auto len = src.length < dst.length ? src.length : dst.length;
 
-        copy_bytes((u8*)src.data, (u8*)dst.data, len);
+        copy_bytes((u8*)src.char_data, (u8*)dst.char_data, len);
     }
 
 
@@ -194,14 +230,17 @@ namespace memory_helper
 
     inline void zero_string(StringView const& str)
     {
-        mb::zero_view(str);
+        for (u32 i = 0; i < str.length; ++i)
+        {
+            str.char_data[i] = 0;
+        }
     }
 
 
     inline StringView to_string_view_unsafe(cstr str)
     {
         StringView view{};
-        view.data = (char*)str;
+        view.char_data = (char*)str;
         view.length = (u32)strlen(str);
 
         return view;
@@ -211,7 +250,7 @@ namespace memory_helper
     inline StringView to_string_view_unsafe(char* str, u32 len)
     {
         StringView view{};
-        view.data = str;
+        view.char_data = str;
         view.length = len;
 
         return view;
