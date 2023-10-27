@@ -569,8 +569,8 @@ namespace
 		input.plc_ip = mh::push_cstr_view(input.string_data, UI_PLC_IP_BYTES);
 		input.plc_path = mh::push_cstr_view(input.string_data, UI_PLC_PATH_BYTES);
 
-		mh::copy_unsafe(DEFAULT_PLC_IP, input.plc_ip);
-		mh::copy_unsafe(DEFAULT_PLC_PATH, input.plc_path);
+		mh::copy_unsafe(DEFAULT_PLC_IP, input.plc_ip, (u32)strlen(DEFAULT_PLC_IP));
+		mh::copy_unsafe(DEFAULT_PLC_PATH, input.plc_path, (u32)sizeof(DEFAULT_PLC_PATH));
 	}
 
 

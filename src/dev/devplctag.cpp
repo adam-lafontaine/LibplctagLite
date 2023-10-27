@@ -4,6 +4,7 @@
 #include <vector>
 #include <array>
 #include <random>
+#include <string>
 
 template <typename T>
 using List = std::vector<T>;
@@ -63,12 +64,19 @@ namespace dev
     }
 
 
+    static u32 value_size(TagEntry const& entry)
+    {
+        return entry.element_length * entry.array_dims[0];
+    }
+
+
     u16 get_symbol_size(u16 symbol_type)
     {
         switch (symbol_type)
         {
         case BOOL:
-        case SINT: return 1;
+        case SINT: 
+        case USINT: return 1;
 
         case INT:
         case UINT: return 2;
@@ -118,8 +126,7 @@ namespace dev
         List<TagEntry> tag_entries;
         List<TagValue> tag_values;
 
-        ByteBuffer tag_entry_bytes;
-        ByteBuffer tag_value_bytes;
+        ByteBuffer tag_value_data;
 
         TagDatabase()
         {
@@ -200,6 +207,86 @@ namespace dev
             to_tag_entry(LREAL, 5, "LREAL_array_tag_C"),
         };
     }
+
+
+    static int push_tag_entry(TagEntry const& entry, ByteView const& bytes, int offset)
+    {        
+        auto dst = bytes.data + offset;
+        auto src = (u8*)(&entry.instance_id);
+        auto len = sizeof(entry.instance_id); 
+        mh::copy_bytes(src, dst, (u32)len);
+
+        offset += (int)len;
+        dst += len;
+        src = (u8*)(&entry.symbol_type);
+        len = sizeof(entry.symbol_type);
+        mh::copy_bytes(src, dst, (u32)len);
+
+        offset += (int)len;
+        dst += len;
+        src = (u8*)(&entry.element_length);
+        len = sizeof(entry.element_length);
+        mh::copy_bytes(src, dst, (u32)len);
+
+        offset += (int)len;
+        dst += len;
+        src = (u8*)(&entry.array_dims);
+        len = sizeof(entry.array_dims);
+        mh::copy_bytes(src, dst, (u32)len);
+
+        offset += (int)len;
+        dst += len;
+        src = (u8*)(&entry.string_len);
+        len = sizeof(entry.string_len);
+        mh::copy_bytes(src, dst, (u32)len);
+
+        offset += (int)len;
+        dst += len;
+        src = (u8*)entry.tag_name;
+        len = strlen(entry.tag_name);
+        mh::copy_bytes(src, dst, (u32)len);
+
+        offset += (int)len;
+
+        return offset;
+    }
+    
+    
+    static int generate_tag_data(TagDatabase& tagdb)
+    {
+        u32 listing_bytes = 0;
+        u32 value_bytes = 0;
+
+        auto& value_data = tagdb.tag_value_data;
+
+        for (auto const& entry : tagdb.tag_entries)
+        {
+            listing_bytes += entry_size(entry);
+
+            value_bytes += listing_bytes;
+            value_bytes += value_size(entry);
+        }
+
+        if (!mb::create_buffer(value_data, value_bytes))
+        {
+            return false;
+        }
+
+        tagdb.tag_values.reserve(tagdb.tag_entries.size());
+
+        TagValue listing_tag{};
+        listing_tag.tag_id = 0;
+        listing_tag.value_bytes = mb::push_view(value_data, listing_bytes);
+        tagdb.tag_values.push_back(listing_tag);
+
+        int offset = 0;
+        for (auto const& entry : tagdb.tag_entries)
+        {
+            offset = push_tag_entry(entry, listing_tag.value_bytes, offset);
+        }
+
+        return (int)tagdb.tag_values.size() - 1;
+    }
 }
 
 
@@ -221,6 +308,15 @@ namespace dev
             if (attr[pos + 1] == 't')
             {
                 tagdb.tag_entries = create_tag_entries();
+
+                int handle = generate_tag_data(tagdb);
+
+                if (handle < 0)
+                {
+                    return -1;
+                }
+
+                return handle;
             }
             else if (attr[pos + 1] == 'u')
             {
@@ -232,6 +328,7 @@ namespace dev
 
         // create a tag
         // name matches one in the listing
+
 
         return -1; // PLCTAG_STATUS_OK;
     }
@@ -247,7 +344,7 @@ namespace dev
             return -1;
         }
         
-        if (!tagdb.new_tag_value())
+        if (handle == 0 || !tagdb.new_tag_value())
         {
             return PLCTAG_STATUS_OK;
         }
@@ -301,7 +398,6 @@ namespace dev
 
     void plc_tag_shutdown()
     {
-        mb::destroy_buffer(g_tag_db.tag_entry_bytes);
-        mb::destroy_buffer(g_tag_db.tag_value_bytes);
+        mb::destroy_buffer(g_tag_db.tag_value_data);
     }
 }

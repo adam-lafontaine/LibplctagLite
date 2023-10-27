@@ -271,13 +271,12 @@ namespace memory_buffer
 	MemoryView<T> make_view(MemoryBuffer<T> const& buffer)
 	{
 		assert(buffer.data_);
-		assert(buffer.size_);
 		assert(buffer.capacity_);
 
 		MemoryView<T> view{};
 
 		view.data = buffer.data_;
-		view.length = buffer.size_;
+		view.length = buffer.capacity_;
 
 		return view;
 	}
@@ -469,7 +468,7 @@ namespace memory_buffer
 		MemoryView<T> view{};
 
 		view.data = buffer.p_data_[buffer.read_id];
-		view.length = buffer.p_size_;
+		view.length = buffer.p_capacity_;
 
 		return view;
 	}

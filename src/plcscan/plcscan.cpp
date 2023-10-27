@@ -412,6 +412,8 @@ namespace /* private */
         u32 elem_size = 0;
         u32 elem_count = 0;
         StringView name;
+
+        char name_buffer[MAX_TAG_NAME_LENGTH + 1] = { 0 };
     };
 
 
@@ -456,10 +458,7 @@ namespace /* private */
 
     static bool is_valid_tag_name(StringView tag_name)
     {
-        char buffer[MAX_TAG_NAME_LENGTH + 1] = { 0 };
-        mh::copy_unsafe(tag_name, buffer);
-
-        return is_valid_tag_name(buffer);
+        return is_valid_tag_name(tag_name.data());
     }
 
 
@@ -509,7 +508,9 @@ namespace /* private */
 
         int offset = H_size;
 
-        entry.name = mh::to_string_view_unsafe((char*)(entry_data + offset), (u32)h.string_len);
+        entry.name = mh::to_string_view_unsafe(entry.name_buffer, (u32)h.string_len);
+
+        mh::copy_unsafe((char*)(entry_data + offset), entry.name, (u32)h.string_len);
 
         if (is_valid_tag_name(entry.name))
         {
@@ -591,6 +592,13 @@ namespace /* private */
         auto value_len = elem_size(entry);
         auto name_alloc_len = cstr_size(entry);
         auto name_copy_len = entry.name.length;
+
+        assert(value_len);
+
+        if (!value_len)
+        {
+            return;
+        }
 
         assert(name_alloc_len > name_copy_len); /* zero terminated */
 
@@ -729,6 +737,8 @@ namespace /* private */
 
         std::vector<FieldEntry> fields;
 
+        char name_buffer[MAX_TAG_NAME_LENGTH + 1] = { 0 };
+
         // how to parse scan data
     };
 
@@ -828,7 +838,9 @@ namespace /* private */
             ++name_len;
         }
 
-        entry.udt_name = mh::to_string_view_unsafe(string_data, name_len);
+        entry.udt_name = mh::to_string_view_unsafe(entry.name_buffer, name_len);
+
+        mh::copy_unsafe(string_data, entry.udt_name, name_len);
 
         str_offset = string_len + 1;
         for (auto& field : entry.fields)
@@ -912,8 +924,8 @@ namespace /* private */
         auto name_str = tag_type_str(type);
         auto desc_str = tag_description_str(type);
 
-        auto name_len = strlen(name_str);
-        auto desc_len = strlen(desc_str);
+        auto name_len = (u32)strlen(name_str);
+        auto desc_len = (u32)strlen(desc_str);
 
         DataType dt{};
         dt.type_id = type_id;
@@ -922,8 +934,8 @@ namespace /* private */
         dt.data_type_name = mh::push_cstr_view(name_data, name_len + 1);
         dt.data_type_description = mh::push_cstr_view(name_data, desc_len + 1);
 
-        mh::copy_unsafe(name_str, dt.data_type_name);
-        mh::copy_unsafe(desc_str, dt.data_type_description);
+        mh::copy_unsafe(name_str, dt.data_type_name, name_len);
+        mh::copy_unsafe(desc_str, dt.data_type_description, desc_len);
 
         types.push_back(dt);
     }
@@ -967,7 +979,7 @@ namespace /* private */
         ut.udt_description = mh::push_cstr_view(buffer, desc_len + 1);
         
         mh::copy(entry.udt_name, ut.udt_name);
-        mh::copy_unsafe(desc_str, ut.udt_description);
+        mh::copy_unsafe(desc_str, ut.udt_description, desc_len);
 
         ut.fields.reserve(entry.fields.size());
         for (auto const& f : entry.fields)
@@ -1019,9 +1031,7 @@ namespace /* private */
             return false;
         }
 
-        mb::zero_buffer(mem.type_name_data);
-
-        
+        mb::zero_buffer(mem.type_name_data);        
 
         return true;
     }
@@ -1225,7 +1235,7 @@ namespace
 
 namespace
 {
-    static bool enumerate_tags(ControllerAttr const& attr, TagMemory& tag_mem, DataTypeMemory& dt_mem, PlcTagData data)
+    static bool enumerate_tags(ControllerAttr const& attr, TagMemory& tag_mem, DataTypeMemory& dt_mem, PlcTagData& data)
     {
         ByteBuffer entry_buffer;
         
@@ -1280,6 +1290,8 @@ namespace
 
     static void connect_tags(ControllerAttr const& attr, TagMemory& mem, List<Tag>& tags)
     {
+        assert(mem.n_tags == (u32)tags.size());
+
         for (u32 i = 0; i < mem.n_tags; ++i)
         {
             auto& conn = mem.connections[i];
