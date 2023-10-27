@@ -2,6 +2,8 @@
 #include "../util/memory_helper.hpp"
 
 #include <vector>
+#include <array>
+#include <random>
 
 template <typename T>
 using List = std::vector<T>;
@@ -9,7 +11,7 @@ using List = std::vector<T>;
 namespace mh = memory_helper;
 
 
-namespace dev
+namespace
 {
     class TagEntry
     {
@@ -50,8 +52,8 @@ namespace
     {
     public:
 
-        List<dev::TagEntry> tag_entries;
-        List<dev::TagValue> tag_values;
+        List<TagEntry> tag_entries;
+        List<TagValue> tag_values;
 
         ByteBuffer tag_value_bytes;
     };
@@ -90,8 +92,30 @@ namespace dev
 
     int plc_tag_read(int handle, int timeout)
     {
-        // generate a new value for the tag
-        return -1; // PLCTAG_STATUS_OK;
+        auto& tags = g_tag_db.tag_values;
+
+        if (handle < 0 || (u64)handle >= tags.size())
+        {
+            return -1;
+        }
+
+        // 25% chance the value changes
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<int> dist(1, 4);
+        if (dist(gen) > 1)
+        {
+            return PLCTAG_STATUS_OK;
+        }
+
+        auto& value = tags[handle].value_bytes;
+
+        for (u32 i = 0; i < value.length; ++i)
+        {
+            value.data[i]++;
+        }
+
+        return PLCTAG_STATUS_OK;
     }
 
 
