@@ -98,20 +98,14 @@
     <ClCompile Include="..\..\sample_apps\plcscan_tag_viewer\tag_viewer_win32.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\imgui\imgui_impl_dx12.cpp">
-      <Filter>Source Files\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\imgui\imgui_impl_win32.cpp">
-      <Filter>Source Files\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\imgui\misc\single_file\imgui_single_file.cpp">
-      <Filter>Source Files\imgui</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\plcscan\plcscan.cpp">
       <Filter>Source Files\plcscan</Filter>
     </ClCompile>
     <ClCompile Include="..\..\sample_apps\plcscan_tag_viewer\app\app.cpp">
       <Filter>Source Files\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\imgui\include\imgui_impl.cpp">
+      <Filter>Source Files\imgui</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
