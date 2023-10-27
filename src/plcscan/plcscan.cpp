@@ -1,6 +1,19 @@
 /* LICENSE: See end of file for license information. */
 
+#define DEVPLCTAG
+
+#ifdef DEVPLCTAG
+
+#include "../dev/devplctag.hpp"
+using namespace dev;
+
+#else
+
 #include "../libplctag/libplctag.h"
+
+#endif
+
+
 
 #include "../util/qsprintf.hpp"
 #include "../util/time_helper.hpp"
@@ -552,7 +565,7 @@ namespace /* private */
         u32 n_tags = 0;
 
         ParallelBuffer<u8> scan_data;
-        MemoryBuffer<u8> public_tag_data;
+        ByteBuffer public_tag_data;
         MemoryBuffer<char> name_data;
     };
 
@@ -1140,7 +1153,7 @@ namespace
     }
 
 
-    static bool scan_to_buffer(int tag_handle, MemoryBuffer<u8>& dst)
+    static bool scan_to_buffer(int tag_handle, ByteBuffer& dst)
     {
         auto timeout = 100;
 
@@ -1173,7 +1186,7 @@ namespace
     }
 
 
-    static bool scan_to_buffer(ControllerAttr const& attr, cstr tag_name, MemoryBuffer<u8>& dst)
+    static bool scan_to_buffer(ControllerAttr const& attr, cstr tag_name, ByteBuffer& dst)
     {
         set_tag(attr, tag_name);
 
@@ -1191,13 +1204,13 @@ namespace
     }
 
 
-    static bool scan_tag_entry_listing(ControllerAttr const& attr, MemoryBuffer<u8>& dst)
+    static bool scan_tag_entry_listing(ControllerAttr const& attr, ByteBuffer& dst)
     {
         return scan_to_buffer(attr, "@tags", dst);
     }
 
 
-    static bool scan_udt_entry(ControllerAttr const& attr, int udt_id, MemoryBuffer<u8>& dst)
+    static bool scan_udt_entry(ControllerAttr const& attr, int udt_id, ByteBuffer& dst)
     {
         char udt[20];
         qsnprintf(udt, 20, "@udt/%d", udt_id);
@@ -1214,7 +1227,7 @@ namespace
 {
     static bool enumerate_tags(ControllerAttr const& attr, TagMemory& tag_mem, DataTypeMemory& dt_mem, PlcTagData data)
     {
-        MemoryBuffer<u8> entry_buffer;
+        ByteBuffer entry_buffer;
         
         if (!scan_tag_entry_listing(attr, entry_buffer))
         {
@@ -1241,7 +1254,7 @@ namespace
         {
             auto id = (int)udt_ids[i];
             
-            MemoryBuffer<u8> udt_buffer;
+            ByteBuffer udt_buffer;
 
             if (!scan_udt_entry(attr, id, udt_buffer))
             {
@@ -1430,11 +1443,15 @@ namespace plcscan
 
             tmh::delay_current_thread_ms(sw, target_scan_ms);
         }
-    }
-
-
-    
+    }    
 }
+
+
+#ifdef DEVPLCTAG
+
+#include "../dev/devplctag.Cpp"
+
+#endif
 
 /*
 MIT License

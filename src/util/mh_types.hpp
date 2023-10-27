@@ -5,6 +5,7 @@
 
 namespace mb = memory_buffer;
 
+using ByteBuffer = MemoryBuffer<u8>;
 using ByteView = MemoryView<u8>;
 
 
