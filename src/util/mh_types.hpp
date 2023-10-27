@@ -5,5 +5,14 @@
 
 namespace mb = memory_buffer;
 
-using StringView = MemoryView<char>;
 using ByteView = MemoryView<u8>;
+
+
+class StringView
+{
+public:
+	char* char_data = nullptr;
+	unsigned length = 0;
+
+	cstr data() const { return char_data; }
+};

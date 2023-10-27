@@ -134,9 +134,7 @@
   <ItemGroup>
     <ClCompile Include="..\..\sample_apps\plcscan_tag_viewer\app\app.cpp" />
     <ClCompile Include="..\..\sample_apps\plcscan_tag_viewer\tag_viewer_win32.cpp" />
-    <ClCompile Include="..\..\src\imgui\imgui_impl_dx12.cpp" />
-    <ClCompile Include="..\..\src\imgui\imgui_impl_win32.cpp" />
-    <ClCompile Include="..\..\src\imgui\misc\single_file\imgui_single_file.cpp" />
+    <ClCompile Include="..\..\src\imgui\include\imgui_impl.cpp" />
     <ClCompile Include="..\..\src\libplctag\libplctag.c" />
     <ClCompile Include="..\..\src\libplctag\platform_windows.c" />
     <ClCompile Include="..\..\src\libplctag\protocols\ab\ab_common.c" />

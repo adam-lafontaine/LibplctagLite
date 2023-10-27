@@ -6,27 +6,9 @@
 // This is because we need ImTextureID to carry a 64-bit value and by default ImTextureID is defined as void*.
 // This define is set in the example .vcxproj file and need to be replicated in your app or by adding it to your imconfig.h file.
 
-#include "../../src/imgui/imgui.h"
-#include "../../src/imgui/imgui_impl_win32.h"
-#include "../../src/imgui/imgui_impl_dx12.h"
-#include <d3d12.h>
-#include <dxgi1_4.h>
-#include <tchar.h>
+#include "../../src/imgui/include/imgui_include.hpp"
 
-#ifdef _DEBUG
-#define DX12_ENABLE_DEBUG_LAYER
-#endif
-
-#ifdef DX12_ENABLE_DEBUG_LAYER
-#include <dxgidebug.h>
-#pragma comment(lib, "dxguid.lib")
-#endif
-
-#pragma comment(lib, "d3d12.lib")
-#pragma comment(lib, "dxgi.lib")
-
-#include "./app/app.hpp"
-#include "../../src/util/qsprintf.hpp"
+#include "app/app.hpp"
 
 
 

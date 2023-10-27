@@ -587,7 +587,7 @@ namespace /* private */
         Tag tag{};
         tag.type_id = id32::get_data_type_id(entry.type_code);
         tag.array_count = entry.elem_count;
-        tag.tag_name = mb::push_cstr_view(mem.name_data, name_alloc_len);        
+        tag.tag_name = mh::push_cstr_view(mem.name_data, name_alloc_len);        
         tag.bytes = mb::sub_view(mem.public_tag_data, conn.scan_offset);
 
         mh::copy(entry.name, tag.tag_name);
@@ -906,8 +906,8 @@ namespace /* private */
         dt.type_id = type_id;
         dt.size = data_type_size(type);
 
-        dt.data_type_name = mb::push_cstr_view(name_data, name_len + 1);
-        dt.data_type_description = mb::push_cstr_view(name_data, desc_len + 1);
+        dt.data_type_name = mh::push_cstr_view(name_data, name_len + 1);
+        dt.data_type_description = mh::push_cstr_view(name_data, desc_len + 1);
 
         mh::copy_unsafe(name_str, dt.data_type_name);
         mh::copy_unsafe(desc_str, dt.data_type_description);
@@ -950,8 +950,8 @@ namespace /* private */
         ut.type_id = type_id;
         ut.size = entry.udt_size;
 
-        ut.udt_name = mb::push_cstr_view(buffer, name_len + 1);
-        ut.udt_description = mb::push_cstr_view(buffer, desc_len + 1);
+        ut.udt_name = mh::push_cstr_view(buffer, name_len + 1);
+        ut.udt_description = mh::push_cstr_view(buffer, desc_len + 1);
         
         mh::copy(entry.udt_name, ut.udt_name);
         mh::copy_unsafe(desc_str, ut.udt_description);
@@ -965,7 +965,7 @@ namespace /* private */
             ft.array_count = f.elem_count;
             ft.bit_number = f.bit_number;
 
-            ft.field_name = mb::push_cstr_view(buffer, f.field_name.length + 1);
+            ft.field_name = mh::push_cstr_view(buffer, f.field_name.length + 1);
             mh::copy(f.field_name, ft.field_name);
 
             ut.fields.push_back(ft);
@@ -1072,7 +1072,7 @@ namespace
 
         mh::zero_string(attr.connection_string);
 
-        auto dst = attr.connection_string.data;
+        auto dst = attr.connection_string.char_data;
         auto max_len = (int)attr.connection_string.length;
 
         qsnprintf(dst, max_len, fmt, attr.gateway, attr.path, tag_name, elem_size, elem_count);
@@ -1100,7 +1100,7 @@ namespace
 
         auto timeout = 100;
 
-        auto rc = plc_tag_create(attr.connection_string.data, timeout);
+        auto rc = plc_tag_create(attr.connection_string.data(), timeout);
         if (rc < 0)
         {
             return false;
@@ -1179,7 +1179,7 @@ namespace
 
         auto timeout = 100;
 
-        auto rc = plc_tag_create(attr.connection_string.data, timeout);
+        auto rc = plc_tag_create(attr.connection_string.data(), timeout);
         if (rc < 0)
         {
             return false;

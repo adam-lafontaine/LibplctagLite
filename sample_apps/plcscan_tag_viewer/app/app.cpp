@@ -104,7 +104,7 @@ namespace
 		ui.type = tag.type();
 		ui.size = tag.size();
 
-		ui.value.data = ui.display_buffer;
+		ui.value.char_data = ui.display_buffer;
 		ui.value.length = (u32)(sizeof(ui.display_buffer) - 1);
 
 		return ui;
@@ -129,7 +129,7 @@ namespace
 		ui_tag.values.reserve(tag.array_count);
 		for (u32 i = 0; i < tag.array_count; ++i)
 		{
-			ui_tag.values.push_back(mb::push_cstr_view(ui_tag.value_data, bytes_per_value));
+			ui_tag.values.push_back(mh::push_cstr_view(ui_tag.value_data, bytes_per_value));
 		}
 	}
 
@@ -174,10 +174,11 @@ namespace
 		for (u32 i = 0; i < len; i++)
 		{
 			auto s = src.data + i;
-			auto d = dst.data + i * 2;
+			auto d = dst.char_data + i * 2;
 			qsnprintf(d, 3, "%02x", s);
 		}
-		dst.data[len] = NULL;
+
+		dst.char_data[len] = NULL;
 	}
 
 
@@ -222,7 +223,7 @@ namespace
 	{
 		auto len = src.length < dst.length ? src.length : dst.length;
 
-		mh::copy_bytes(src.data, (u8*)dst.data, len);
+		mh::copy_bytes(src.data, (u8*)dst.char_data, len);
 	}
 
 
@@ -236,7 +237,7 @@ namespace
 			return;
 		}
 
-		mb::zero_view(dst.value);
+		mh::zero_string(dst.value);
 		map_string(src.bytes, dst.value);
 	}
 
@@ -283,47 +284,47 @@ namespace
 		{
 		case T::BOOL:
 		case T::USINT:
-			qsnprintf(dst.data, dst.length, "%hhu", mh::cast_bytes<u8>(src.data, src.length));
+			qsnprintf(dst.char_data, dst.length, "%hhu", mh::cast_bytes<u8>(src.data, src.length));
 			break;
 
 		case T::SINT:
-			qsnprintf(dst.data, dst.length, "%hhd", mh::cast_bytes<i8>(src.data, src.length));
+			qsnprintf(dst.char_data, dst.length, "%hhd", mh::cast_bytes<i8>(src.data, src.length));
 			break;
 
 		case T::UINT:
-			qsnprintf(dst.data, dst.length, "%hu", mh::cast_bytes<u16>(src.data, src.length));
+			qsnprintf(dst.char_data, dst.length, "%hu", mh::cast_bytes<u16>(src.data, src.length));
 			break;
 
 		case T::INT:
-			qsnprintf(dst.data, dst.length, "%hd", mh::cast_bytes<i16>(src.data, src.length));
+			qsnprintf(dst.char_data, dst.length, "%hd", mh::cast_bytes<i16>(src.data, src.length));
 			break;
 
 		case T::UDINT:
-			qsnprintf(dst.data, dst.length, "%u", mh::cast_bytes<u32>(src.data, src.length));
+			qsnprintf(dst.char_data, dst.length, "%u", mh::cast_bytes<u32>(src.data, src.length));
 			break;
 
 		case T::DINT:
-			qsnprintf(dst.data, dst.length, "%d", mh::cast_bytes<i32>(src.data, src.length));
+			qsnprintf(dst.char_data, dst.length, "%d", mh::cast_bytes<i32>(src.data, src.length));
 			break;
 
 		case T::ULINT:
-			qsnprintf(dst.data, dst.length, "%llu", mh::cast_bytes<u64>(src.data, src.length));
+			qsnprintf(dst.char_data, dst.length, "%llu", mh::cast_bytes<u64>(src.data, src.length));
 			break;
 
 		case T::LINT:
-			qsnprintf(dst.data, dst.length, "%lld", mh::cast_bytes<i64>(src.data, src.length));
+			qsnprintf(dst.char_data, dst.length, "%lld", mh::cast_bytes<i64>(src.data, src.length));
 			break;
 
 		case T::REAL:
-			qsnprintf(dst.data, dst.length, "%f", mh::cast_bytes<f32>(src.data, src.length));
+			qsnprintf(dst.char_data, dst.length, "%f", mh::cast_bytes<f32>(src.data, src.length));
 			break;
 
 		case T::LREAL:
-			qsnprintf(dst.data, dst.length, "%lf", mh::cast_bytes<f64>(src.data, src.length));
+			qsnprintf(dst.char_data, dst.length, "%lf", mh::cast_bytes<f64>(src.data, src.length));
 			break;
 
 		default:
-			qsnprintf(dst.data, dst.length, "error");
+			qsnprintf(dst.char_data, dst.length, "error");
 			break;
 		}
 	}
@@ -331,7 +332,7 @@ namespace
 	
 	static void map_value_number(plcscan::Tag const& src, UI_Tag& dst, u32 tag_id)
 	{
-		mb::zero_view(dst.value);
+		mh::zero_string(dst.value);
 		map_number(src.bytes, dst.value, plcscan::get_tag_type(src.type_id));
 	}
 
@@ -369,14 +370,14 @@ namespace
 
 namespace
 {
-	static void create_value_udt(UI_UdtTag& ui_tag)
+	/*static void create_value_udt(UI_UdtTag& ui_tag)
 	{
 		if (!ui_tag.value.data)
 		{
 			ui_tag.value.data = ui_tag.display_buffer;
 			ui_tag.value.length = (u32)(sizeof(ui_tag.display_buffer) - 1);
 		}
-	}
+	}*/
 
 
 	static UI_UdtTag create_ui_tag_udt(plcscan::Tag const& tag, u32 tag_id)
@@ -388,7 +389,7 @@ namespace
 		ui.type = tag.type();
 		ui.size = tag.size();
 
-		ui.value.data = ui.display_buffer;
+		ui.value.char_data = ui.display_buffer;
 		ui.value.length = (u32)(sizeof(ui.display_buffer) - 1);
 
 		return ui;
@@ -413,7 +414,7 @@ namespace
 		ui_tag.values.reserve(tag.array_count);
 		for (u32 i = 0; i < tag.array_count; ++i)
 		{
-			ui_tag.values.push_back(mb::push_cstr_view(ui_tag.value_data, UI_UdtArrayTag::bytes_per_value));
+			ui_tag.values.push_back(mh::push_cstr_view(ui_tag.value_data, UI_UdtArrayTag::bytes_per_value));
 		}
 	}
 
@@ -565,8 +566,8 @@ namespace
 
 		mb::zero_buffer(input.string_data);
 
-		input.plc_ip = mb::push_cstr_view(input.string_data, UI_PLC_IP_BYTES);
-		input.plc_path = mb::push_cstr_view(input.string_data, UI_PLC_PATH_BYTES);
+		input.plc_ip = mh::push_cstr_view(input.string_data, UI_PLC_IP_BYTES);
+		input.plc_path = mh::push_cstr_view(input.string_data, UI_PLC_PATH_BYTES);
 
 		mh::copy_unsafe(DEFAULT_PLC_IP, input.plc_ip);
 		mh::copy_unsafe(DEFAULT_PLC_PATH, input.plc_path);
@@ -1113,10 +1114,10 @@ namespace render
 		ImGui::Begin("Controller");
 
 		ImGui::SetNextItemWidth(150);
-		ImGui::InputText("IP", input.plc_ip.data, input.plc_ip.length, ImGuiInputTextFlags_CallbackCharFilter, numeric_or_dot);
+		ImGui::InputText("IP", input.plc_ip.char_data, input.plc_ip.length, ImGuiInputTextFlags_CallbackCharFilter, numeric_or_dot);
 
 		ImGui::SetNextItemWidth(150);
-		ImGui::InputText("Path", input.plc_path.data, input.plc_path.length, ImGuiInputTextFlags_CallbackCharFilter, numeric_or_comma);
+		ImGui::InputText("Path", input.plc_path.char_data, input.plc_path.length, ImGuiInputTextFlags_CallbackCharFilter, numeric_or_comma);
 
 		ImGui::SameLine();
 		ImGui::SetNextItemWidth(150);
@@ -1372,7 +1373,7 @@ namespace scan
 			{
 				plc.start_scanning = false;
 
-				if (plcscan::connect(input.plc_ip.data, input.plc_path.data, plc.data))
+				if (plcscan::connect(input.plc_ip.data(), input.plc_path.data(), plc.data))
 				{
 					plc.is_connected = true;
 					plc.has_error = false;

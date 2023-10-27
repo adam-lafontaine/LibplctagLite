@@ -265,31 +265,7 @@ namespace memory_buffer
 			dst8[i] = 0;
 		}
 	}
-
-
-	inline MemoryView<char> push_cstr_view(MemoryBuffer<char>& buffer, unsigned total_bytes)
-	{
-		assert(total_bytes > 0);
-		assert(buffer.data_);
-		assert(buffer.capacity_);
-
-		auto bytes_available = (buffer.capacity_ - buffer.size_) >= total_bytes;
-		assert(bytes_available);
-
-		MemoryView<char> view{};
-
-		view.data = push_elements(buffer, total_bytes);
-		view.length = total_bytes - 1; /* zero terminated */
-
-		return view;
-	}
-
-
-	inline MemoryView<char> push_cstr_view(MemoryBuffer<char>& buffer, size_t total_bytes)
-	{
-		return push_cstr_view(buffer, (unsigned)total_bytes);
-	}
-
+	
 
 	template <typename T>
 	MemoryView<T> make_view(MemoryBuffer<T> const& buffer)

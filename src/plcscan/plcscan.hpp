@@ -31,8 +31,8 @@ namespace plcscan
 
         // TODO: tag/connection status
 
-        cstr name() const { return tag_name.data; }
-        cstr type() const { return data_type_name.data; }
+        cstr name() const { return tag_name.data(); }
+        cstr type() const { return data_type_name.data(); }
         u8* data() const { return bytes.data; }
         u32 size() const { return (u32)bytes.length; }
         bool is_array() const { return array_count > 1; }
@@ -49,8 +49,8 @@ namespace plcscan
 
         u32 size = 0;
 
-        cstr name() const { return data_type_name.data; }
-        cstr description() const { return data_type_description.data; }
+        cstr name() const { return data_type_name.data(); }
+        cstr description() const { return data_type_description.data(); }
     };
 
 
@@ -66,8 +66,8 @@ namespace plcscan
         StringView field_name;
         StringView data_type_name;
 
-        cstr name() const { return field_name.data; }
-        cstr type() const { return data_type_name.data; }
+        cstr name() const { return field_name.data(); }
+        cstr type() const { return data_type_name.data(); }
 
         bool is_array() const { return array_count > 1; }
 
@@ -87,8 +87,8 @@ namespace plcscan
 
         u32 size = 0;
 
-        cstr name() const { return udt_name.data; }
-        cstr description() const { return udt_description.data; }
+        cstr name() const { return udt_name.data(); }
+        cstr description() const { return udt_description.data(); }
     };
 
 
