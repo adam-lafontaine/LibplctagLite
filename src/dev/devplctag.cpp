@@ -5,6 +5,7 @@
 #include <array>
 #include <random>
 #include <string>
+#include <algorithm>
 
 template <typename T>
 using List = std::vector<T>;
@@ -63,9 +64,6 @@ namespace dev
 
         void set_array_dims(u8 dims) { top8 |= (u8)(dims << 5); }
     };
-
-
-    constexpr auto SZ = sizeof(SymbolType);
 }
 
 
@@ -116,6 +114,11 @@ namespace dev
 
     u16 get_symbol_size(SymbolType symbol_type)
     {
+        if (symbol_type.is_struct || symbol_type.is_system)
+        {
+            return 16; // TODO;
+        }
+
         switch (symbol_type.type_code)
         {
         case TYPE_CODE_BOOL:
@@ -147,7 +150,6 @@ namespace dev
         SymbolType sb{};
         sb.type_code = type_code;
         sb.set_array_dims(1);
-        
 
         TagEntry entry{};
         entry.instance_id = tag_id++;
@@ -161,9 +163,20 @@ namespace dev
     }
 
 
-    static TagEntry to_udt_entry(u32 array_count, cstr udt_name)
+    static TagEntry to_udt_entry(u8 udt_id, u32 array_count, cstr udt_name)
     {
+        assert(udt_id < TYPE_CODE_BOOL); // just to be safe
+
         SymbolType sb{};
+        sb.udt_id = udt_id;
+        sb.set_array_dims(1);
+
+        TagEntry entry{};
+        entry.symbol_type = sb;
+        entry.element_length = get_symbol_size(sb);
+        entry.array_dims[0] = array_count;
+        entry.string_len = (u16)strlen(udt_name);
+        entry.tag_name = udt_name;
         
     }
 }
@@ -358,7 +371,7 @@ namespace dev
     }
     
     
-    static int generate_listing_tag(TagDatabase& tagdb)
+    static int generate_entry_listing_tag(TagDatabase& tagdb)
     {
         u32 listing_bytes = 0;
         u32 value_bytes = 0;
@@ -395,6 +408,14 @@ namespace dev
     }
 
 
+    static int generate_udt_listing_tag(TagDatabase& tagdb, TagEntry const& entry)
+    {
+
+
+        return -1;
+    }
+
+
     static int generate_tag(TagDatabase& tagdb, TagEntry const& entry)
     {
         TagValue tag{};
@@ -427,6 +448,8 @@ namespace dev
     {
         auto& tagdb = g_tag_db;
 
+        int handle = -1;
+
         if (tagdb.tag_entries.empty())
         {
             tagdb.tag_entries = create_tag_entries();
@@ -435,22 +458,6 @@ namespace dev
         std::string str(attr);
 
         auto not_found = std::string::npos;
-
-        if (str.find("@tags") != not_found)
-        {
-            int handle = generate_listing_tag(tagdb);
-            if (handle < 0)
-            {
-                return -1;
-            }
-
-            return handle;
-        }
-
-        if (str.find("@udt") != not_found)
-        {
-            return -1;
-        }
 
         auto pos = str.find("name=");
         if (pos == not_found)
@@ -468,21 +475,43 @@ namespace dev
 
         auto name = str.substr(pos, (pos2 - pos));
 
-        for (auto const& entry : tagdb.tag_entries)
+        if (name == "@tags")
         {
-            if (name == entry.tag_name)
+            handle = generate_entry_listing_tag(tagdb);
+            if (handle < 0)
             {
-                int handle = generate_tag(tagdb, entry);
-                if (handle < 0)
-                {
-                    return -1;
-                }
-
-                return handle;
+                return -1;
             }
+
+            return handle;
+        }        
+
+        auto begin = tagdb.tag_entries.begin();
+        auto end = tagdb.tag_entries.end();
+
+        auto it = std::find_if(begin, end, [&name](auto& e) { return name == e.tag_name; });
+        if (it == end)
+        {
+            return -1;
         }
 
-        return -1;
+        auto& entry = *it;
+
+        if (name.find("@udt") != not_found)
+        {
+            handle = generate_udt_listing_tag(tagdb, entry);
+        }
+        else
+        {
+            handle = generate_tag(tagdb, entry);
+        }
+
+        if (handle < 0)
+        {
+            return -1;
+        }
+
+        return handle;
     }
 
 
