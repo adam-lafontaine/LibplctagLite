@@ -160,16 +160,37 @@ void print_tags(plcscan::PlcTagData& data)
 		switch (plcscan::get_tag_type(tag.type_id))
 		{
 		case T::STRING:
-			printf("%*s: %s\n", (int)name_len, tag.name(), (cstr)tag.data());
+			if (tag.is_array())
+			{
+
+			}
+			else
+			{
+				printf("%*s: %s\n", (int)name_len, tag.name(), (cstr)tag.data());
+			}			
 			break;
 
 		case T::UDT:
 		case T::MISC:
-			print_tag_as_hex(tag);
+			if (tag.is_array())
+			{
+
+			}
+			else
+			{
+				print_tag_as_hex(tag);
+			}			
 			break;
 
 		default:
-			print_tag_as_number(tag);
+			if (tag.is_array())
+			{
+
+			}
+			else
+			{
+				print_tag_as_number(tag);
+			}			
 		}
 	}
 
