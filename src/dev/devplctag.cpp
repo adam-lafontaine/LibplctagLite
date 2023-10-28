@@ -132,12 +132,12 @@ namespace dev
         {
             gen = std::mt19937(rd());
             tag_value_byte_dist = std::uniform_int_distribution<int>(0, 250);
-            new_tag_value_dist = std::uniform_int_distribution<int>(1, 4);
+            new_tag_value_dist = std::uniform_int_distribution<int>(1, 100);
         }
 
         u8 generate_byte() { return (u8)tag_value_byte_dist(gen); }
 
-        bool new_tag_value() { return new_tag_value_dist(gen) > 1; }
+        bool new_tag_value() { return new_tag_value_dist(gen) == 1; }
     };
 
 
@@ -252,7 +252,7 @@ namespace dev
     }
     
     
-    static int generate_tag_data(TagDatabase& tagdb)
+    static int generate_listing_tag(TagDatabase& tagdb)
     {
         u32 listing_bytes = 0;
         u32 value_bytes = 0;
@@ -289,15 +289,20 @@ namespace dev
     }
 
 
-    static int generate_tag_value(TagDatabase& tagdb, TagEntry const& entry)
+    static int generate_tag(TagDatabase& tagdb, TagEntry const& entry)
     {
         TagValue tag{};
 
         tag.tag_id = (u32)tagdb.tag_values.size();
         tag.value_bytes = mb::push_view(tagdb.tag_value_data, value_size(entry));
 
-        tagdb.tag_values.push_back(tag);
+        // initial value
+        for (u32 i = 0; i < tag.value_bytes.length; ++i)
+        {
+            tag.value_bytes.data[i] = tagdb.generate_byte();
+        }
 
+        tagdb.tag_values.push_back(tag);
 
         return (int)tagdb.tag_values.size() - 1;
     }
@@ -326,7 +331,7 @@ namespace dev
 
         if (str.find("@tags") != not_found)
         {
-            int handle = generate_tag_data(tagdb);
+            int handle = generate_listing_tag(tagdb);
             if (handle < 0)
             {
                 return -1;
@@ -360,7 +365,7 @@ namespace dev
         {
             if (name == entry.tag_name)
             {
-                int handle = generate_tag_value(tagdb, entry);
+                int handle = generate_tag(tagdb, entry);
                 if (handle < 0)
                 {
                     return -1;
