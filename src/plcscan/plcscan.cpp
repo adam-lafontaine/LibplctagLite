@@ -411,9 +411,9 @@ namespace /* private */
         u16 type_code = 0;
         u32 elem_size = 0;
         u32 elem_count = 0;
-        StringView name;
-
-        char name_buffer[MAX_TAG_NAME_LENGTH + 1] = { 0 };
+        
+        char* name_ptr = nullptr;
+        u32 name_length = 0;
     };
 
 
@@ -508,13 +508,15 @@ namespace /* private */
 
         int offset = H_size;
 
-        entry.name = mh::to_string_view_unsafe(entry.name_buffer, (u32)h.string_len);
+        entry.name_ptr = (char*)(entry_data + offset);
+        entry.name_length = (u32)h.string_len;
 
-        mh::copy_unsafe((char*)(entry_data + offset), entry.name, (u32)h.string_len);
+        char buffer[MAX_TAG_NAME_LENGTH + 1] = { 0 };
+        mh::copy_unsafe(entry.name_ptr, buffer, entry.name_length);
 
-        if (is_valid_tag_name(entry.name))
+        if (is_valid_tag_name(buffer))
         {
-            entries.push_back(entry);
+            entries.push_back(std::move(entry));
         }
 
         offset += h.string_len;
@@ -584,14 +586,14 @@ namespace /* private */
     u32 elem_size(TagEntry const& e) { return e.elem_count * e.elem_size; }
 
 
-    u32 cstr_size(TagEntry const& e) { return e.name.length + 1; /* zero terminated */ }
+    u32 cstr_size(TagEntry const& e) { return e.name_length + 1; /* zero terminated */ }
 
 
     static void add_tag(TagEntry const& entry, TagMemory& mem, List<Tag>& tags)
     {
         auto value_len = elem_size(entry);
         auto name_alloc_len = cstr_size(entry);
-        auto name_copy_len = entry.name.length;
+        auto name_copy_len = entry.name_length;
 
         assert(value_len);
 
@@ -611,7 +613,9 @@ namespace /* private */
         tag.tag_name = mh::push_cstr_view(mem.name_data, name_alloc_len);        
         tag.bytes = mb::sub_view(mem.public_tag_data, conn.scan_offset);
 
-        mh::copy(entry.name, tag.tag_name);
+        mh::copy_unsafe(entry.name_ptr, tag.tag_name, name_copy_len);
+
+        auto d = tag.tag_name.data();
 
         mem.connections.push_back(conn);
         tags.push_back(tag);
@@ -934,8 +938,8 @@ namespace /* private */
         dt.data_type_name = mh::push_cstr_view(name_data, name_len + 1);
         dt.data_type_description = mh::push_cstr_view(name_data, desc_len + 1);
 
-        mh::copy_unsafe(name_str, dt.data_type_name, name_len);
-        mh::copy_unsafe(desc_str, dt.data_type_description, desc_len);
+        mh::copy_unsafe((char*)name_str, dt.data_type_name, name_len);
+        mh::copy_unsafe((char*)desc_str, dt.data_type_description, desc_len);
 
         types.push_back(dt);
     }
@@ -979,7 +983,7 @@ namespace /* private */
         ut.udt_description = mh::push_cstr_view(buffer, desc_len + 1);
         
         mh::copy(entry.udt_name, ut.udt_name);
-        mh::copy_unsafe(desc_str, ut.udt_description, desc_len);
+        mh::copy_unsafe((char*)desc_str, ut.udt_description, desc_len);
 
         ut.fields.reserve(entry.fields.size());
         for (auto const& f : entry.fields)

@@ -181,7 +181,7 @@ namespace memory_helper
     }
 
 
-    inline void copy_unsafe(cstr src, StringView const& dst, u32 len)
+    inline void copy_unsafe(char* src, StringView const& dst, u32 len)
     {
         u32 i = 0;
 
@@ -202,6 +202,15 @@ namespace memory_helper
         for (u32 i = 0; i < len; ++i)
         {
             dst[i] = src.char_data[i];
+        }
+    }
+
+
+    inline void copy_unsafe(char* src, char* dst, u32 len)
+    {
+        for (u32 i = 0; i < len; ++i)
+        {
+            dst[i] = src[i];
         }
     }
 
