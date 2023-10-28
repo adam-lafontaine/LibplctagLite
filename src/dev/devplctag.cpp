@@ -15,23 +15,34 @@ namespace mh = memory_helper;
 
 namespace dev
 {
-    static constexpr auto BOOL  = (u16)0x00C1;
-    static constexpr auto SINT  = (u16)0x00C2;
-    static constexpr auto INT   = (u16)0x00C3;
-    static constexpr auto DINT  = (u16)0x00C4;
-    static constexpr auto LINT  = (u16)0x00C5;
-    static constexpr auto USINT = (u16)0x00C6;
-    static constexpr auto UINT  = (u16)0x00C7;
-    static constexpr auto UDINT = (u16)0x00C8;
-    static constexpr auto ULINT = (u16)0x00C9;
-    static constexpr auto REAL  = (u16)0x00CA;
-    static constexpr auto LREAL = (u16)0x00CB;
+    static constexpr auto TYPE_CODE_BOOL  = (u8)0xC1;
+    static constexpr auto TYPE_CODE_SINT  = (u8)0xC2;
+    static constexpr auto TYPE_CODE_INT   = (u8)0xC3;
+    static constexpr auto TYPE_CODE_DINT  = (u8)0xC4;
+    static constexpr auto TYPE_CODE_LINT  = (u8)0xC5;
+    static constexpr auto TYPE_CODE_USINT = (u8)0xC6;
+    static constexpr auto TYPE_CODE_UINT  = (u8)0xC7;
+    static constexpr auto TYPE_CODE_UDINT = (u8)0xC8;
+    static constexpr auto TYPE_CODE_ULINT = (u8)0xC9;
+    static constexpr auto TYPE_CODE_REAL  = (u8)0xCA;
+    static constexpr auto TYPE_CODE_LREAL = (u8)0xCB;
 
-    static constexpr auto CHAR_STRING = (u16)0x00D0;
+    static constexpr auto TYPE_CODE_CHAR_STRING = (u8)0x00D0;
 
     constexpr auto TYPE_MASK = (u16)0x00FF;
 
 
+    union SymbolType
+    {
+        u16 symbol = 0;
+
+        struct
+        {
+            u8 type_code;
+
+            u8 top8;
+        };
+    };
 }
 
 
@@ -41,7 +52,7 @@ namespace dev
     {
     public:
         u32 instance_id = 0;       // 4
-        u16 symbol_type = 0;       // 2
+        SymbolType symbol_type;    // 2
         u16 element_length = 0;    // 2
         u32 array_dims[3] = { 0 }; // 3 * 4
         u16 string_len = 0;        // 2
@@ -54,7 +65,7 @@ namespace dev
     {
     public:
         u32 tag_id = 0;
-        u16 symbol_type = 0;
+        SymbolType symbol_type;
         ByteView value_bytes;
     };
 
@@ -78,40 +89,45 @@ namespace dev
     }
 
 
-    u16 get_symbol_size(u16 symbol_type)
+    u16 get_symbol_size(SymbolType symbol_type)
     {
-        switch (symbol_type)
+        switch (symbol_type.type_code)
         {
-        case BOOL:
-        case SINT: 
-        case USINT: return 1;
+        case TYPE_CODE_BOOL:
+        case TYPE_CODE_SINT:
+        case TYPE_CODE_USINT: return 1;
 
-        case INT:
-        case UINT: return 2;
+        case TYPE_CODE_INT:
+        case TYPE_CODE_UINT: return 2;
 
-        case DINT:
-        case UDINT: 
-        case REAL: return 4;
+        case TYPE_CODE_DINT:
+        case TYPE_CODE_UDINT:
+        case TYPE_CODE_REAL: return 4;
 
-        case LINT:
-        case ULINT: 
-        case LREAL: return 8;
+        case TYPE_CODE_LINT:
+        case TYPE_CODE_ULINT:
+        case TYPE_CODE_LREAL: return 8;
 
-        case CHAR_STRING: return 16;
+        case TYPE_CODE_CHAR_STRING: return 16;
         
         default: return 0;
         }
     }
 
 
-    static TagEntry to_tag_entry(u16 symbol_type, u32 array_count, cstr name)
+    static TagEntry to_tag_entry(u8 type_code, u32 array_count, cstr name)
     {
         static u32 tag_id = 0;
 
+        SymbolType sb{};
+        sb.type_code = type_code;
+        sb.top8 = (u8)(1 << 5);
+        
+
         TagEntry entry{};
         entry.instance_id = tag_id++;
-        entry.symbol_type = symbol_type | (1 << 13);
-        entry.element_length = get_symbol_size(symbol_type);
+        entry.symbol_type = sb;
+        entry.element_length = get_symbol_size(sb);
         entry.array_dims[0] = array_count;
         entry.string_len = (u16)strlen(name);
         entry.tag_name = name;
@@ -128,93 +144,93 @@ namespace dev
     static List<TagEntry> create_tag_entries()
     {
         return {
-            to_tag_entry(BOOL, 1, "BOOL_tag_A"),
-            to_tag_entry(BOOL, 1, "BOOL_tag_B"),
-            to_tag_entry(BOOL, 1, "BOOL_tag_C"),
+            to_tag_entry(TYPE_CODE_BOOL, 1, "BOOL_tag_A"),
+            to_tag_entry(TYPE_CODE_BOOL, 1, "BOOL_tag_B"),
+            to_tag_entry(TYPE_CODE_BOOL, 1, "BOOL_tag_C"),
 
-            to_tag_entry(BOOL, 5, "BOOL_array_tag_A"),
-            to_tag_entry(BOOL, 5, "BOOL_array_tag_B"),
-            to_tag_entry(BOOL, 5, "BOOL_array_tag_C"),
+            to_tag_entry(TYPE_CODE_BOOL, 5, "BOOL_array_tag_A"),
+            to_tag_entry(TYPE_CODE_BOOL, 5, "BOOL_array_tag_B"),
+            to_tag_entry(TYPE_CODE_BOOL, 5, "BOOL_array_tag_C"),
 
-            to_tag_entry(SINT, 1, "SINT_tag_A"),
-            to_tag_entry(SINT, 1, "SINT_tag_B"),
-            to_tag_entry(SINT, 1, "SINT_tag_C"),
+            to_tag_entry(TYPE_CODE_SINT, 1, "SINT_tag_A"),
+            to_tag_entry(TYPE_CODE_SINT, 1, "SINT_tag_B"),
+            to_tag_entry(TYPE_CODE_SINT, 1, "SINT_tag_C"),
 
-            to_tag_entry(SINT, 5, "SINT_array_tag_A"),
-            to_tag_entry(SINT, 5, "SINT_array_tag_B"),
-            to_tag_entry(SINT, 5, "SINT_array_tag_C"),
+            to_tag_entry(TYPE_CODE_SINT, 5, "SINT_array_tag_A"),
+            to_tag_entry(TYPE_CODE_SINT, 5, "SINT_array_tag_B"),
+            to_tag_entry(TYPE_CODE_SINT, 5, "SINT_array_tag_C"),
 
-            to_tag_entry(INT, 1, "INT_tag_A"),
-            to_tag_entry(INT, 1, "INT_tag_B"),
-            to_tag_entry(INT, 1, "INT_tag_C"),
+            to_tag_entry(TYPE_CODE_INT, 1, "INT_tag_A"),
+            to_tag_entry(TYPE_CODE_INT, 1, "INT_tag_B"),
+            to_tag_entry(TYPE_CODE_INT, 1, "INT_tag_C"),
 
-            to_tag_entry(INT, 5, "INT_array_tag_A"),
-            to_tag_entry(INT, 5, "INT_array_tag_B"),
-            to_tag_entry(INT, 5, "INT_array_tag_C"),
+            to_tag_entry(TYPE_CODE_INT, 5, "INT_array_tag_A"),
+            to_tag_entry(TYPE_CODE_INT, 5, "INT_array_tag_B"),
+            to_tag_entry(TYPE_CODE_INT, 5, "INT_array_tag_C"),
 
-            to_tag_entry(DINT, 1, "DINT_tag_A"),
-            to_tag_entry(DINT, 1, "DINT_tag_B"),
-            to_tag_entry(DINT, 1, "DINT_tag_C"),
+            to_tag_entry(TYPE_CODE_DINT, 1, "DINT_tag_A"),
+            to_tag_entry(TYPE_CODE_DINT, 1, "DINT_tag_B"),
+            to_tag_entry(TYPE_CODE_DINT, 1, "DINT_tag_C"),
 
-            to_tag_entry(DINT, 5, "DINT_array_tag_A"),
-            to_tag_entry(DINT, 5, "DINT_array_tag_B"),
-            to_tag_entry(DINT, 5, "DINT_array_tag_C"),
+            to_tag_entry(TYPE_CODE_DINT, 5, "DINT_array_tag_A"),
+            to_tag_entry(TYPE_CODE_DINT, 5, "DINT_array_tag_B"),
+            to_tag_entry(TYPE_CODE_DINT, 5, "DINT_array_tag_C"),
 
-            to_tag_entry(LINT, 1, "LINT_tag_A"),
-            to_tag_entry(LINT, 1, "LINT_tag_B"),
-            to_tag_entry(LINT, 1, "LINT_tag_C"),
+            to_tag_entry(TYPE_CODE_LINT, 1, "LINT_tag_A"),
+            to_tag_entry(TYPE_CODE_LINT, 1, "LINT_tag_B"),
+            to_tag_entry(TYPE_CODE_LINT, 1, "LINT_tag_C"),
 
-            to_tag_entry(LINT, 5, "LINT_array_tag_A"),
-            to_tag_entry(LINT, 5, "LINT_array_tag_B"),
-            to_tag_entry(LINT, 5, "LINT_array_tag_C"),
+            to_tag_entry(TYPE_CODE_LINT, 5, "LINT_array_tag_A"),
+            to_tag_entry(TYPE_CODE_LINT, 5, "LINT_array_tag_B"),
+            to_tag_entry(TYPE_CODE_LINT, 5, "LINT_array_tag_C"),
 
-            to_tag_entry(USINT, 1, "USINT_tag_A"),
-            to_tag_entry(USINT, 1, "USINT_tag_B"),
-            to_tag_entry(USINT, 1, "USINT_tag_C"),
+            to_tag_entry(TYPE_CODE_USINT, 1, "USINT_tag_A"),
+            to_tag_entry(TYPE_CODE_USINT, 1, "USINT_tag_B"),
+            to_tag_entry(TYPE_CODE_USINT, 1, "USINT_tag_C"),
 
-            to_tag_entry(USINT, 5, "USINT_array_tag_A"),
-            to_tag_entry(USINT, 5, "USINT_array_tag_B"),
-            to_tag_entry(USINT, 5, "USINT_array_tag_C"),
+            to_tag_entry(TYPE_CODE_USINT, 5, "USINT_array_tag_A"),
+            to_tag_entry(TYPE_CODE_USINT, 5, "USINT_array_tag_B"),
+            to_tag_entry(TYPE_CODE_USINT, 5, "USINT_array_tag_C"),
 
-            to_tag_entry(UINT, 1, "UINT_tag_A"),
-            to_tag_entry(UINT, 1, "UINT_tag_B"),
-            to_tag_entry(UINT, 1, "UINT_tag_C"),
+            to_tag_entry(TYPE_CODE_UINT, 1, "UINT_tag_A"),
+            to_tag_entry(TYPE_CODE_UINT, 1, "UINT_tag_B"),
+            to_tag_entry(TYPE_CODE_UINT, 1, "UINT_tag_C"),
 
-            to_tag_entry(UINT, 5, "UINT_array_tag_A"),
-            to_tag_entry(UINT, 5, "UINT_array_tag_B"),
-            to_tag_entry(UINT, 5, "UINT_array_tag_C"),
+            to_tag_entry(TYPE_CODE_UINT, 5, "UINT_array_tag_A"),
+            to_tag_entry(TYPE_CODE_UINT, 5, "UINT_array_tag_B"),
+            to_tag_entry(TYPE_CODE_UINT, 5, "UINT_array_tag_C"),
 
-            to_tag_entry(ULINT, 1, "ULINT_tag_A"),
-            to_tag_entry(ULINT, 1, "ULINT_tag_B"),
-            to_tag_entry(ULINT, 1, "ULINT_tag_C"),
+            to_tag_entry(TYPE_CODE_ULINT, 1, "ULINT_tag_A"),
+            to_tag_entry(TYPE_CODE_ULINT, 1, "ULINT_tag_B"),
+            to_tag_entry(TYPE_CODE_ULINT, 1, "ULINT_tag_C"),
 
-            to_tag_entry(ULINT, 5, "ULINT_array_tag_A"),
-            to_tag_entry(ULINT, 5, "ULINT_array_tag_B"),
-            to_tag_entry(ULINT, 5, "ULINT_array_tag_C"),
+            to_tag_entry(TYPE_CODE_ULINT, 5, "ULINT_array_tag_A"),
+            to_tag_entry(TYPE_CODE_ULINT, 5, "ULINT_array_tag_B"),
+            to_tag_entry(TYPE_CODE_ULINT, 5, "ULINT_array_tag_C"),
 
-            to_tag_entry(REAL, 1, "REAL_tag_A"),
-            to_tag_entry(REAL, 1, "REAL_tag_B"),
-            to_tag_entry(REAL, 1, "REAL_tag_C"),
+            to_tag_entry(TYPE_CODE_REAL, 1, "REAL_tag_A"),
+            to_tag_entry(TYPE_CODE_REAL, 1, "REAL_tag_B"),
+            to_tag_entry(TYPE_CODE_REAL, 1, "REAL_tag_C"),
 
-            to_tag_entry(REAL, 5, "REAL_array_tag_A"),
-            to_tag_entry(REAL, 5, "REAL_array_tag_B"),
-            to_tag_entry(REAL, 5, "REAL_array_tag_C"),
+            to_tag_entry(TYPE_CODE_REAL, 5, "REAL_array_tag_A"),
+            to_tag_entry(TYPE_CODE_REAL, 5, "REAL_array_tag_B"),
+            to_tag_entry(TYPE_CODE_REAL, 5, "REAL_array_tag_C"),
 
-            to_tag_entry(LREAL, 1, "LREAL_tag_A"),
-            to_tag_entry(LREAL, 1, "LREAL_tag_B"),
-            to_tag_entry(LREAL, 1, "LREAL_tag_C"),
+            to_tag_entry(TYPE_CODE_LREAL, 1, "LREAL_tag_A"),
+            to_tag_entry(TYPE_CODE_LREAL, 1, "LREAL_tag_B"),
+            to_tag_entry(TYPE_CODE_LREAL, 1, "LREAL_tag_C"),
 
-            to_tag_entry(LREAL, 5, "LREAL_array_tag_A"),
-            to_tag_entry(LREAL, 5, "LREAL_array_tag_B"),
-            to_tag_entry(LREAL, 5, "LREAL_array_tag_C"),
+            to_tag_entry(TYPE_CODE_LREAL, 5, "LREAL_array_tag_A"),
+            to_tag_entry(TYPE_CODE_LREAL, 5, "LREAL_array_tag_B"),
+            to_tag_entry(TYPE_CODE_LREAL, 5, "LREAL_array_tag_C"),
 
-            to_tag_entry(CHAR_STRING, 1, "STRING_tag_A"),
-            to_tag_entry(CHAR_STRING, 1, "STRING_tag_B"),
-            to_tag_entry(CHAR_STRING, 1, "STRING_tag_C"),
+            to_tag_entry(TYPE_CODE_CHAR_STRING, 1, "STRING_tag_A"),
+            to_tag_entry(TYPE_CODE_CHAR_STRING, 1, "STRING_tag_B"),
+            to_tag_entry(TYPE_CODE_CHAR_STRING, 1, "STRING_tag_C"),
 
-            to_tag_entry(CHAR_STRING, 5, "STRING_array_tag_A"),
-            to_tag_entry(CHAR_STRING, 5, "STRING_array_tag_B"),
-            to_tag_entry(CHAR_STRING, 5, "STRING_array_tag_C"),
+            to_tag_entry(TYPE_CODE_CHAR_STRING, 5, "STRING_array_tag_A"),
+            to_tag_entry(TYPE_CODE_CHAR_STRING, 5, "STRING_array_tag_B"),
+            to_tag_entry(TYPE_CODE_CHAR_STRING, 5, "STRING_array_tag_C"),
         };
     }
 }
@@ -252,12 +268,12 @@ namespace dev
             
         }
 
-        u8 generate_byte(u16 symbol_type)
+        u8 generate_byte(SymbolType symbol)
         { 
-            switch (symbol_type & TYPE_MASK)
+            switch (symbol.type_code)
             {
-            case BOOL: return bool_byte_dist(gen);
-            case CHAR_STRING: return string_byte_dist(gen);
+            case TYPE_CODE_BOOL: return bool_byte_dist(gen);
+            case TYPE_CODE_CHAR_STRING: return string_byte_dist(gen);
 
             default: return numeric_byte_dist(gen);
             }
