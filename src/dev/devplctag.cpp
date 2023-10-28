@@ -36,13 +36,36 @@ namespace dev
     {
         u16 symbol = 0;
 
+        u16 udt_id : 12;
+
         struct
         {
             u8 type_code;
 
             u8 top8;
         };
+
+        struct
+        {
+            u8 bottom8;
+
+            u8 bit_8 : 1;
+            u8 bit_9 : 1;
+            u8 bit_10 : 1;
+            u8 bit_11 : 1;
+
+            u8 is_system : 1;
+            u8 field_is_array : 1;
+            u8 bit_14 : 1;
+            u8 is_struct : 1;
+        };
+
+
+        void set_array_dims(u8 dims) { top8 |= (u8)(dims << 5); }
     };
+
+
+    constexpr auto SZ = sizeof(SymbolType);
 }
 
 
@@ -72,6 +95,8 @@ namespace dev
 
     static u32 entry_size(TagEntry const& entry)
     {
+        static_assert(sizeof(SymbolType) == sizeof(u16));
+
         return (u32)(
                 sizeof(entry.instance_id) + 
                 sizeof(entry.symbol_type) + 
@@ -115,13 +140,13 @@ namespace dev
     }
 
 
-    static TagEntry to_tag_entry(u8 type_code, u32 array_count, cstr name)
+    static TagEntry to_tag_entry(u8 type_code, u8 array_count, cstr name)
     {
         static u32 tag_id = 0;
 
         SymbolType sb{};
         sb.type_code = type_code;
-        sb.top8 = (u8)(1 << 5);
+        sb.set_array_dims(1);
         
 
         TagEntry entry{};
@@ -133,6 +158,13 @@ namespace dev
         entry.tag_name = name;
 
         return entry;
+    }
+
+
+    static TagEntry to_udt_entry(u32 array_count, cstr udt_name)
+    {
+        SymbolType sb{};
+        
     }
 }
 
