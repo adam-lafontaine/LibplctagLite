@@ -11,20 +11,27 @@ using List = std::vector<T>;
 
 namespace mh = memory_helper;
 
+/* type codes */
 
 namespace dev
 {
-    static constexpr auto BOOL  = (u16)0xC1;
-    static constexpr auto SINT  = (u16)0xC2;
-    static constexpr auto INT   = (u16)0xC3;
-    static constexpr auto DINT  = (u16)0xC4;
-    static constexpr auto LINT  = (u16)0xC5;
-    static constexpr auto USINT = (u16)0xC6;
-    static constexpr auto UINT  = (u16)0xC7;
-    static constexpr auto UDINT = (u16)0xC8;
-    static constexpr auto ULINT = (u16)0xC9;
-    static constexpr auto REAL  = (u16)0xCA;
-    static constexpr auto LREAL = (u16)0xCB;
+    static constexpr auto BOOL  = (u16)0x00C1;
+    static constexpr auto SINT  = (u16)0x00C2;
+    static constexpr auto INT   = (u16)0x00C3;
+    static constexpr auto DINT  = (u16)0x00C4;
+    static constexpr auto LINT  = (u16)0x00C5;
+    static constexpr auto USINT = (u16)0x00C6;
+    static constexpr auto UINT  = (u16)0x00C7;
+    static constexpr auto UDINT = (u16)0x00C8;
+    static constexpr auto ULINT = (u16)0x00C9;
+    static constexpr auto REAL  = (u16)0x00CA;
+    static constexpr auto LREAL = (u16)0x00CB;
+
+    static constexpr auto CHAR_STRING = (u16)0x00D0;
+
+    constexpr auto TYPE_MASK = (u16)0x00FF;
+
+
 }
 
 
@@ -47,6 +54,7 @@ namespace dev
     {
     public:
         u32 tag_id = 0;
+        u16 symbol_type = 0;
         ByteView value_bytes;
     };
 
@@ -88,6 +96,8 @@ namespace dev
         case LINT:
         case ULINT: 
         case LREAL: return 8;
+
+        case CHAR_STRING: return 16;
         
         default: return 0;
         }
@@ -111,6 +121,105 @@ namespace dev
 }
 
 
+/* sample tags */
+
+namespace dev
+{
+    static List<TagEntry> create_tag_entries()
+    {
+        return {
+            to_tag_entry(BOOL, 1, "BOOL_tag_A"),
+            to_tag_entry(BOOL, 1, "BOOL_tag_B"),
+            to_tag_entry(BOOL, 1, "BOOL_tag_C"),
+
+            to_tag_entry(BOOL, 5, "BOOL_array_tag_A"),
+            to_tag_entry(BOOL, 5, "BOOL_array_tag_B"),
+            to_tag_entry(BOOL, 5, "BOOL_array_tag_C"),
+
+            to_tag_entry(SINT, 1, "SINT_tag_A"),
+            to_tag_entry(SINT, 1, "SINT_tag_B"),
+            to_tag_entry(SINT, 1, "SINT_tag_C"),
+
+            to_tag_entry(SINT, 5, "SINT_array_tag_A"),
+            to_tag_entry(SINT, 5, "SINT_array_tag_B"),
+            to_tag_entry(SINT, 5, "SINT_array_tag_C"),
+
+            to_tag_entry(INT, 1, "INT_tag_A"),
+            to_tag_entry(INT, 1, "INT_tag_B"),
+            to_tag_entry(INT, 1, "INT_tag_C"),
+
+            to_tag_entry(INT, 5, "INT_array_tag_A"),
+            to_tag_entry(INT, 5, "INT_array_tag_B"),
+            to_tag_entry(INT, 5, "INT_array_tag_C"),
+
+            to_tag_entry(DINT, 1, "DINT_tag_A"),
+            to_tag_entry(DINT, 1, "DINT_tag_B"),
+            to_tag_entry(DINT, 1, "DINT_tag_C"),
+
+            to_tag_entry(DINT, 5, "DINT_array_tag_A"),
+            to_tag_entry(DINT, 5, "DINT_array_tag_B"),
+            to_tag_entry(DINT, 5, "DINT_array_tag_C"),
+
+            to_tag_entry(LINT, 1, "LINT_tag_A"),
+            to_tag_entry(LINT, 1, "LINT_tag_B"),
+            to_tag_entry(LINT, 1, "LINT_tag_C"),
+
+            to_tag_entry(LINT, 5, "LINT_array_tag_A"),
+            to_tag_entry(LINT, 5, "LINT_array_tag_B"),
+            to_tag_entry(LINT, 5, "LINT_array_tag_C"),
+
+            to_tag_entry(USINT, 1, "USINT_tag_A"),
+            to_tag_entry(USINT, 1, "USINT_tag_B"),
+            to_tag_entry(USINT, 1, "USINT_tag_C"),
+
+            to_tag_entry(USINT, 5, "USINT_array_tag_A"),
+            to_tag_entry(USINT, 5, "USINT_array_tag_B"),
+            to_tag_entry(USINT, 5, "USINT_array_tag_C"),
+
+            to_tag_entry(UINT, 1, "UINT_tag_A"),
+            to_tag_entry(UINT, 1, "UINT_tag_B"),
+            to_tag_entry(UINT, 1, "UINT_tag_C"),
+
+            to_tag_entry(UINT, 5, "UINT_array_tag_A"),
+            to_tag_entry(UINT, 5, "UINT_array_tag_B"),
+            to_tag_entry(UINT, 5, "UINT_array_tag_C"),
+
+            to_tag_entry(ULINT, 1, "ULINT_tag_A"),
+            to_tag_entry(ULINT, 1, "ULINT_tag_B"),
+            to_tag_entry(ULINT, 1, "ULINT_tag_C"),
+
+            to_tag_entry(ULINT, 5, "ULINT_array_tag_A"),
+            to_tag_entry(ULINT, 5, "ULINT_array_tag_B"),
+            to_tag_entry(ULINT, 5, "ULINT_array_tag_C"),
+
+            to_tag_entry(REAL, 1, "REAL_tag_A"),
+            to_tag_entry(REAL, 1, "REAL_tag_B"),
+            to_tag_entry(REAL, 1, "REAL_tag_C"),
+
+            to_tag_entry(REAL, 5, "REAL_array_tag_A"),
+            to_tag_entry(REAL, 5, "REAL_array_tag_B"),
+            to_tag_entry(REAL, 5, "REAL_array_tag_C"),
+
+            to_tag_entry(LREAL, 1, "LREAL_tag_A"),
+            to_tag_entry(LREAL, 1, "LREAL_tag_B"),
+            to_tag_entry(LREAL, 1, "LREAL_tag_C"),
+
+            to_tag_entry(LREAL, 5, "LREAL_array_tag_A"),
+            to_tag_entry(LREAL, 5, "LREAL_array_tag_B"),
+            to_tag_entry(LREAL, 5, "LREAL_array_tag_C"),
+
+            to_tag_entry(CHAR_STRING, 1, "STRING_tag_A"),
+            to_tag_entry(CHAR_STRING, 1, "STRING_tag_B"),
+            to_tag_entry(CHAR_STRING, 1, "STRING_tag_C"),
+
+            to_tag_entry(CHAR_STRING, 5, "STRING_array_tag_A"),
+            to_tag_entry(CHAR_STRING, 5, "STRING_array_tag_B"),
+            to_tag_entry(CHAR_STRING, 5, "STRING_array_tag_C"),
+        };
+    }
+}
+
+
 namespace dev
 {
     class TagDatabase
@@ -118,8 +227,12 @@ namespace dev
     private:
         std::random_device rd;
         std::mt19937 gen;
-        std::uniform_int_distribution<int> tag_value_byte_dist;
         std::uniform_int_distribution<int> new_tag_value_dist;
+
+        std::uniform_int_distribution<int> bool_byte_dist;
+        std::uniform_int_distribution<int> numeric_byte_dist;
+        std::uniform_int_distribution<int> string_byte_dist;
+        
 
     public:
 
@@ -131,82 +244,27 @@ namespace dev
         TagDatabase()
         {
             gen = std::mt19937(rd());
-            tag_value_byte_dist = std::uniform_int_distribution<int>(0, 250);
             new_tag_value_dist = std::uniform_int_distribution<int>(1, 100);
+
+            bool_byte_dist = std::uniform_int_distribution<int>(0, 1);
+            numeric_byte_dist = std::uniform_int_distribution<int>(0, 255);
+            string_byte_dist = std::uniform_int_distribution<int>(32, 126);
+            
         }
 
-        u8 generate_byte() { return (u8)tag_value_byte_dist(gen); }
+        u8 generate_byte(u16 symbol_type)
+        { 
+            switch (symbol_type & TYPE_MASK)
+            {
+            case BOOL: return bool_byte_dist(gen);
+            case CHAR_STRING: return string_byte_dist(gen);
+
+            default: return numeric_byte_dist(gen);
+            }
+        }
 
         bool new_tag_value() { return new_tag_value_dist(gen) == 1; }
-    };
-
-
-    static List<TagEntry> create_tag_entries()
-    {
-        return {
-            to_tag_entry(BOOL, 1, "BOOL_tag_A"),
-            to_tag_entry(BOOL, 1, "BOOL_tag_B"),
-            to_tag_entry(BOOL, 1, "BOOL_tag_C"),
-            to_tag_entry(SINT, 1, "SINT_tag_A"),
-            to_tag_entry(SINT, 1, "SINT_tag_B"),
-            to_tag_entry(SINT, 1, "SINT_tag_C"),
-            to_tag_entry(INT, 1, "INT_tag_A"),
-            to_tag_entry(INT, 1, "INT_tag_B"),
-            to_tag_entry(INT, 1, "INT_tag_C"),
-            to_tag_entry(DINT, 1, "DINT_tag_A"),
-            to_tag_entry(DINT, 1, "DINT_tag_B"),
-            to_tag_entry(DINT, 1, "DINT_tag_C"),
-            to_tag_entry(LINT, 1, "LINT_tag_A"),
-            to_tag_entry(LINT, 1, "LINT_tag_B"),
-            to_tag_entry(LINT, 1, "LINT_tag_C"),
-            to_tag_entry(USINT, 1, "USINT_tag_A"),
-            to_tag_entry(USINT, 1, "USINT_tag_B"),
-            to_tag_entry(USINT, 1, "USINT_tag_C"),
-            to_tag_entry(UINT, 1, "UINT_tag_A"),
-            to_tag_entry(UINT, 1, "UINT_tag_B"),
-            to_tag_entry(UINT, 1, "UINT_tag_C"),
-            to_tag_entry(ULINT, 1, "ULINT_tag_A"),
-            to_tag_entry(ULINT, 1, "ULINT_tag_B"),
-            to_tag_entry(ULINT, 1, "ULINT_tag_C"),
-            to_tag_entry(REAL, 1, "REAL_tag_A"),
-            to_tag_entry(REAL, 1, "REAL_tag_B"),
-            to_tag_entry(REAL, 1, "REAL_tag_C"),
-            to_tag_entry(LREAL, 1, "LREAL_tag_A"),
-            to_tag_entry(LREAL, 1, "LREAL_tag_B"),
-            to_tag_entry(LREAL, 1, "LREAL_tag_C"),
-
-            to_tag_entry(BOOL, 5, "BOOL_array_tag_A"),
-            to_tag_entry(BOOL, 5, "BOOL_array_tag_B"),
-            to_tag_entry(BOOL, 5, "BOOL_array_tag_C"),
-            to_tag_entry(SINT, 5, "SINT_array_tag_A"),
-            to_tag_entry(SINT, 5, "SINT_array_tag_B"),
-            to_tag_entry(SINT, 5, "SINT_array_tag_C"),
-            to_tag_entry(INT, 5, "INT_array_tag_A"),
-            to_tag_entry(INT, 5, "INT_array_tag_B"),
-            to_tag_entry(INT, 5, "INT_array_tag_C"),
-            to_tag_entry(DINT, 5, "DINT_array_tag_A"),
-            to_tag_entry(DINT, 5, "DINT_array_tag_B"),
-            to_tag_entry(DINT, 5, "DINT_array_tag_C"),
-            to_tag_entry(LINT, 5, "LINT_array_tag_A"),
-            to_tag_entry(LINT, 5, "LINT_array_tag_B"),
-            to_tag_entry(LINT, 5, "LINT_array_tag_C"),
-            to_tag_entry(USINT, 5, "USINT_array_tag_A"),
-            to_tag_entry(USINT, 5, "USINT_array_tag_B"),
-            to_tag_entry(USINT, 5, "USINT_array_tag_C"),
-            to_tag_entry(UINT, 5, "UINT_array_tag_A"),
-            to_tag_entry(UINT, 5, "UINT_array_tag_B"),
-            to_tag_entry(UINT, 5, "UINT_array_tag_C"),
-            to_tag_entry(ULINT, 5, "ULINT_array_tag_A"),
-            to_tag_entry(ULINT, 5, "ULINT_array_tag_B"),
-            to_tag_entry(ULINT, 5, "ULINT_array_tag_C"),
-            to_tag_entry(REAL, 5, "REAL_array_tag_A"),
-            to_tag_entry(REAL, 5, "REAL_array_tag_B"),
-            to_tag_entry(REAL, 5, "REAL_array_tag_C"),
-            to_tag_entry(LREAL, 5, "LREAL_array_tag_A"),
-            to_tag_entry(LREAL, 5, "LREAL_array_tag_B"),
-            to_tag_entry(LREAL, 5, "LREAL_array_tag_C"),
-        };
-    }
+    };    
 
 
     static int push_tag_entry(TagEntry const& entry, ByteView const& bytes, int offset)
@@ -294,12 +352,13 @@ namespace dev
         TagValue tag{};
 
         tag.tag_id = (u32)tagdb.tag_values.size();
+        tag.symbol_type = entry.symbol_type;
         tag.value_bytes = mb::push_view(tagdb.tag_value_data, value_size(entry));
 
         // initial value
         for (u32 i = 0; i < tag.value_bytes.length; ++i)
         {
-            tag.value_bytes.data[i] = tagdb.generate_byte();
+            tag.value_bytes.data[i] = tagdb.generate_byte(tag.symbol_type);
         }
 
         tagdb.tag_values.push_back(tag);
@@ -394,11 +453,12 @@ namespace dev
             return PLCTAG_STATUS_OK;
         }
 
-        auto& value = tags[handle].value_bytes;
+        auto& tag = tags[handle];
+        auto& bytes = tag.value_bytes;
 
-        for (u32 i = 0; i < value.length; ++i)
+        for (u32 i = 0; i < bytes.length; ++i)
         {
-            value.data[i]++;
+            bytes.data[i] = tagdb.generate_byte(tag.symbol_type);
         }
 
         return PLCTAG_STATUS_OK;

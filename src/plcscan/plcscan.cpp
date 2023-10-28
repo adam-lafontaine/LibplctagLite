@@ -61,7 +61,9 @@ static bool vector_contains(std::vector<T> const& vec, T value)
 }
 
 
-/* 16 bin ids */
+/* 16 bit ids */
+
+// TODO: union tricks
 
 namespace id16
 {
@@ -80,6 +82,8 @@ namespace id16
 
 
 /* 32 bit ids */
+
+// TODO: union tricks
 
 namespace id32
 {
