@@ -100,7 +100,7 @@ namespace dev
 
         TagEntry entry{};
         entry.instance_id = tag_id++;
-        entry.symbol_type = symbol_type;
+        entry.symbol_type = symbol_type | (1 << 13);
         entry.element_length = get_symbol_size(symbol_type);
         entry.array_dims[0] = array_count;
         entry.string_len = (u16)strlen(name);

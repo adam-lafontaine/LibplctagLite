@@ -506,6 +506,11 @@ namespace /* private */
             }
         }
 
+        if (entry.elem_count > 1)
+        {
+            int x = 0;
+        }
+
         int offset = H_size;
 
         entry.name_ptr = (char*)(entry_data + offset);
@@ -614,8 +619,6 @@ namespace /* private */
         tag.bytes = mb::sub_view(mem.public_tag_data, conn.scan_offset);
 
         mh::copy_unsafe(entry.name_ptr, tag.tag_name, name_copy_len);
-
-        auto d = tag.tag_name.data();
 
         mem.connections.push_back(conn);
         tags.push_back(tag);
