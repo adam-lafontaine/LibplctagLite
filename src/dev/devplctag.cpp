@@ -275,7 +275,7 @@ namespace dev
         tagdb.tag_values.reserve(tagdb.tag_entries.size());
 
         TagValue listing_tag{};
-        listing_tag.tag_id = 0;
+        listing_tag.tag_id = (u32)tagdb.tag_values.size();
         listing_tag.value_bytes = mb::push_view(value_data, listing_bytes);
         tagdb.tag_values.push_back(listing_tag);
 
@@ -284,6 +284,20 @@ namespace dev
         {
             offset = push_tag_entry(entry, listing_tag.value_bytes, offset);
         }
+
+        return (int)tagdb.tag_values.size() - 1;
+    }
+
+
+    static int generate_tag_value(TagDatabase& tagdb, TagEntry const& entry)
+    {
+        TagValue tag{};
+
+        tag.tag_id = (u32)tagdb.tag_values.size();
+        tag.value_bytes = mb::push_view(tagdb.tag_value_data, value_size(entry));
+
+        tagdb.tag_values.push_back(tag);
+
 
         return (int)tagdb.tag_values.size() - 1;
     }
@@ -301,16 +315,52 @@ namespace dev
     {
         auto& tagdb = g_tag_db;
 
-        u32 pos = 0;
-
-        if (mh::string_contains(attr, '@', pos))
+        if (tagdb.tag_entries.empty())
         {
-            if (attr[pos + 1] == 't')
+            tagdb.tag_entries = create_tag_entries();
+        }
+
+        std::string str(attr);
+
+        auto not_found = std::string::npos;
+
+        if (str.find("@tags") != not_found)
+        {
+            int handle = generate_tag_data(tagdb);
+            if (handle < 0)
             {
-                tagdb.tag_entries = create_tag_entries();
+                return -1;
+            }
 
-                int handle = generate_tag_data(tagdb);
+            return handle;
+        }
 
+        if (str.find("@udt") != not_found)
+        {
+            return -1;
+        }
+
+        auto pos = str.find("name=");
+        if (pos == not_found)
+        {
+            return -1;
+        }
+
+        pos += strlen("name=");
+
+        auto pos2 = str.find('&', pos);
+        if (pos2 == not_found)
+        {
+            return -1;
+        }
+
+        auto name = str.substr(pos, (pos2 - pos));
+
+        for (auto const& entry : tagdb.tag_entries)
+        {
+            if (name == entry.tag_name)
+            {
+                int handle = generate_tag_value(tagdb, entry);
                 if (handle < 0)
                 {
                     return -1;
@@ -318,19 +368,9 @@ namespace dev
 
                 return handle;
             }
-            else if (attr[pos + 1] == 'u')
-            {
-                // generate udt entry
-            }
-
-            return -1;
         }
 
-        // create a tag
-        // name matches one in the listing
-
-
-        return -1; // PLCTAG_STATUS_OK;
+        return -1;
     }
 
 

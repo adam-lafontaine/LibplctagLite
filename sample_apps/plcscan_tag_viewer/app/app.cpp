@@ -901,7 +901,7 @@ namespace render
 				ImGui::TextColored(text_color, "%u", tag.size);
 
 				ImGui::TableSetColumnIndex(col_value);
-				ImGui::TextColored(text_color, "%s", tag.value);
+				ImGui::TextColored(text_color, "%s", tag.value.data());
 			}
 
 			ImGui::EndTable();
@@ -960,7 +960,7 @@ namespace render
 						ImGui::TextColored(text_color, "%u", tag.element_size);
 
 						ImGui::TableSetColumnIndex(col_value);
-						ImGui::TextColored(text_color, "%s", tag.values[i]);
+						ImGui::TextColored(text_color, "%s", tag.values[i].data());
 					}
 
 					ImGui::TreePop();
