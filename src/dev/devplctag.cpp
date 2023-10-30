@@ -204,7 +204,7 @@ namespace dev
     };
 
 
-    static u16 get_udt_size(UdtType const& udt)
+    static u16 get_udt_tag_size(UdtType const& udt)
     {
         u16 size = 0;
 
@@ -212,6 +212,7 @@ namespace dev
         {
             if (!f.array_count)
             {
+                assert(f.type_code == TYPE_CODE_BOOL);
                 // add 1 every 8 bits
                 size += (f.bit_number % 8 == 0) ? 1 : 0;
             }
@@ -233,7 +234,7 @@ namespace dev
 
         TagEntry entry{};
         entry.symbol_type = sb;
-        entry.element_length = get_udt_size(udt);
+        entry.element_length = get_udt_tag_size(udt);
         entry.array_dims[0] = array_count;
         entry.string_len = (u16)strlen(tag_name);
         entry.tag_name = tag_name;
@@ -317,7 +318,7 @@ namespace dev
     static List<TagEntry> create_tag_entries()
     {
         return {
-            to_tag_entry(TYPE_CODE_BOOL, 1, "BOOL_tag_A"),
+            /*to_tag_entry(TYPE_CODE_BOOL, 1, "BOOL_tag_A"),
             to_tag_entry(TYPE_CODE_BOOL, 1, "BOOL_tag_B"),
             to_tag_entry(TYPE_CODE_BOOL, 1, "BOOL_tag_C"),
 
@@ -403,7 +404,7 @@ namespace dev
 
             to_tag_entry(TYPE_CODE_CHAR_STRING, 5, "STRING_array_tag_A"),
             to_tag_entry(TYPE_CODE_CHAR_STRING, 5, "STRING_array_tag_B"),
-            to_tag_entry(TYPE_CODE_CHAR_STRING, 5, "STRING_array_tag_C"),
+            to_tag_entry(TYPE_CODE_CHAR_STRING, 5, "STRING_array_tag_C"),*/
         };
     }
 }
@@ -427,7 +428,7 @@ namespace dev
         TagValueGenerator()
         {
             gen = std::mt19937(rd());
-            new_tag_value_dist = std::uniform_int_distribution<int>(1, 100);
+            new_tag_value_dist = std::uniform_int_distribution<int>(1, 100); // 1% chance of generating a new value
 
             bool_byte_dist = std::uniform_int_distribution<int>(0, 1);
             numeric_byte_dist = std::uniform_int_distribution<int>(0, 255);
@@ -463,13 +464,15 @@ namespace dev
         List<TagEntry> tag_entries;
         List<TagValue> tag_values;
 
+        List<int> listing_tag_ids;
+
         ByteBuffer tag_value_data;
 
         TagValueGenerator gen;
     };
 
 
-    static int push_tag_entry(TagEntry const& entry, ByteView const& bytes, int offset)
+    static int push_tag_listing(TagEntry const& entry, ByteView const& bytes, int offset)
     {        
         auto dst = bytes.data + offset;
         auto src = (u8*)(&entry.instance_id);
@@ -542,14 +545,124 @@ namespace dev
         int offset = 0;
         for (auto const& entry : tagdb.tag_entries)
         {
-            offset = push_tag_entry(entry, listing_tag.value_bytes, offset);
+            offset = push_tag_listing(entry, listing_tag.value_bytes, offset);
         }
 
-        return (int)tagdb.tag_values.size() - 1;
+        auto handle = (int)listing_tag.tag_id;
+
+        tagdb.listing_tag_ids.push_back(handle);
+
+        return handle;
     }
 
 
-    static int generate_udt_listing_tag_buffer(TagDatabase& tagdb, std::string const& entry_name)
+    static u32 get_udt_listing_size(UdtType const& udt)
+    {
+        /*
+
+        The format in the tag buffer is:
+
+        A new header of 14 bytes:
+
+        Bytes   Meaning
+        0-1     16-bit UDT ID
+        2-5     32-bit UDT member description size, in 32-bit words.
+        6-9     32-bit UDT instance size, in bytes.
+        10-11   16-bit UDT number of members (fields).
+        12-13   16-bit UDT handle/type.
+
+        Then the raw field info.
+
+        N x field info entries
+            uint16_t field_metadata - array element count or bit field number
+            uint16_t field_type
+            uint32_t field_offset
+
+        int8_t string - zero-terminated string, UDT name, but name stops at first semicolon!
+
+        N x field names
+            int8_t string - zero-terminated.
+
+        */
+
+        u32 listing_size = 14; // header
+
+        listing_size += (u32)strlen(udt.udt_name); +2;  // UDT_Name;\0
+
+        for (auto const& f : udt.fields)
+        {
+            listing_size += 4; // metadata, field_type, field_offset
+            listing_size += (u32)strlen(f.field_name) + 1; // field_name, zero-terminated
+        }
+
+        return listing_size;
+    }
+
+
+    static void push_udt_listing(UdtType const& udt, ByteView const& bytes)
+    {
+        constexpr auto sz16 = sizeof(u16);
+        constexpr auto sz32 = sizeof(u32);
+
+        u64 offset = 0;
+
+        auto const set16 = [&](u16 val) { offset += sz16; mh::copy_bytes((u8*)(&val), bytes.data + offset - sz16, (u32)sz16); };
+        auto const set32 = [&](u32 val) { offset += sz32; mh::copy_bytes((u8*)(&val), bytes.data + offset - sz32, (u32)sz32); };
+
+        auto dst = bytes.data;
+
+        set16(udt.udt_id);
+
+        offset += sz32; // skip member description size
+
+        set32((u32)get_udt_tag_size(udt));
+
+        set16((u16)udt.fields.size());
+
+        offset += sz16;  // skip handle
+
+        u32 field_offset = 0;
+        for (auto const& f : udt.fields)
+        {
+            u32 field_size = 0;
+            if (f.type_code == TYPE_CODE_BOOL)
+            {
+                set16(f.bit_number);
+            }
+            else
+            {
+                set16(f.array_count);
+                field_size
+            }
+
+            auto type = to_type_symbol(f.type_code);
+            set16(type.symbol);
+
+            src = (u8*)(&field_offset);
+            len = sizeof(field_offset);
+            mh::copy_bytes(src, dst, (u32)len);
+            dst += len;
+
+            field_offset += field_size;
+        }
+
+        len = (u32)strlen(udt.udt_name); +2;
+
+        qsnprintf((char*)dst, (int)len, "%s;X", udt.udt_name);
+        dst += len;
+        dst[-1] = 0;
+
+        for (auto const& f : udt.fields)
+        {
+            len = (u32)strlen(f.field_name);
+            qsnprintf((char*)dst, (int)len, "%sX", f.field_name);
+            dst += len;
+            dst[-1] = 0;
+        }
+    }
+
+    
+    static int generate_udt_entry_listing_tag_buffer(TagDatabase& tagdb, std::string const& entry_name)
     {
         auto not_found = std::string::npos;
         auto pos = entry_name.find('/');
@@ -571,23 +684,23 @@ namespace dev
 
         auto& udt = *it;
 
-        // TODO: random data for now
+        TagValue listing_tag{};
 
-        TagValue tag{};
+        listing_tag.tag_id = (u32)tagdb.tag_values.size();
+        listing_tag.symbol_type = to_udt_symbol(udt_id);        
 
-        tag.tag_id = (u32)tagdb.tag_values.size();
-        tag.symbol_type = to_udt_symbol(udt_id);
-        tag.value_bytes = mb::push_view(tagdb.tag_value_data, (u32)get_udt_size(udt));
+        auto listing_size = get_udt_listing_size(udt);
 
-        // initial value
-        for (u32 i = 0; i < tag.value_bytes.length; ++i)
-        {
-            tag.value_bytes.data[i] = tagdb.gen.generate_byte(tag.symbol_type);
-        }
+        listing_tag.value_bytes = mb::push_view(tagdb.tag_value_data, listing_size);
+        tagdb.tag_values.push_back(listing_tag);
 
-        tagdb.tag_values.push_back(tag);
+        push_udt_listing(udt, listing_tag.value_bytes);
 
-        return (int)tagdb.tag_values.size() - 1;
+        auto handle = (int)listing_tag.tag_id;
+
+        tagdb.listing_tag_ids.push_back(handle);
+
+        return handle;
     }
 
 
@@ -665,11 +778,13 @@ namespace dev
 
         if (name.find("@udt") != not_found)
         {
-            handle = generate_udt_listing_tag_buffer(tagdb, name);
+            handle = generate_udt_entry_listing_tag_buffer(tagdb, name);
             if (handle < 0)
             {
                 return -1;
             }
+
+            return handle;
         }
 
         auto begin = tagdb.tag_entries.begin();
@@ -703,8 +818,11 @@ namespace dev
         {
             return -1;
         }
+
+        auto begin = g_tag_db.listing_tag_ids.begin();
+        auto end = g_tag_db.listing_tag_ids.end();
         
-        if (handle == 0 || !gen.new_tag_value())
+        if (std::find(begin, end, handle) != end || !gen.new_tag_value())
         {
             return PLCTAG_STATUS_OK;
         }

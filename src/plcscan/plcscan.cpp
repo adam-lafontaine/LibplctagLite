@@ -5,7 +5,14 @@
 #ifdef DEVPLCTAG
 
 #include "../dev/devplctag.hpp"
-using namespace dev;
+
+constexpr auto PLCTAG_STATUS_OK = dev::PLCTAG_STATUS_OK;
+
+#define plc_tag_create dev::plc_tag_create
+#define plc_tag_read dev::plc_tag_read
+#define plc_tag_get_raw_bytes dev::plc_tag_get_raw_bytes
+#define plc_tag_get_size dev::plc_tag_get_size
+#define plc_tag_shutdown dev::plc_tag_shutdown
 
 #else
 
@@ -733,7 +740,7 @@ namespace /* private */
         i32 bit_number = -1;
 
         u16 type_code = 0;
-        u16 offset = 0;
+        u32 offset = 0;
 
         StringView field_name;
     };
@@ -784,59 +791,46 @@ namespace /* private */
 
         */
 
-        class H
-        {
-        public:
-            u16 udt_id = 0;   // 2
-            u32 desc = 0;     // 4
-            u32 udt_size = 0; // 4
-            u16 n_fields = 0; // 2
-            u16 handle = 0;   // 2
-        };
+        constexpr auto sz16 = sizeof(u16);
+        constexpr auto sz32 = sizeof(u32);
 
-        constexpr auto H_size = 2 + 4 + 4 + 2 + 2;
+        u64 offset = 0;
 
-        class F
-        {
-        public:
-            u16 metadata = 0;  // 2
-            u16 type_code = 0; // 2
-            u32 offset = 0;    // 4
-        };
-
-        constexpr auto F_size = 2 + 2 + 4;
-
-        auto& h = *(H*)(udt_data);
+        auto const get16 = [&]() { offset += sz16; return *(u32*)(udt_data + offset - sz16); };
+        auto const get32 = [&]() { offset += sz32; return *(u32*)(udt_data + offset - sz32); };        
 
         UdtEntry entry{};
-        entry.udt_id = h.udt_id;
-        entry.udt_size = h.udt_size;
+        entry.udt_id = get16();
+        offset += sz32; // skip description size
+        
+        entry.udt_size = get32();
 
-        entry.fields.reserve(h.n_fields);        
+        auto n_fields = get16();
 
-        int offset = H_size;
+        entry.fields.reserve(n_fields);        
 
-        for (u16 i = 0; i < h.n_fields; ++i)
+        offset = 14;
+
+        for (u16 i = 0; i < n_fields; ++i)
         {
-            auto& f = *(F*)(udt_data + offset);
+            auto metadata = get16();
 
             FieldEntry field{};
-            field.type_code = f.type_code;
-            field.offset = f.offset;
+            field.type_code = get16();
+
+            field.offset = get32();
 
             field.elem_count = 1;
-            if (id16::is_array_field(f.type_code))
+            if (id16::is_array_field(field.type_code))
             {
-                field.elem_count = f.metadata;
+                field.elem_count = metadata;
             }
-            else if (id16::is_bit_field(f.type_code))
+            else if (id16::is_bit_field(field.type_code))
             {
-                field.bit_number = (i32)f.metadata;
+                field.bit_number = (i32)metadata;
             }
 
             entry.fields.push_back(field);
-
-            offset += F_size;
         }
 
         auto string_data = (char*)(udt_data + offset);

@@ -165,7 +165,7 @@ namespace
 {
 	static void map_hex(ByteView const& src, StringView const& dst)
 	{
-		auto dst_len = dst.length;
+		auto dst_len = dst.length - 2;
 		auto src_len = src.length;
 
 		if (src_len > dst_len / 2)
@@ -173,10 +173,15 @@ namespace
 			src_len = dst_len / 2;
 		}
 
+		auto dst_data = dst.char_data;
+
+		qsnprintf(dst_data, 3, "0x");
+		dst_data += 2;
+
 		for (u32 i = 0; i < src_len; i++)
 		{
 			auto s = *(int*)(src.data + i);
-			auto d = dst.char_data + i * 2;
+			auto d = dst_data + i * 2;
 			qsnprintf(d, 3, "%02x", s);
 		}
 
