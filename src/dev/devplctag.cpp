@@ -32,12 +32,14 @@ namespace dev
 
     constexpr auto TYPE_MASK = (u16)0x00FF;
 
+    using u12 = u16;
+
 
     union SymbolType
     {
         u16 symbol = 0;
 
-        u16 udt_id : 12;
+        u12 udt_id : 12;
 
         struct
         {
@@ -64,6 +66,27 @@ namespace dev
 
         void set_array_dims(u8 dims) { top8 |= (u8)(dims << 5); }
     };
+
+
+    static SymbolType to_type_symbol(u8 type_code)
+    {
+        SymbolType sb{};
+        sb.type_code = type_code;
+        sb.set_array_dims(1); // 1D arrays only
+
+        return sb;
+    }
+
+
+    static SymbolType to_udt_symbol(u16 udt_id)
+    {
+        SymbolType sb{};
+        sb.udt_id = udt_id;
+        sb.is_struct = 1;
+        sb.set_array_dims(1); // 1D arrays only
+
+        return sb;
+    }
 }
 
 
@@ -112,14 +135,9 @@ namespace dev
     }
 
 
-    u16 get_symbol_size(SymbolType symbol_type)
+    static u16 get_type_size(u8 type_code)
     {
-        if (symbol_type.is_struct || symbol_type.is_system)
-        {
-            return 16; // TODO;
-        }
-
-        switch (symbol_type.type_code)
+        switch (type_code)
         {
         case TYPE_CODE_BOOL:
         case TYPE_CODE_SINT:
@@ -137,7 +155,7 @@ namespace dev
         case TYPE_CODE_LREAL: return 8;
 
         case TYPE_CODE_CHAR_STRING: return 16;
-        
+
         default: return 0;
         }
     }
@@ -147,37 +165,80 @@ namespace dev
     {
         static u32 tag_id = 0;
 
-        SymbolType sb{};
-        sb.type_code = type_code;
-        sb.set_array_dims(1);
+        SymbolType sb = to_type_symbol(type_code);
 
         TagEntry entry{};
         entry.instance_id = tag_id++;
         entry.symbol_type = sb;
-        entry.element_length = get_symbol_size(sb);
+        entry.element_length = get_type_size(sb.type_code);
         entry.array_dims[0] = array_count;
         entry.string_len = (u16)strlen(name);
         entry.tag_name = name;
 
         return entry;
     }
+}
 
 
-    static TagEntry to_udt_entry(u8 udt_id, u32 array_count, cstr udt_name)
+namespace dev
+{
+    class UdtField
     {
-        assert(udt_id < TYPE_CODE_BOOL); // just to be safe
+    public:        
+        cstr field_name = 0;
 
-        SymbolType sb{};
-        sb.udt_id = udt_id;
-        sb.set_array_dims(1);
+        u8 type_code = 0;
+        //u12 udt_id; // no udt fields
+
+        u16 array_count = 0;
+        u16 bit_number = 0;
+    };
+
+
+    class UdtDef
+    {
+    public:
+        u12 udt_id = 0;
+        cstr udt_name = 0;
+        List<UdtField> fields;
+    };
+
+
+    static u16 get_udt_size(UdtDef const& udt)
+    {
+        u16 size = 0;
+
+        for (auto const& f : udt.fields)
+        {
+            if (!f.array_count)
+            {
+                // add 1 every 8 bits
+                size += (f.bit_number % 8 == 0) ? 1 : 0;
+            }
+            else
+            {
+                size += get_type_size(f.type_code) * f.array_count;
+            }            
+        }
+
+        return size;
+    }
+
+
+    static TagEntry to_udt_entry(UdtDef const& udt, u32 array_count, cstr tag_name)
+    {
+        assert(udt.udt_id < TYPE_CODE_BOOL); // just to be safe
+
+        SymbolType sb = to_udt_symbol(udt.udt_id);
 
         TagEntry entry{};
         entry.symbol_type = sb;
-        entry.element_length = get_symbol_size(sb);
+        entry.element_length = get_udt_size(udt);
         entry.array_dims[0] = array_count;
-        entry.string_len = (u16)strlen(udt_name);
-        entry.tag_name = udt_name;
-        
+        entry.string_len = (u16)strlen(tag_name);
+        entry.tag_name = tag_name;
+
+        return entry;
     }
 }
 
@@ -188,7 +249,60 @@ namespace dev
 {
     static List<TagEntry> create_tag_entries()
     {
+        UdtDef udt_a{};
+        udt_a.udt_id = 100;
+        udt_a.udt_name = "UDTA";
+        udt_a.fields = 
+        {
+            { "INT field", TYPE_CODE_INT, 1, 0 },
+            { "SINT field", TYPE_CODE_SINT, 1, 0 }
+        };
+
+        UdtDef udt_b{};
+        udt_b.udt_id = 100;
+        udt_b.udt_name = "UDTB";
+        udt_b.fields =
+        {
+            { "DINT field", TYPE_CODE_DINT, 1, 0 },
+            { "REAL field", TYPE_CODE_REAL, 1, 0 }
+        };
+
+        UdtDef udt_c{};
+        udt_c.udt_id = 100;
+        udt_c.udt_name = "UDTC";
+        udt_c.fields =
+        {
+            { "LREAL field", TYPE_CODE_LREAL, 1, 0 },
+            { "ULINT field", TYPE_CODE_ULINT, 1, 0 }
+        };
+
+
+
         return {
+            to_udt_entry(udt_a, 1, "UDTA_tag_A"),
+            to_udt_entry(udt_a, 1, "UDTA_tag_B"),
+            to_udt_entry(udt_a, 1, "UDTA_tag_C"),
+
+            to_udt_entry(udt_a, 5, "UDTA_array_tag_A"),
+            to_udt_entry(udt_a, 5, "UDTA_array_tag_B"),
+            to_udt_entry(udt_a, 5, "UDTA_array_tag_C"),
+
+            to_udt_entry(udt_b, 1, "UDTB_tag_A"),
+            to_udt_entry(udt_b, 1, "UDTB_tag_B"),
+            to_udt_entry(udt_b, 1, "UDTB_tag_C"),
+
+            to_udt_entry(udt_b, 5, "UDTB_array_tag_A"),
+            to_udt_entry(udt_b, 5, "UDTB_array_tag_B"),
+            to_udt_entry(udt_b, 5, "UDTB_array_tag_C"),
+
+            to_udt_entry(udt_c, 1, "UDTC_tag_A"),
+            to_udt_entry(udt_c, 1, "UDTC_tag_B"),
+            to_udt_entry(udt_c, 1, "UDTC_tag_C"),
+
+            to_udt_entry(udt_c, 5, "UDTC_array_tag_A"),
+            to_udt_entry(udt_c, 5, "UDTC_array_tag_B"),
+            to_udt_entry(udt_c, 5, "UDTC_array_tag_C"),
+
             to_tag_entry(TYPE_CODE_BOOL, 1, "BOOL_tag_A"),
             to_tag_entry(TYPE_CODE_BOOL, 1, "BOOL_tag_B"),
             to_tag_entry(TYPE_CODE_BOOL, 1, "BOOL_tag_C"),
@@ -315,6 +429,11 @@ namespace dev
 
         u8 generate_byte(SymbolType symbol)
         { 
+            if (symbol.is_struct || symbol.is_system)
+            {
+                return string_byte_dist(gen); // TODO: just random chars for now
+            }
+
             switch (symbol.type_code)
             {
             case TYPE_CODE_BOOL: return bool_byte_dist(gen);
@@ -371,7 +490,7 @@ namespace dev
     }
     
     
-    static int generate_entry_listing_tag(TagDatabase& tagdb)
+    static int generate_entry_listing_tag_buffer(TagDatabase& tagdb)
     {
         u32 listing_bytes = 0;
         u32 value_bytes = 0;
@@ -408,15 +527,29 @@ namespace dev
     }
 
 
-    static int generate_udt_listing_tag(TagDatabase& tagdb, TagEntry const& entry)
+    static int generate_udt_listing_tag_buffer(TagDatabase& tagdb, TagEntry const& entry)
     {
+        // TODO: random data for now
 
+        TagValue tag{};
 
-        return -1;
+        tag.tag_id = (u32)tagdb.tag_values.size();
+        tag.symbol_type = entry.symbol_type;
+        tag.value_bytes = mb::push_view(tagdb.tag_value_data, value_size(entry));
+
+        // initial value
+        for (u32 i = 0; i < tag.value_bytes.length; ++i)
+        {
+            tag.value_bytes.data[i] = tagdb.generate_byte(tag.symbol_type);
+        }
+
+        tagdb.tag_values.push_back(tag);
+
+        return (int)tagdb.tag_values.size() - 1;
     }
 
 
-    static int generate_tag(TagDatabase& tagdb, TagEntry const& entry)
+    static int generate_tag_value_buffer(TagDatabase& tagdb, TagEntry const& entry)
     {
         TagValue tag{};
 
@@ -477,7 +610,7 @@ namespace dev
 
         if (name == "@tags")
         {
-            handle = generate_entry_listing_tag(tagdb);
+            handle = generate_entry_listing_tag_buffer(tagdb);
             if (handle < 0)
             {
                 return -1;
@@ -499,11 +632,11 @@ namespace dev
 
         if (name.find("@udt") != not_found)
         {
-            handle = generate_udt_listing_tag(tagdb, entry);
+            handle = generate_udt_listing_tag_buffer(tagdb, entry);
         }
         else
         {
-            handle = generate_tag(tagdb, entry);
+            handle = generate_tag_value_buffer(tagdb, entry);
         }
 
         if (handle < 0)

@@ -1005,7 +1005,7 @@ namespace render
 
 		auto table_flags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
 		auto table_dims = ImGui::GetContentRegionAvail();
-		//table_dims.y /= 2;
+		table_dims.y /= 2;
 
 		auto text_color = WHITE;
 

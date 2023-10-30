@@ -439,15 +439,13 @@ namespace /* private */
         }
 
         auto valid_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
-
-        u32 begin = 0;
         
-        if (tag_name[0] == '@')
+        if (tag_name[0] == '@') // e.g. @udt/
         {
-            begin++; // start checking from 2nd character
+            return true;
         }
 
-        for (u32 i = begin; i < len; ++i)
+        for (u32 i = 0; i < len; ++i)
         {
             auto c = tag_name[i];
             if (!mh::string_contains(valid_chars, c))
@@ -680,11 +678,14 @@ namespace /* private */
 
     static StringView get_data_type_name(DataTypeId32 type_id, List<UdtType> const& udts)
     {
-        constexpr auto udt_type = "UDT";
+        static constexpr auto udt_type = "UDT";
 
         if (!id32::is_udt_type(type_id))
         {
-            return mh::to_string_view_unsafe(tag_type_str((FixedType)type_id));
+            auto str = tag_type_str((FixedType)type_id);
+            auto len = (u32)strlen(str);
+
+            return mh::to_string_view_unsafe((char*)str, len);
         }
         
         for (auto const& udt : udts)
@@ -695,7 +696,7 @@ namespace /* private */
             }
         }
 
-        return mh::to_string_view_unsafe(udt_type);
+        return mh::to_string_view_unsafe((char*)udt_type, (u32)strlen(udt_type));
     }
     
     
@@ -850,15 +851,15 @@ namespace /* private */
         }
 
         entry.udt_name = mh::to_string_view_unsafe(entry.name_buffer, name_len);
-
         mh::copy_unsafe(string_data, entry.udt_name, name_len);
 
         str_offset = string_len + 1;
         for (auto& field : entry.fields)
         {
             auto str = string_data + str_offset;
-            field.field_name = mh::to_string_view_unsafe(str);
-            str_offset++;
+            auto len = strlen(str);
+            field.field_name = mh::to_string_view_unsafe(str, (u32)len);
+            str_offset += len + 1;
         }
 
         return entry; 

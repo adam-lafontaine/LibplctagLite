@@ -240,14 +240,14 @@ namespace memory_helper
     }
 
 
-    inline StringView to_string_view_unsafe(cstr str)
+    /*inline StringView to_string_view_unsafe(cstr str)
     {
         StringView view{};
         view.char_data = (char*)str;
         view.length = (u32)strlen(str);
 
         return view;
-    }
+    }*/
 
 
     inline StringView to_string_view_unsafe(char* src, u32 len)
