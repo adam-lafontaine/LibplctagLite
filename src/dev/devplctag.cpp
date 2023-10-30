@@ -78,7 +78,7 @@ namespace dev
     }
 
 
-    static SymbolType to_udt_symbol(u16 udt_id)
+    static SymbolType to_udt_symbol(u12 udt_id)
     {
         SymbolType sb{};
         sb.udt_id = udt_id;
@@ -250,7 +250,7 @@ namespace dev
     static List<UdtType> create_udt_types()
     {
         UdtType udt_a{};
-        udt_a.udt_id = 100;
+        udt_a.udt_id = 101;
         udt_a.udt_name = "UDTA";
         udt_a.fields =
         {
@@ -259,7 +259,7 @@ namespace dev
         };
 
         UdtType udt_b{};
-        udt_b.udt_id = 101;
+        udt_b.udt_id = 102;
         udt_b.udt_name = "UDTB";
         udt_b.fields =
         {
@@ -268,7 +268,7 @@ namespace dev
         };
 
         UdtType udt_c{};
-        udt_c.udt_id = 102;
+        udt_c.udt_id = 103;
         udt_c.udt_name = "UDTC";
         udt_c.fields =
         {
@@ -280,11 +280,11 @@ namespace dev
     }
 
 
-    static void append_udt_types(List<UdtType> const& udt_types, List<TagEntry>& entries)
+    static void append_udt_entries(List<UdtType> const& udt_types, List<TagEntry>& entries)
     {
-        auto& udt_a = udt_types[0];
-        auto& udt_b = udt_types[1];
-        auto& udt_c = udt_types[2];        
+        auto& udt_a = udt_types[0]; // 101
+        auto& udt_b = udt_types[1]; // 102
+        auto& udt_c = udt_types[2]; // 103 
 
         entries.push_back(to_udt_entry(udt_a, 1, "UDTA_tag_A"));
         entries.push_back(to_udt_entry(udt_a, 1, "UDTA_tag_B"));
@@ -309,6 +309,8 @@ namespace dev
         entries.push_back(to_udt_entry(udt_c, 5, "UDTC_array_tag_A"));
         entries.push_back(to_udt_entry(udt_c, 5, "UDTC_array_tag_B"));
         entries.push_back(to_udt_entry(udt_c, 5, "UDTC_array_tag_C"));
+
+
     }
 
 
@@ -547,15 +549,35 @@ namespace dev
     }
 
 
-    static int generate_udt_listing_tag_buffer(TagDatabase& tagdb, TagEntry const& entry)
+    static int generate_udt_listing_tag_buffer(TagDatabase& tagdb, std::string const& entry_name)
     {
+        auto not_found = std::string::npos;
+        auto pos = entry_name.find('/');
+        if (pos == not_found)
+        {
+            return -1;
+        }
+
+        pos++;
+
+        auto udt_id = (u12)std::stoi(entry_name.substr(pos));
+        auto begin = tagdb.udt_types.begin();
+        auto end = tagdb.udt_types.end();
+        auto it = std::find_if(begin, end, [&](auto& udt) { return udt.udt_id == udt_id; });
+        if (it == end)
+        {
+            return -1;
+        }
+
+        auto& udt = *it;
+
         // TODO: random data for now
 
         TagValue tag{};
 
         tag.tag_id = (u32)tagdb.tag_values.size();
-        tag.symbol_type = entry.symbol_type;
-        tag.value_bytes = mb::push_view(tagdb.tag_value_data, value_size(entry));
+        tag.symbol_type = to_udt_symbol(udt_id);
+        tag.value_bytes = mb::push_view(tagdb.tag_value_data, (u32)get_udt_size(udt));
 
         // initial value
         for (u32 i = 0; i < tag.value_bytes.length; ++i)
@@ -607,7 +629,7 @@ namespace dev
         {
             tagdb.udt_types = create_udt_types();
             tagdb.tag_entries = create_tag_entries();
-            append_udt_types(tagdb.udt_types, tagdb.tag_entries);
+            append_udt_entries(tagdb.udt_types, tagdb.tag_entries);
         }
 
         std::string str(attr);
@@ -639,7 +661,16 @@ namespace dev
             }
 
             return handle;
-        }        
+        }
+
+        if (name.find("@udt") != not_found)
+        {
+            handle = generate_udt_listing_tag_buffer(tagdb, name);
+            if (handle < 0)
+            {
+                return -1;
+            }
+        }
 
         auto begin = tagdb.tag_entries.begin();
         auto end = tagdb.tag_entries.end();
@@ -651,15 +682,6 @@ namespace dev
         }
 
         auto& entry = *it;
-
-        if (name.find("@udt") != not_found)
-        {
-            handle = generate_udt_listing_tag_buffer(tagdb, entry);
-        }
-        else
-        {
-            handle = generate_tag_value_buffer(tagdb, entry);
-        }
 
         if (handle < 0)
         {
