@@ -66,7 +66,7 @@ namespace
 
 		// TODO: fields
 		
-		StringView value;
+		StringView value_str;
 
 		MemoryBuffer<char> value_data;
 	};
@@ -397,7 +397,7 @@ namespace
 
 		if (mb::create_buffer(ui.value_data, bytes_per_value))
 		{
-			ui.value = mh::push_cstr_view(ui.value_data, bytes_per_value);
+			ui.value_str = mh::push_cstr_view(ui.value_data, bytes_per_value);
 		}
 
 		return ui;
@@ -458,7 +458,7 @@ namespace
 			return;
 		}
 
-		map_hex(src.value_bytes, dst.value);
+		map_hex(src.value_bytes, dst.value_str);
 	}
 
 
@@ -1023,7 +1023,7 @@ namespace render
 				ImGui::TextColored(text_color, "%s", tag.name);				
 
 				ImGui::TableSetColumnIndex(col_value);
-				ImGui::TextColored(text_color, "%s", tag.value);
+				ImGui::TextColored(text_color, "%s", tag.value_str.data());
 
 				// TODO
 				//ImGui::TableSetColumnIndex(col_value);
@@ -1097,7 +1097,7 @@ namespace render
 						ImGui::TextColored(text_color, "[%u]", i);
 						
 						ImGui::TableSetColumnIndex(col_value);
-						ImGui::TextColored(text_color, "%s", tag.values[i]);
+						ImGui::TextColored(text_color, "%s", tag.values[i].data());
 
 						// TODO:
 						//ImGui::TableSetColumnIndex(col_value);

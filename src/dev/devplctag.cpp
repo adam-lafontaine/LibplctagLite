@@ -683,6 +683,8 @@ namespace dev
 
         auto& entry = *it;
 
+        handle = generate_tag_value_buffer(tagdb, entry);
+
         if (handle < 0)
         {
             return -1;
