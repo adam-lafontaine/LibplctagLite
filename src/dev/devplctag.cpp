@@ -259,7 +259,7 @@ namespace dev
         };
 
         UdtDef udt_b{};
-        udt_b.udt_id = 100;
+        udt_b.udt_id = 101;
         udt_b.udt_name = "UDTB";
         udt_b.fields =
         {
@@ -268,7 +268,7 @@ namespace dev
         };
 
         UdtDef udt_c{};
-        udt_c.udt_id = 100;
+        udt_c.udt_id = 102;
         udt_c.udt_name = "UDTC";
         udt_c.fields =
         {

@@ -618,7 +618,7 @@ namespace /* private */
         tag.type_id = id32::get_data_type_id(entry.type_code);
         tag.array_count = entry.elem_count;
         tag.tag_name = mh::push_cstr_view(mem.name_data, name_alloc_len);        
-        tag.bytes = mb::sub_view(mem.public_tag_data, conn.scan_offset);
+        tag.value_bytes = mb::sub_view(mem.public_tag_data, conn.scan_offset);
 
         mh::copy_unsafe(entry.name_ptr, tag.tag_name, name_copy_len);
 

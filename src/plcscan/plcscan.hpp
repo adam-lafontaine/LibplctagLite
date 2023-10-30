@@ -27,14 +27,14 @@ namespace plcscan
         StringView tag_name;
         StringView data_type_name;
 
-        ByteView bytes;
+        ByteView value_bytes;
 
         // TODO: tag/connection status
 
         cstr name() const { return tag_name.data(); }
         cstr type() const { return data_type_name.data(); }
-        u8* data() const { return bytes.data; }
-        u32 size() const { return (u32)bytes.length; }
+        u8* data() const { return value_bytes.data; }
+        u32 size() const { return (u32)value_bytes.length; }
         bool is_array() const { return array_count > 1; }
     };
 

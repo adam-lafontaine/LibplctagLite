@@ -33,7 +33,7 @@ namespace
 		cstr type = 0;
 		u32 size = 0;
 
-		StringView value;
+		StringView value_str;
 
 		MemoryBuffer<char> value_data;
 	};
@@ -105,7 +105,7 @@ namespace
 
 		if (mb::create_buffer(ui.value_data, bytes_per_value))
 		{
-			ui.value = mh::push_cstr_view(ui.value_data, bytes_per_value);
+			ui.value_str = mh::push_cstr_view(ui.value_data, bytes_per_value);
 		}
 
 		return ui;
@@ -168,7 +168,7 @@ namespace
 		auto out_len = dst.length;
 		auto len = src.length;
 
-		if (len < out_len / 2)
+		if (len > out_len / 2)
 		{
 			len = out_len / 2;
 		}
@@ -193,7 +193,7 @@ namespace
 			return;
 		}
 
-		map_hex(src.bytes, dst.value);
+		map_hex(src.value_bytes, dst.value_str);
 	}
 
 
@@ -210,11 +210,11 @@ namespace
 
 		MemoryOffset<u8> offset{};
 		offset.begin = 0;
-		offset.length = src.bytes.length / src.array_count;
+		offset.length = src.value_bytes.length / src.array_count;
 
 		for (u32 i = 0; i < src.array_count; ++i)
 		{
-			auto elem_bytes = mb::sub_view(src.bytes, offset);
+			auto elem_bytes = mb::sub_view(src.value_bytes, offset);
 
 			map_hex(elem_bytes, dst.values[i]);
 
@@ -246,8 +246,8 @@ namespace
 			return;
 		}
 
-		mh::zero_string(dst.value);
-		map_string(src.bytes, dst.value);
+		mh::zero_string(dst.value_str);
+		map_string(src.value_bytes, dst.value_str);
 	}
 
 
@@ -267,11 +267,11 @@ namespace
 
 		MemoryOffset<u8> offset{};
 		offset.begin = 0;
-		offset.length = src.bytes.length / src.array_count;
+		offset.length = src.value_bytes.length / src.array_count;
 
 		for (u32 i = 0; i < src.array_count; ++i)
 		{
-			auto src_bytes = mb::sub_view(src.bytes, offset);
+			auto src_bytes = mb::sub_view(src.value_bytes, offset);
 
 			map_string(src_bytes, dst.values[i]);
 
@@ -348,8 +348,8 @@ namespace
 			return;
 		}
 
-		mh::zero_string(dst.value);
-		map_number(src.bytes, dst.value, plcscan::get_tag_type(src.type_id));
+		mh::zero_string(dst.value_str);
+		map_number(src.value_bytes, dst.value_str, plcscan::get_tag_type(src.type_id));
 	}
 
 
@@ -368,11 +368,11 @@ namespace
 
 		MemoryOffset<u8> offset{};
 		offset.begin = 0;
-		offset.length = src.bytes.length / src.array_count;
+		offset.length = src.value_bytes.length / src.array_count;
 
 		for (u32 i = 0; i < src.array_count; ++i)
 		{
-			auto elem_bytes = mb::sub_view(src.bytes, offset);
+			auto elem_bytes = mb::sub_view(src.value_bytes, offset);
 
 			map_number(elem_bytes, dst.values[i], type);
 
@@ -386,16 +386,6 @@ namespace
 
 namespace
 {
-	/*static void create_value_udt(UI_UdtTag& ui_tag)
-	{
-		if (!ui_tag.value.data)
-		{
-			ui_tag.value.data = ui_tag.display_buffer;
-			ui_tag.value.length = (u32)(sizeof(ui_tag.display_buffer) - 1);
-		}
-	}*/
-
-
 	static UI_UdtTag create_ui_tag_udt(plcscan::Tag const& tag, u32 tag_id, u32 bytes_per_value)
 	{
 		UI_UdtTag ui{};
@@ -468,7 +458,7 @@ namespace
 			return;
 		}
 
-		map_hex(src.bytes, dst.value);
+		map_hex(src.value_bytes, dst.value);
 	}
 
 
@@ -485,11 +475,11 @@ namespace
 
 		MemoryOffset<u8> offset{};
 		offset.begin = 0;
-		offset.length = src.bytes.length / src.array_count;
+		offset.length = src.value_bytes.length / src.array_count;
 
 		for (u32 i = 0; i < src.array_count; ++i)
 		{
-			auto elem_bytes = mb::sub_view(src.bytes, offset);
+			auto elem_bytes = mb::sub_view(src.value_bytes, offset);
 
 			map_hex(elem_bytes, dst.values[i]);
 
@@ -923,7 +913,7 @@ namespace render
 				ImGui::TextColored(text_color, "%u", tag.size);
 
 				ImGui::TableSetColumnIndex(col_value);
-				ImGui::TextColored(text_color, "%s", tag.value.data());
+				ImGui::TextColored(text_color, "%s", tag.value_str.data());
 			}
 
 			ImGui::EndTable();
