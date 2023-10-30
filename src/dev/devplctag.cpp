@@ -195,7 +195,7 @@ namespace dev
     };
 
 
-    class UdtDef
+    class UdtType
     {
     public:
         u12 udt_id = 0;
@@ -204,7 +204,7 @@ namespace dev
     };
 
 
-    static u16 get_udt_size(UdtDef const& udt)
+    static u16 get_udt_size(UdtType const& udt)
     {
         u16 size = 0;
 
@@ -225,7 +225,7 @@ namespace dev
     }
 
 
-    static TagEntry to_udt_entry(UdtDef const& udt, u32 array_count, cstr tag_name)
+    static TagEntry to_udt_entry(UdtType const& udt, u32 array_count, cstr tag_name)
     {
         assert(udt.udt_id < TYPE_CODE_BOOL); // just to be safe
 
@@ -247,18 +247,18 @@ namespace dev
 
 namespace dev
 {
-    static List<TagEntry> create_tag_entries()
+    static List<UdtType> create_udt_types()
     {
-        UdtDef udt_a{};
+        UdtType udt_a{};
         udt_a.udt_id = 100;
         udt_a.udt_name = "UDTA";
-        udt_a.fields = 
+        udt_a.fields =
         {
             { "INT field", TYPE_CODE_INT, 1, 0 },
             { "SINT field", TYPE_CODE_SINT, 1, 0 }
         };
 
-        UdtDef udt_b{};
+        UdtType udt_b{};
         udt_b.udt_id = 101;
         udt_b.udt_name = "UDTB";
         udt_b.fields =
@@ -267,7 +267,7 @@ namespace dev
             { "REAL field", TYPE_CODE_REAL, 1, 0 }
         };
 
-        UdtDef udt_c{};
+        UdtType udt_c{};
         udt_c.udt_id = 102;
         udt_c.udt_name = "UDTC";
         udt_c.fields =
@@ -276,33 +276,45 @@ namespace dev
             { "ULINT field", TYPE_CODE_ULINT, 1, 0 }
         };
 
+        return { udt_a, udt_b, udt_c };
+    }
 
 
+    static void append_udt_types(List<UdtType> const& udt_types, List<TagEntry>& entries)
+    {
+        auto& udt_a = udt_types[0];
+        auto& udt_b = udt_types[1];
+        auto& udt_c = udt_types[2];        
+
+        entries.push_back(to_udt_entry(udt_a, 1, "UDTA_tag_A"));
+        entries.push_back(to_udt_entry(udt_a, 1, "UDTA_tag_B"));
+        entries.push_back(to_udt_entry(udt_a, 1, "UDTA_tag_C"));
+
+        entries.push_back(to_udt_entry(udt_a, 5, "UDTA_array_tag_A"));
+        entries.push_back(to_udt_entry(udt_a, 5, "UDTA_array_tag_B"));
+        entries.push_back(to_udt_entry(udt_a, 5, "UDTA_array_tag_C"));
+
+        entries.push_back(to_udt_entry(udt_b, 1, "UDTB_tag_A"));
+        entries.push_back(to_udt_entry(udt_b, 1, "UDTB_tag_B"));
+        entries.push_back(to_udt_entry(udt_b, 1, "UDTB_tag_C"));
+
+        entries.push_back(to_udt_entry(udt_b, 5, "UDTB_array_tag_A"));
+        entries.push_back(to_udt_entry(udt_b, 5, "UDTB_array_tag_B"));
+        entries.push_back(to_udt_entry(udt_b, 5, "UDTB_array_tag_C"));
+
+        entries.push_back(to_udt_entry(udt_c, 1, "UDTC_tag_A"));
+        entries.push_back(to_udt_entry(udt_c, 1, "UDTC_tag_B"));
+        entries.push_back(to_udt_entry(udt_c, 1, "UDTC_tag_C"));
+
+        entries.push_back(to_udt_entry(udt_c, 5, "UDTC_array_tag_A"));
+        entries.push_back(to_udt_entry(udt_c, 5, "UDTC_array_tag_B"));
+        entries.push_back(to_udt_entry(udt_c, 5, "UDTC_array_tag_C"));
+    }
+
+
+    static List<TagEntry> create_tag_entries()
+    {
         return {
-            to_udt_entry(udt_a, 1, "UDTA_tag_A"),
-            to_udt_entry(udt_a, 1, "UDTA_tag_B"),
-            to_udt_entry(udt_a, 1, "UDTA_tag_C"),
-
-            to_udt_entry(udt_a, 5, "UDTA_array_tag_A"),
-            to_udt_entry(udt_a, 5, "UDTA_array_tag_B"),
-            to_udt_entry(udt_a, 5, "UDTA_array_tag_C"),
-
-            to_udt_entry(udt_b, 1, "UDTB_tag_A"),
-            to_udt_entry(udt_b, 1, "UDTB_tag_B"),
-            to_udt_entry(udt_b, 1, "UDTB_tag_C"),
-
-            to_udt_entry(udt_b, 5, "UDTB_array_tag_A"),
-            to_udt_entry(udt_b, 5, "UDTB_array_tag_B"),
-            to_udt_entry(udt_b, 5, "UDTB_array_tag_C"),
-
-            to_udt_entry(udt_c, 1, "UDTC_tag_A"),
-            to_udt_entry(udt_c, 1, "UDTC_tag_B"),
-            to_udt_entry(udt_c, 1, "UDTC_tag_C"),
-
-            to_udt_entry(udt_c, 5, "UDTC_array_tag_A"),
-            to_udt_entry(udt_c, 5, "UDTC_array_tag_B"),
-            to_udt_entry(udt_c, 5, "UDTC_array_tag_C"),
-
             to_tag_entry(TYPE_CODE_BOOL, 1, "BOOL_tag_A"),
             to_tag_entry(TYPE_CODE_BOOL, 1, "BOOL_tag_B"),
             to_tag_entry(TYPE_CODE_BOOL, 1, "BOOL_tag_C"),
@@ -397,7 +409,7 @@ namespace dev
 
 namespace dev
 {
-    class TagDatabase
+    class TagValueGenerator
     {
     private:
         std::random_device rd;
@@ -407,16 +419,10 @@ namespace dev
         std::uniform_int_distribution<int> bool_byte_dist;
         std::uniform_int_distribution<int> numeric_byte_dist;
         std::uniform_int_distribution<int> string_byte_dist;
-        
 
     public:
 
-        List<TagEntry> tag_entries;
-        List<TagValue> tag_values;
-
-        ByteBuffer tag_value_data;
-
-        TagDatabase()
+        TagValueGenerator()
         {
             gen = std::mt19937(rd());
             new_tag_value_dist = std::uniform_int_distribution<int>(1, 100);
@@ -424,11 +430,11 @@ namespace dev
             bool_byte_dist = std::uniform_int_distribution<int>(0, 1);
             numeric_byte_dist = std::uniform_int_distribution<int>(0, 255);
             string_byte_dist = std::uniform_int_distribution<int>(32, 126);
-            
+
         }
 
         u8 generate_byte(SymbolType symbol)
-        { 
+        {
             if (symbol.is_struct || symbol.is_system)
             {
                 return string_byte_dist(gen); // TODO: just random chars for now
@@ -444,7 +450,21 @@ namespace dev
         }
 
         bool new_tag_value() { return new_tag_value_dist(gen) == 1; }
-    };    
+    };
+
+
+    class TagDatabase
+    {
+    public:
+
+        List<UdtType> udt_types;
+        List<TagEntry> tag_entries;
+        List<TagValue> tag_values;
+
+        ByteBuffer tag_value_data;
+
+        TagValueGenerator gen;
+    };
 
 
     static int push_tag_entry(TagEntry const& entry, ByteView const& bytes, int offset)
@@ -540,7 +560,7 @@ namespace dev
         // initial value
         for (u32 i = 0; i < tag.value_bytes.length; ++i)
         {
-            tag.value_bytes.data[i] = tagdb.generate_byte(tag.symbol_type);
+            tag.value_bytes.data[i] = tagdb.gen.generate_byte(tag.symbol_type);
         }
 
         tagdb.tag_values.push_back(tag);
@@ -560,7 +580,7 @@ namespace dev
         // initial value
         for (u32 i = 0; i < tag.value_bytes.length; ++i)
         {
-            tag.value_bytes.data[i] = tagdb.generate_byte(tag.symbol_type);
+            tag.value_bytes.data[i] = tagdb.gen.generate_byte(tag.symbol_type);
         }
 
         tagdb.tag_values.push_back(tag);
@@ -585,7 +605,9 @@ namespace dev
 
         if (tagdb.tag_entries.empty())
         {
+            tagdb.udt_types = create_udt_types();
             tagdb.tag_entries = create_tag_entries();
+            append_udt_types(tagdb.udt_types, tagdb.tag_entries);
         }
 
         std::string str(attr);
@@ -650,15 +672,15 @@ namespace dev
 
     int plc_tag_read(int handle, int timeout)
     {
-        auto& tagdb = g_tag_db;
-        auto& tags = tagdb.tag_values;
+        auto& tags = g_tag_db.tag_values;
+        auto& gen = g_tag_db.gen;
 
         if (handle < 0 || (u64)handle >= tags.size())
         {
             return -1;
         }
         
-        if (handle == 0 || !tagdb.new_tag_value())
+        if (handle == 0 || !gen.new_tag_value())
         {
             return PLCTAG_STATUS_OK;
         }
@@ -668,7 +690,7 @@ namespace dev
 
         for (u32 i = 0; i < bytes.length; ++i)
         {
-            bytes.data[i] = tagdb.generate_byte(tag.symbol_type);
+            bytes.data[i] = gen.generate_byte(tag.symbol_type);
         }
 
         return PLCTAG_STATUS_OK;
