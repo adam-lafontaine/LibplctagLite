@@ -165,22 +165,22 @@ namespace
 {
 	static void map_hex(ByteView const& src, StringView const& dst)
 	{
-		auto out_len = dst.length;
-		auto len = src.length;
+		auto dst_len = dst.length;
+		auto src_len = src.length;
 
-		if (len > out_len / 2)
+		if (src_len > dst_len / 2)
 		{
-			len = out_len / 2;
+			src_len = dst_len / 2;
 		}
 
-		for (u32 i = 0; i < len; i++)
+		for (u32 i = 0; i < src_len; i++)
 		{
-			auto s = src.data + i;
+			auto s = *(int*)(src.data + i);
 			auto d = dst.char_data + i * 2;
 			qsnprintf(d, 3, "%02x", s);
 		}
 
-		dst.char_data[len] = NULL;
+		dst.char_data[2 * src_len] = NULL;
 	}
 
 
