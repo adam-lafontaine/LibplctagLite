@@ -33,9 +33,6 @@ constexpr auto PLCTAG_STATUS_OK = dev::PLCTAG_STATUS_OK;
 namespace tmh = time_helper;
 namespace mh = memory_helper;
 
-
-using ByteOffset = MemoryOffset<u8>;
-
 using DataTypeId32 = plcscan::DataTypeId32;
 using Tag = plcscan::Tag;
 using DataType = plcscan::DataType;
@@ -564,7 +561,7 @@ namespace /* private */
     public:
         int connection_handle = -1;        
 
-        ByteOffset scan_offset;
+        MemoryOffset scan_offset;
 
         bool scan_ok = false;
 
