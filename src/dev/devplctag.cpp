@@ -302,11 +302,11 @@ namespace dev
         entries.push_back(to_udt_entry(udt_a, 1, "UDTA_tag_B"));
         entries.push_back(to_udt_entry(udt_a, 1, "UDTA_tag_C"));
 
-        /*entries.push_back(to_udt_entry(udt_a, 5, "UDTA_array_tag_A"));
+        entries.push_back(to_udt_entry(udt_a, 5, "UDTA_array_tag_A"));
         entries.push_back(to_udt_entry(udt_a, 5, "UDTA_array_tag_B"));
-        entries.push_back(to_udt_entry(udt_a, 5, "UDTA_array_tag_C"));*/
+        entries.push_back(to_udt_entry(udt_a, 5, "UDTA_array_tag_C"));
 
-        /*entries.push_back(to_udt_entry(udt_b, 1, "UDTB_tag_A"));
+        entries.push_back(to_udt_entry(udt_b, 1, "UDTB_tag_A"));
         entries.push_back(to_udt_entry(udt_b, 1, "UDTB_tag_B"));
         entries.push_back(to_udt_entry(udt_b, 1, "UDTB_tag_C"));
 
@@ -320,7 +320,7 @@ namespace dev
 
         entries.push_back(to_udt_entry(udt_c, 5, "UDTC_array_tag_A"));
         entries.push_back(to_udt_entry(udt_c, 5, "UDTC_array_tag_B"));
-        entries.push_back(to_udt_entry(udt_c, 5, "UDTC_array_tag_C"));*/
+        entries.push_back(to_udt_entry(udt_c, 5, "UDTC_array_tag_C"));
 
 
     }
@@ -329,15 +329,15 @@ namespace dev
     static List<TagEntry> create_tag_entries()
     {
         return {
-            /*to_tag_entry(TYPE_CODE_BOOL, 1, "BOOL_tag_A"),
+            to_tag_entry(TYPE_CODE_BOOL, 1, "BOOL_tag_A"),
             to_tag_entry(TYPE_CODE_BOOL, 1, "BOOL_tag_B"),
-            to_tag_entry(TYPE_CODE_BOOL, 1, "BOOL_tag_C"),*/
+            to_tag_entry(TYPE_CODE_BOOL, 1, "BOOL_tag_C"),
 
-            /*to_tag_entry(TYPE_CODE_BOOL, 5, "BOOL_array_tag_A"),
+            to_tag_entry(TYPE_CODE_BOOL, 5, "BOOL_array_tag_A"),
             to_tag_entry(TYPE_CODE_BOOL, 5, "BOOL_array_tag_B"),
-            to_tag_entry(TYPE_CODE_BOOL, 5, "BOOL_array_tag_C"),*/
+            to_tag_entry(TYPE_CODE_BOOL, 5, "BOOL_array_tag_C"),
 
-            /*to_tag_entry(TYPE_CODE_SINT, 1, "SINT_tag_A"),
+            to_tag_entry(TYPE_CODE_SINT, 1, "SINT_tag_A"),
             to_tag_entry(TYPE_CODE_SINT, 1, "SINT_tag_B"),
             to_tag_entry(TYPE_CODE_SINT, 1, "SINT_tag_C"),
 
@@ -415,7 +415,7 @@ namespace dev
 
             to_tag_entry(TYPE_CODE_CHAR_STRING, 5, "STRING_array_tag_A"),
             to_tag_entry(TYPE_CODE_CHAR_STRING, 5, "STRING_array_tag_B"),
-            to_tag_entry(TYPE_CODE_CHAR_STRING, 5, "STRING_array_tag_C"),*/
+            to_tag_entry(TYPE_CODE_CHAR_STRING, 5, "STRING_array_tag_C"),
         };
     }
 }

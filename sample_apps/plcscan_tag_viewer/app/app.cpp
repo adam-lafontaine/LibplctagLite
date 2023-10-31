@@ -94,6 +94,13 @@ namespace
 	};
 
 
+	class UI_UdtArrayTagElement
+	{
+	public:
+		List<UI_UdtField> fields;
+	};
+
+
 	class UI_UdtArrayTag
 	{
 	public:
@@ -105,7 +112,7 @@ namespace
 
 		// TODO: fields
 		
-		List<UI_ArrayTagElement> elements;
+		List<UI_UdtArrayTagElement> elements;
 
 		MemoryBuffer<char> value_data;
 	};
@@ -251,14 +258,13 @@ namespace
 	}
 
 
-	static void create_ui_array_tag_elements_udt(plcscan::Tag const& tag, UI_UdtArrayTag& ui_tag, u32 bytes_per_value)
+	static void create_ui_array_tag_elements_udt(plcscan::Tag const& tag, plcscan::UdtType const& udt_def, UI_UdtArrayTag& ui_tag, u32 bytes_per_value)
 	{
-		if (!mb::create_buffer(ui_tag.value_data, tag.array_count * bytes_per_value))
+		auto const n_fields = (u32)udt_def.fields.size();
+		if (!mb::create_buffer(ui_tag.value_data, tag.array_count * bytes_per_value * n_fields))
 		{
 			return;
 		}
-
-		// elements displayed as hex
 
 		mb::zero_buffer(ui_tag.value_data);
 
@@ -269,17 +275,42 @@ namespace
 		ui_tag.elements.reserve(tag.array_count);
 		for (u32 i = 0; i < tag.array_count; ++i)
 		{
-			ui_tag.elements.push_back({
-				mb::sub_view(tag.value_bytes, offset),
-				mh::push_cstr_view(ui_tag.value_data, bytes_per_value)
-			});
+			UI_UdtArrayTagElement e{};
+
+			auto end = udt_def.size;
+			assert(end = ui_tag.element_size);
+
+			e.fields.reserve(n_fields);
+			for (int j = (int)n_fields - 1; j >= 0; --j)
+			{
+				auto& f = udt_def.fields[j];
+
+				UI_UdtField field{};
+				field.name = f.name();
+				field.type = f.type();
+				field.type_id = f.type_id;
+
+				field.value_str = mh::push_cstr_view(ui_tag.value_data, bytes_per_value);
+
+				MemoryOffset m_offset{};
+				m_offset.begin = f.offset;
+				m_offset.length = end - f.offset;
+
+				end = f.offset;
+
+				field.value_bytes = mb::sub_view(tag.value_bytes, m_offset);
+
+				e.fields.push_back(field);
+			}
+
+			ui_tag.elements.push_back(e);
 
 			offset.begin += offset.length;
 		}
 	}
 
 
-	UI_UdtArrayTag create_ui_array_tag_udt(plcscan::Tag const& tag, u32 bytes_per_value)
+	UI_UdtArrayTag create_ui_array_tag_udt(plcscan::Tag const& tag, plcscan::UdtType const& udt_def, u32 bytes_per_value)
 	{
 		UI_UdtArrayTag ui{};
 
@@ -288,7 +319,7 @@ namespace
 		ui.size = tag.size();
 		ui.element_size = tag.size() / tag.array_count;
 
-		create_ui_array_tag_elements_udt(tag, ui, bytes_per_value);
+		create_ui_array_tag_elements_udt(tag, udt_def, ui, bytes_per_value);
 
 		return ui;
 	}
@@ -460,7 +491,10 @@ namespace
 
 		for (auto const& e : ui.elements)
 		{
-			map_hex(e.value_bytes, e.value_str);
+			for (auto const& f : e.fields)
+			{
+				map_value(f.value_bytes, f.value_str, plcscan::get_tag_type(f.type_id));
+			}
 		}
 	}
 
@@ -605,22 +639,21 @@ namespace
 				auto const pred = [&](auto const& t) { return t.type_id == tag.type_id; };
 				auto it = std::find_if(udt_begin, udt_end, pred);
 
-				if (tag.is_array())
+				if (it != udt_end)
 				{
-					state.udt_array_tags.push_back(create_ui_array_tag_udt(tag, UI_UDT_BYTES_PER_VALUE));
-				}
-				else
-				{
-					if (it != udt_end)
+					if (tag.is_array())
 					{
-						state.udt_tags.push_back(create_ui_tag_udt(tag, *it, UI_UDT_BYTES_PER_VALUE));
+						state.udt_array_tags.push_back(create_ui_array_tag_udt(tag, *it, UI_UDT_BYTES_PER_VALUE));
 					}
 					else
 					{
-						// TODO
+						state.udt_tags.push_back(create_ui_tag_udt(tag, *it, UI_UDT_BYTES_PER_VALUE));
 					}
-					
-				}				
+				}
+				else
+				{
+					// TODO
+				}							
 			}	break;
 
 			case T::MISC:
@@ -1095,11 +1128,44 @@ namespace render
 					{
 						ImGui::TableNextRow();
 
-						ImGui::TableSetColumnIndex(col_name);
-						ImGui::TextColored(text_color, "  %s[%u]", tag.name, i);
+						auto& udt = tag.elements[i];
+						if (udt.fields.empty())
+						{
+							ImGui::TableSetColumnIndex(col_name);
+							ImGui::TextColored(text_color, "  %s[%u]", tag.name, i);
+						}
+						else
+						{
+							ImGui::TableSetColumnIndex(col_name);
+							char buffer[40] = { 0 };
+							qsnprintf(buffer, 40, "  %s[%u]", tag.name, i);
 
-						ImGui::TableSetColumnIndex(col_value);
-						ImGui::TextColored(text_color, "  %s", tag.elements[i].value_str.data());
+							if (ImGui::TreeNode(buffer))
+							{
+								for (auto const& f : udt.fields)
+								{
+									ImGui::TableNextRow();
+
+									ImGui::TableSetColumnIndex(col_name);
+									ImGui::TextColored(text_color, "  %s", f.name);
+
+									ImGui::TableSetColumnIndex(col_type);
+									ImGui::TextColored(text_color, "%s", f.type);
+
+									ImGui::TableSetColumnIndex(col_size);
+									ImGui::TextColored(text_color, "%u", f.size());
+
+									ImGui::TableSetColumnIndex(col_value);
+									ImGui::TextColored(text_color, "%s", f.value_str.data());
+								}
+
+								ImGui::TreePop();
+							}
+						}
+
+						
+
+						
 					}
 
 					ImGui::TreePop();
@@ -1183,12 +1249,12 @@ namespace render
 		{
 			if (ImGui::BeginTabItem("Numeric"))
 			{
-				if (ImGui::CollapsingHeader("Tags"))
+				if (ImGui::CollapsingHeader("Tags - Numeric"))
 				{
 					ui_tag_table(state.number_tags, "NumericTagTable");
 				}
 
-				if (ImGui::CollapsingHeader("Arrays"))
+				if (ImGui::CollapsingHeader("Arrays - Numeric"))
 				{
 					ui_tag_array_table(state.number_array_tags, "NumericArrayTagTable");
 				}
@@ -1198,12 +1264,12 @@ namespace render
 
 			if (ImGui::BeginTabItem("String"))
 			{
-				if (ImGui::CollapsingHeader("Tags"))
+				if (ImGui::CollapsingHeader("Tags - String"))
 				{
 					ui_tag_table(state.string_tags, "StringTagTable");
 				}
 
-				if (ImGui::CollapsingHeader("Arrays"))
+				if (ImGui::CollapsingHeader("Arrays - String"))
 				{
 					ui_tag_array_table(state.string_array_tags, "StringArrayTagTable");
 				}
@@ -1213,12 +1279,12 @@ namespace render
 
 			if (ImGui::BeginTabItem("UDT"))
 			{
-				if (ImGui::CollapsingHeader("Tags"))
+				if (ImGui::CollapsingHeader("Tags - UDT"))
 				{
 					ui_udt_tag_table(state.udt_tags, "UdtTagTable");
 				}
 
-				if (ImGui::CollapsingHeader("Arrays"))
+				if (ImGui::CollapsingHeader("Arrays - UDT"))
 				{
 					ui_udt_tag_array_table(state.udt_array_tags, "UdtArrayTagTable");
 				}
@@ -1229,12 +1295,12 @@ namespace render
 
 			if (ImGui::BeginTabItem("Misc"))
 			{
-				if (ImGui::CollapsingHeader("Tags"))
+				if (ImGui::CollapsingHeader("Tags - Misc"))
 				{
 					ui_tag_table(state.misc_tags, "MiscTableTable");
 				}
 
-				if (ImGui::CollapsingHeader("Arrays"))
+				if (ImGui::CollapsingHeader("Arrays - Misc"))
 				{
 					ui_tag_array_table(state.misc_array_tags, "MiscArrayTagTable");
 				}
