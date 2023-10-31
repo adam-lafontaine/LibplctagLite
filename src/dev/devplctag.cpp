@@ -597,11 +597,11 @@ namespace dev
 
         u32 listing_size = 14; // header
 
-        listing_size += (u32)strlen(udt.udt_name); +2;  // UDT_Name;\0
+        listing_size += (u32)strlen(udt.udt_name) + 2;  // UDT_Name;\0
 
         for (auto const& f : udt.fields)
         {
-            listing_size += 4; // metadata, field_type, field_offset
+            listing_size += 8; // metadata, field_type, field_offset
             listing_size += (u32)strlen(f.field_name) + 1; // field_name, zero-terminated
         }
 
@@ -619,13 +619,12 @@ namespace dev
 
         u64 offset = 0;
 
-        auto const set16 = [&](u16 val) { val16 = val; mh::copy_bytes((u8*)&val16, bytes.data + offset, (u32)sz16); offset += sz16; };
-        auto const set32 = [&](u32 val) { val32 = val; mh::copy_bytes((u8*)&val32, bytes.data + offset, (u32)sz32); offset += sz32; };
+        auto const push = [&](u64 n_bytes) { offset += n_bytes; assert(offset <= bytes.length); return bytes.data + offset - n_bytes; };
+
+        auto const set16 = [&](u16 val) { val16 = val; mh::copy_bytes((u8*)&val16, push(sz16), (u32)sz16); };
+        auto const set32 = [&](u32 val) { val32 = val; mh::copy_bytes((u8*)&val32, push(sz32), (u32)sz32); };
 
         set16(udt.udt_id);
-        //u16 value = 99;
-        //mh::copy_bytes((u8*)&udt.udt_id, bytes.data + offset, sz16);
-        //offset += sz16;
         offset += sz32; // skip member description size
 
         auto tag_size = (u32)get_udt_tag_size(udt);
@@ -642,12 +641,12 @@ namespace dev
             auto type = to_udt_field_symbol(f.type_code);
             if (f.type_code == TYPE_CODE_BOOL)
             {
-                set16(f.bit_number);
+                set16(f.bit_number); // metadata
                 assert(false);
             }
             else
             {
-                set16(f.array_count);
+                set16(f.array_count); // metadata
                 field_size = get_type_size(f.type_code) * f.array_count;
                 if (f.array_count > 1)
                 {
@@ -655,14 +654,14 @@ namespace dev
                 }
             }
             
-            set16(type.symbol);
+            set16(type.symbol); // field_type
 
-            set32(field_offset);
+            set32(field_offset); // field_offset
 
             field_offset += field_size;            
         }
 
-        auto len = (int)strlen(udt.udt_name) +2;
+        auto len = (int)strlen(udt.udt_name) + 2;
 
         auto dst = bytes.data + offset;
 
@@ -671,6 +670,7 @@ namespace dev
         auto name = (cstr)dst;
 
         dst += len;
+        offset += len;
 
         for (auto const& f : udt.fields)
         {
@@ -679,7 +679,10 @@ namespace dev
             dst[len - 1] = 0;
             name = (cstr)dst;
             dst += len;
+            offset += len;
         }
+
+        assert(offset <= bytes.length);
     }
 
     

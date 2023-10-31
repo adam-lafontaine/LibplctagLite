@@ -742,7 +742,7 @@ namespace /* private */
         u16 type_code = 0;
         u32 offset = 0;
 
-        StringView field_name;
+        StringView name;
     };
 
 
@@ -752,7 +752,8 @@ namespace /* private */
         u16 udt_id = 0;
         u32 udt_size = 0;
 
-        StringView udt_name;
+        char* name_ptr = nullptr;
+        u32 name_length = 0;
 
         std::vector<FieldEntry> fields;
 
@@ -760,7 +761,7 @@ namespace /* private */
     };
 
 
-    static UdtEntry parse_udt_entry(u8* udt_data)
+    static UdtEntry parse_udt_entry(ByteView bytes)
     {
         /*
 
@@ -794,8 +795,10 @@ namespace /* private */
 
         u64 offset = 0;
 
-        auto const get16 = [&]() { offset += sz16; return *(u16*)(udt_data + offset - sz16); };
-        auto const get32 = [&]() { offset += sz32; return *(u32*)(udt_data + offset - sz32); };        
+        auto const push = [&](u64 n_bytes) { offset += n_bytes; assert(offset <= bytes.length); return bytes.data + offset - n_bytes; };
+
+        auto const get16 = [&]() { return *(u16*)push(sz16); };
+        auto const get32 = [&]() { return *(u16*)push(sz32); };
 
         UdtEntry entry{};
         entry.udt_id = get16();
@@ -811,11 +814,10 @@ namespace /* private */
 
         for (u16 i = 0; i < n_fields; ++i)
         {
-            auto metadata = get16();
-
             FieldEntry field{};
-            field.type_code = get16();
 
+            auto metadata = get16();
+            field.type_code = get16();
             field.offset = get32();
 
             field.elem_count = 1;
@@ -831,7 +833,9 @@ namespace /* private */
             entry.fields.push_back(field);
         }
 
-        auto string_data = (char*)(udt_data + offset);
+        auto const push_string = [&](u64 n_bytes) { offset += n_bytes; assert(offset <= bytes.length); return (char*)(bytes.data + offset - n_bytes); };
+
+        auto string_data = push_string(0);
         auto string_len = strlen(string_data);
 
         u32 name_len = 0;
@@ -841,16 +845,18 @@ namespace /* private */
             ++name_len;
         }
 
-        entry.udt_name = mh::to_string_view_unsafe(string_data, name_len);
+        entry.name_ptr = string_data;
+        entry.name_length = name_len;        
 
-        string_data += string_len + 1;
         for (auto& field : entry.fields)
         {
-            auto name = (cstr)string_data;
+            string_data = push_string(string_len + 1);
+            string_len = strlen(string_data);
 
-            auto len = strlen(string_data);
-            field.field_name = mh::to_string_view_unsafe(string_data, (u32)len);
-            string_data += len + 1;
+            field.name.char_data = string_data;
+            field.name.length = string_len;
+
+            auto name = (cstr)string_data;
         }
 
         return entry; 
@@ -957,13 +963,13 @@ namespace /* private */
         
         auto desc_str = "User defined type";
 
-        auto name_len = entry.udt_name.length;
+        auto name_len = entry.name_length;
         auto desc_len = (u32)strlen(desc_str);
 
         auto buffer_len = desc_len + name_len + 2; /* zero terminated */
         for (auto const& f : entry.fields)
         {
-            buffer_len += f.field_name.length + 1; /* zero terminated */
+            buffer_len += f.name.length + 1; /* zero terminated */
         }
 
         if (!mb::create_buffer(buffer, buffer_len))
@@ -981,7 +987,7 @@ namespace /* private */
         ut.udt_name = mh::push_cstr_view(buffer, name_len + 1);
         ut.udt_description = mh::push_cstr_view(buffer, desc_len + 1);
         
-        mh::copy(entry.udt_name, ut.udt_name);
+        mh::copy_unsafe(entry.name_ptr, ut.udt_name, entry.name_length);
         mh::copy_unsafe((char*)desc_str, ut.udt_description, desc_len);
 
         ut.fields.reserve(entry.fields.size());
@@ -993,8 +999,8 @@ namespace /* private */
             ft.array_count = f.elem_count;
             ft.bit_number = f.bit_number;
 
-            ft.field_name = mh::push_cstr_view(buffer, f.field_name.length + 1);
-            mh::copy(f.field_name, ft.field_name);
+            ft.field_name = mh::push_cstr_view(buffer, f.name.length + 1);
+            mh::copy(f.name, ft.field_name);
 
             ut.fields.push_back(ft);
         }
@@ -1274,7 +1280,7 @@ namespace
                 continue;
             }
 
-            auto entry = parse_udt_entry(udt_buffer.data_);
+            auto entry = parse_udt_entry(mb::make_view(udt_buffer));
 
             add_udt_type(data.udt_types, dt_mem, entry);
 
