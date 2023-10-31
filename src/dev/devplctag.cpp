@@ -68,11 +68,20 @@ namespace dev
     };
 
 
-    static SymbolType to_type_symbol(u8 type_code)
+    static SymbolType to_tag_symbol(u8 type_code)
     {
         SymbolType sb{};
         sb.type_code = type_code;
         sb.set_array_dims(1); // 1D arrays only
+
+        return sb;
+    }
+
+
+    static SymbolType to_udt_field_symbol(u8 type_code)
+    {
+        SymbolType sb{};
+        sb.type_code = type_code;
 
         return sb;
     }
@@ -165,7 +174,7 @@ namespace dev
     {
         static u32 tag_id = 0;
 
-        SymbolType sb = to_type_symbol(type_code);
+        SymbolType sb = to_tag_symbol(type_code);
 
         TagEntry entry{};
         entry.instance_id = tag_id++;
@@ -213,8 +222,9 @@ namespace dev
             if (!f.array_count)
             {
                 assert(f.type_code == TYPE_CODE_BOOL);
+                // assume each BOOL take one byte in tag buffer
                 // add 1 every 8 bits
-                size += (f.bit_number % 8 == 0) ? 1 : 0;
+                size++;
             }
             else
             {
@@ -604,18 +614,22 @@ namespace dev
         constexpr auto sz16 = sizeof(u16);
         constexpr auto sz32 = sizeof(u32);
 
+        u16 val16 = 0;
+        u32 val32 = 0;
+
         u64 offset = 0;
 
-        auto const set16 = [&](u16 val) { offset += sz16; mh::copy_bytes((u8*)(&val), bytes.data + offset - sz16, (u32)sz16); };
-        auto const set32 = [&](u32 val) { offset += sz32; mh::copy_bytes((u8*)(&val), bytes.data + offset - sz32, (u32)sz32); };
-
-        auto dst = bytes.data;
+        auto const set16 = [&](u16 val) { val16 = val; mh::copy_bytes((u8*)&val16, bytes.data + offset, (u32)sz16); offset += sz16; };
+        auto const set32 = [&](u32 val) { val32 = val; mh::copy_bytes((u8*)&val32, bytes.data + offset, (u32)sz32); offset += sz32; };
 
         set16(udt.udt_id);
-
+        //u16 value = 99;
+        //mh::copy_bytes((u8*)&udt.udt_id, bytes.data + offset, sz16);
+        //offset += sz16;
         offset += sz32; // skip member description size
 
-        set32((u32)get_udt_tag_size(udt));
+        auto tag_size = (u32)get_udt_tag_size(udt);
+        set32(tag_size);
 
         set16((u16)udt.fields.size());
 
@@ -625,39 +639,46 @@ namespace dev
         for (auto const& f : udt.fields)
         {
             u32 field_size = 0;
+            auto type = to_udt_field_symbol(f.type_code);
             if (f.type_code == TYPE_CODE_BOOL)
             {
                 set16(f.bit_number);
+                assert(false);
             }
             else
             {
                 set16(f.array_count);
-                field_size
+                field_size = get_type_size(f.type_code) * f.array_count;
+                if (f.array_count > 1)
+                {
+                    type.field_is_array = 1;
+                }
             }
-
-            auto type = to_type_symbol(f.type_code);
+            
             set16(type.symbol);
 
-            src = (u8*)(&field_offset);
-            len = sizeof(field_offset);
-            mh::copy_bytes(src, dst, (u32)len);
-            dst += len;
+            set32(field_offset);
 
-            field_offset += field_size;
+            field_offset += field_size;            
         }
 
-        len = (u32)strlen(udt.udt_name); +2;
+        auto len = (int)strlen(udt.udt_name) +2;
 
-        qsnprintf((char*)dst, (int)len, "%s;X", udt.udt_name);
+        auto dst = bytes.data + offset;
+
+        qsnprintf((char*)dst, len, "%s;X", udt.udt_name);
+        dst[len - 1] = 0;
+        auto name = (cstr)dst;
+
         dst += len;
-        dst[-1] = 0;
 
         for (auto const& f : udt.fields)
         {
-            len = (u32)strlen(f.field_name);
-            qsnprintf((char*)dst, (int)len, "%sX", f.field_name);
+            len = (u32)strlen(f.field_name) + 1;
+            qsnprintf((char*)dst, len, "%sX", f.field_name);
+            dst[len - 1] = 0;
+            name = (cstr)dst;
             dst += len;
-            dst[-1] = 0;
         }
     }
 

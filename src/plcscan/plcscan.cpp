@@ -756,8 +756,6 @@ namespace /* private */
 
         std::vector<FieldEntry> fields;
 
-        char name_buffer[MAX_TAG_NAME_LENGTH + 1] = { 0 };
-
         // how to parse scan data
     };
 
@@ -796,7 +794,7 @@ namespace /* private */
 
         u64 offset = 0;
 
-        auto const get16 = [&]() { offset += sz16; return *(u32*)(udt_data + offset - sz16); };
+        auto const get16 = [&]() { offset += sz16; return *(u16*)(udt_data + offset - sz16); };
         auto const get32 = [&]() { offset += sz32; return *(u32*)(udt_data + offset - sz32); };        
 
         UdtEntry entry{};
@@ -835,7 +833,6 @@ namespace /* private */
 
         auto string_data = (char*)(udt_data + offset);
         auto string_len = strlen(string_data);
-        size_t str_offset = 0;
 
         u32 name_len = 0;
         char end = ';';
@@ -844,16 +841,16 @@ namespace /* private */
             ++name_len;
         }
 
-        entry.udt_name = mh::to_string_view_unsafe(entry.name_buffer, name_len);
-        mh::copy_unsafe(string_data, entry.udt_name, name_len);
+        entry.udt_name = mh::to_string_view_unsafe(string_data, name_len);
 
-        str_offset = string_len + 1;
+        string_data += string_len + 1;
         for (auto& field : entry.fields)
         {
-            auto str = string_data + str_offset;
-            auto len = strlen(str);
-            field.field_name = mh::to_string_view_unsafe(str, (u32)len);
-            str_offset += len + 1;
+            auto name = (cstr)string_data;
+
+            auto len = strlen(string_data);
+            field.field_name = mh::to_string_view_unsafe(string_data, (u32)len);
+            string_data += len + 1;
         }
 
         return entry; 
