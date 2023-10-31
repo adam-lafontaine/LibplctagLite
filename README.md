@@ -306,6 +306,7 @@ Demonstrates how to setup an application to scan and process tags continuously. 
 
 Displays connected PLC information in a user interface using [Dear Imgui](https://github.com/ocornut/imgui)
 * Enter the PLC IP address and path and click "Go"
+* Enable `#define DEVPLCTAG` at the top of /src/plcscan/plcscan.cpp to generate sample data when no PLC is available
 
 `/sample_apps/plcscan_tag_viewer/tag_viewer_win32.cpp`
 
