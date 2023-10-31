@@ -838,7 +838,7 @@ namespace /* private */
         auto string_data = push_string(0);
         auto string_len = strlen(string_data);
 
-        u32 name_len = 0;
+        u64 name_len = 0;
         char end = ';';
         while (string_data[name_len] != end && name_len < string_len)
         {
@@ -846,7 +846,7 @@ namespace /* private */
         }       
 
         entry.name_ptr = string_data;
-        entry.name_length = name_len;
+        entry.name_length = (u32)name_len;
 
         string_data = push_string(string_len + 1);
 

@@ -971,7 +971,7 @@ namespace render
 						ImGui::TableNextRow();
 
 						ImGui::TableSetColumnIndex(col_name);
-						ImGui::TextColored(text_color, "    %s[%u]", tag.name, i);
+						ImGui::TextColored(text_color, "  %s[%u]", tag.name, i);
 
 						ImGui::TableSetColumnIndex(col_size);
 						ImGui::TextColored(text_color, "%u", tag.element_size);
@@ -1053,9 +1053,8 @@ namespace render
 		constexpr int col_name = 0;
 		constexpr int col_type = 1;
 		constexpr int col_size = 2;
-		constexpr int col_index = 3;
-		constexpr int col_value = 4;
-		constexpr int n_columns = 5;
+		constexpr int col_value = 3;
+		constexpr int n_columns = 4;
 
 		auto table_flags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
 		auto table_dims = ImGui::GetContentRegionAvail();
@@ -1068,7 +1067,6 @@ namespace render
 			ImGui::TableSetupColumn("Tag", ImGuiTableColumnFlags_WidthStretch);
 			ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed);
 			ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed);
-			ImGui::TableSetupColumn("Index", ImGuiTableColumnFlags_WidthFixed);
 			ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
 			ImGui::TableHeadersRow();
 
@@ -1079,13 +1077,10 @@ namespace render
 				ImGui::TableNextRow();
 
 				ImGui::TableSetColumnIndex(col_type);
-				ImGui::TextColored(text_color, "%s", tag.type);
+				ImGui::TextColored(text_color, "%s[%u]", tag.type, array_count);
 
 				ImGui::TableSetColumnIndex(col_size);
 				ImGui::TextColored(text_color, "%u", tag.size);
-
-				ImGui::TableSetColumnIndex(col_index);
-				ImGui::TextColored(text_color, "[%u]", array_count);
 
 				ImGui::TableSetColumnIndex(col_value);
 				ImGui::TextDisabled("--");
@@ -1095,14 +1090,15 @@ namespace render
 				{
 					for (u32 i = 0; i < array_count; ++i)
 					{
-						ImGui::TableNextRow();						
+						ImGui::TableNextRow();
 
 						// temp
-						ImGui::TableSetColumnIndex(col_index);
-						ImGui::TextColored(text_color, "[%u]", i);
 						
 						ImGui::TableSetColumnIndex(col_value);
 						ImGui::TextColored(text_color, "%s", tag.values[i].data());
+
+						ImGui::TableSetColumnIndex(col_name);
+						ImGui::TextColored(text_color, "  %s[%u]", tag.name, i);
 
 						// TODO:
 						//ImGui::TableSetColumnIndex(col_value);
