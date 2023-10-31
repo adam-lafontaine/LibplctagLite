@@ -833,7 +833,7 @@ namespace /* private */
             entry.fields.push_back(field);
         }
 
-        auto const push_string = [&](u64 n_bytes) { offset += n_bytes; assert(offset <= bytes.length); return (char*)(bytes.data + offset - n_bytes); };
+        auto const push_string = [&](u64 n_bytes) { offset += n_bytes; assert(offset <= bytes.length); return (char*)(bytes.data + offset); };
 
         auto string_data = push_string(0);
         auto string_len = strlen(string_data);
@@ -843,20 +843,23 @@ namespace /* private */
         while (string_data[name_len] != end && name_len < string_len)
         {
             ++name_len;
-        }
+        }       
 
         entry.name_ptr = string_data;
-        entry.name_length = name_len;        
+        entry.name_length = name_len;
+
+        string_data = push_string(string_len + 1);
 
         for (auto& field : entry.fields)
-        {
-            string_data = push_string(string_len + 1);
-            string_len = strlen(string_data);
+        {            
+            name_len = strlen(string_data);
 
             field.name.char_data = string_data;
-            field.name.length = string_len;
+            field.name.length = (u32)name_len;
 
             auto name = (cstr)string_data;
+
+            string_data = push_string(name_len + 1);
         }
 
         return entry; 

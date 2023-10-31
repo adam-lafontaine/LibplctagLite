@@ -1,3 +1,5 @@
+/* LICENSE: See end of file for license information. */
+
 #include "devplctag.hpp"
 #include "../util/memory_helper.hpp"
 
@@ -222,8 +224,7 @@ namespace dev
             if (!f.array_count)
             {
                 assert(f.type_code == TYPE_CODE_BOOL);
-                // assume each BOOL take one byte in tag buffer
-                // add 1 every 8 bits
+                // TODO: how are BOOL/bits handled
                 size++;
             }
             else
@@ -328,7 +329,7 @@ namespace dev
     static List<TagEntry> create_tag_entries()
     {
         return {
-            /*to_tag_entry(TYPE_CODE_BOOL, 1, "BOOL_tag_A"),
+            to_tag_entry(TYPE_CODE_BOOL, 1, "BOOL_tag_A"),
             to_tag_entry(TYPE_CODE_BOOL, 1, "BOOL_tag_B"),
             to_tag_entry(TYPE_CODE_BOOL, 1, "BOOL_tag_C"),
 
@@ -414,7 +415,7 @@ namespace dev
 
             to_tag_entry(TYPE_CODE_CHAR_STRING, 5, "STRING_array_tag_A"),
             to_tag_entry(TYPE_CODE_CHAR_STRING, 5, "STRING_array_tag_B"),
-            to_tag_entry(TYPE_CODE_CHAR_STRING, 5, "STRING_array_tag_C"),*/
+            to_tag_entry(TYPE_CODE_CHAR_STRING, 5, "STRING_array_tag_C"),
         };
     }
 }
@@ -443,7 +444,6 @@ namespace dev
             bool_byte_dist = std::uniform_int_distribution<int>(0, 1);
             numeric_byte_dist = std::uniform_int_distribution<int>(0, 255);
             string_byte_dist = std::uniform_int_distribution<int>(32, 126);
-
         }
 
         u8 generate_byte(SymbolType symbol)
@@ -481,6 +481,11 @@ namespace dev
         TagValueGenerator gen;
     };
 
+}
+
+
+namespace dev
+{
 
     static int push_tag_listing(TagEntry const& entry, ByteView const& bytes, int offset)
     {        
@@ -624,7 +629,9 @@ namespace dev
         auto const set16 = [&](u16 val) { val16 = val; mh::copy_bytes((u8*)&val16, push(sz16), (u32)sz16); };
         auto const set32 = [&](u32 val) { val32 = val; mh::copy_bytes((u8*)&val32, push(sz32), (u32)sz32); };
 
-        set16(udt.udt_id);
+        auto udt_type = to_udt_symbol(udt.udt_id);
+
+        set16(udt_type.symbol);
         offset += sz32; // skip member description size
 
         auto tag_size = (u32)get_udt_tag_size(udt);
@@ -682,7 +689,7 @@ namespace dev
             offset += len;
         }
 
-        assert(offset <= bytes.length);
+        assert(offset == bytes.length);
     }
 
     
@@ -904,3 +911,27 @@ namespace dev
         mb::destroy_buffer(g_tag_db.tag_value_data);
     }
 }
+
+/*
+MIT License
+
+Copyright (c) 2023 Adam Lafontaine
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
