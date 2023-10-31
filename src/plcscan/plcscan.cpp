@@ -1,6 +1,26 @@
 /* LICENSE: See end of file for license information. */
 
+//#define DEVPLCTAG
+
+#ifdef DEVPLCTAG
+
+#include "../dev/devplctag.hpp"
+
+constexpr auto PLCTAG_STATUS_OK = dev::PLCTAG_STATUS_OK;
+
+#define plc_tag_create dev::plc_tag_create
+#define plc_tag_read dev::plc_tag_read
+#define plc_tag_get_raw_bytes dev::plc_tag_get_raw_bytes
+#define plc_tag_get_size dev::plc_tag_get_size
+#define plc_tag_shutdown dev::plc_tag_shutdown
+
+#else
+
 #include "../libplctag/libplctag.h"
+
+#endif
+
+
 
 #include "../util/qsprintf.hpp"
 #include "../util/time_helper.hpp"
@@ -48,7 +68,9 @@ static bool vector_contains(std::vector<T> const& vec, T value)
 }
 
 
-/* 16 bin ids */
+/* 16 bit ids */
+
+// TODO: union tricks
 
 namespace id16
 {
@@ -67,6 +89,8 @@ namespace id16
 
 
 /* 32 bit ids */
+
+// TODO: union tricks
 
 namespace id32
 {
@@ -267,7 +291,7 @@ namespace /* private */
     {
         switch (t)
         {
-        case FixedType::SYSTEM:               return 0;
+        case FixedType::SYSTEM:               return MAX_TYPE_BYTES;
         case FixedType::BOOL:                 return 1;
         case FixedType::SINT:                 return 1;
         case FixedType::INT:                  return 2;
@@ -398,7 +422,9 @@ namespace /* private */
         u16 type_code = 0;
         u32 elem_size = 0;
         u32 elem_count = 0;
-        StringView name;
+        
+        char* name_ptr = nullptr;
+        u32 name_length = 0;
     };
 
 
@@ -420,15 +446,13 @@ namespace /* private */
         }
 
         auto valid_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
-
-        u32 begin = 0;
         
-        if (tag_name[0] == '@')
+        if (tag_name[0] == '@') // e.g. @udt/
         {
-            begin++; // start checking from 2nd character
+            return true;
         }
 
-        for (u32 i = begin; i < len; ++i)
+        for (u32 i = 0; i < len; ++i)
         {
             auto c = tag_name[i];
             if (!mh::string_contains(valid_chars, c))
@@ -443,10 +467,7 @@ namespace /* private */
 
     static bool is_valid_tag_name(StringView tag_name)
     {
-        char buffer[MAX_TAG_NAME_LENGTH + 1] = { 0 };
-        mh::copy_unsafe(tag_name, buffer);
-
-        return is_valid_tag_name(buffer);
+        return is_valid_tag_name(tag_name.data());
     }
 
 
@@ -494,13 +515,22 @@ namespace /* private */
             }
         }
 
+        if (entry.elem_count > 1)
+        {
+            int x = 0;
+        }
+
         int offset = H_size;
 
-        entry.name = mh::to_string_view_unsafe((char*)(entry_data + offset), (u32)h.string_len);
+        entry.name_ptr = (char*)(entry_data + offset);
+        entry.name_length = (u32)h.string_len;
 
-        if (is_valid_tag_name(entry.name))
+        char buffer[MAX_TAG_NAME_LENGTH + 1] = { 0 };
+        mh::copy_unsafe(entry.name_ptr, buffer, entry.name_length);
+
+        if (is_valid_tag_name(buffer))
         {
-            entries.push_back(entry);
+            entries.push_back(std::move(entry));
         }
 
         offset += h.string_len;
@@ -552,7 +582,7 @@ namespace /* private */
         u32 n_tags = 0;
 
         ParallelBuffer<u8> scan_data;
-        MemoryBuffer<u8> public_tag_data;
+        ByteBuffer public_tag_data;
         MemoryBuffer<char> name_data;
     };
 
@@ -570,14 +600,21 @@ namespace /* private */
     u32 elem_size(TagEntry const& e) { return e.elem_count * e.elem_size; }
 
 
-    u32 cstr_size(TagEntry const& e) { return e.name.length + 1; /* zero terminated */ }
+    u32 cstr_size(TagEntry const& e) { return e.name_length + 1; /* zero terminated */ }
 
 
     static void add_tag(TagEntry const& entry, TagMemory& mem, List<Tag>& tags)
     {
         auto value_len = elem_size(entry);
         auto name_alloc_len = cstr_size(entry);
-        auto name_copy_len = entry.name.length;
+        auto name_copy_len = entry.name_length;
+
+        assert(value_len);
+
+        if (!value_len)
+        {
+            return;
+        }
 
         assert(name_alloc_len > name_copy_len); /* zero terminated */
 
@@ -588,9 +625,9 @@ namespace /* private */
         tag.type_id = id32::get_data_type_id(entry.type_code);
         tag.array_count = entry.elem_count;
         tag.tag_name = mh::push_cstr_view(mem.name_data, name_alloc_len);        
-        tag.bytes = mb::sub_view(mem.public_tag_data, conn.scan_offset);
+        tag.value_bytes = mb::sub_view(mem.public_tag_data, conn.scan_offset);
 
-        mh::copy(entry.name, tag.tag_name);
+        mh::copy_unsafe(entry.name_ptr, tag.tag_name, name_copy_len);
 
         mem.connections.push_back(conn);
         tags.push_back(tag);
@@ -648,11 +685,14 @@ namespace /* private */
 
     static StringView get_data_type_name(DataTypeId32 type_id, List<UdtType> const& udts)
     {
-        constexpr auto udt_type = "UDT";
+        static constexpr auto udt_type = "UDT";
 
         if (!id32::is_udt_type(type_id))
         {
-            return mh::to_string_view_unsafe(tag_type_str((FixedType)type_id));
+            auto str = tag_type_str((FixedType)type_id);
+            auto len = (u32)strlen(str);
+
+            return mh::to_string_view_unsafe((char*)str, len);
         }
         
         for (auto const& udt : udts)
@@ -663,7 +703,7 @@ namespace /* private */
             }
         }
 
-        return mh::to_string_view_unsafe(udt_type);
+        return mh::to_string_view_unsafe((char*)udt_type, (u32)strlen(udt_type));
     }
     
     
@@ -700,9 +740,9 @@ namespace /* private */
         i32 bit_number = -1;
 
         u16 type_code = 0;
-        u16 offset = 0;
+        u32 offset = 0;
 
-        StringView field_name;
+        StringView name;
     };
 
 
@@ -712,7 +752,8 @@ namespace /* private */
         u16 udt_id = 0;
         u32 udt_size = 0;
 
-        StringView udt_name;
+        char* name_ptr = nullptr;
+        u32 name_length = 0;
 
         std::vector<FieldEntry> fields;
 
@@ -720,7 +761,7 @@ namespace /* private */
     };
 
 
-    static UdtEntry parse_udt_entry(u8* udt_data)
+    static UdtEntry parse_udt_entry(ByteView bytes)
     {
         /*
 
@@ -749,80 +790,76 @@ namespace /* private */
 
         */
 
-        class H
-        {
-        public:
-            u16 udt_id = 0;   // 2
-            u32 desc = 0;     // 4
-            u32 udt_size = 0; // 4
-            u16 n_fields = 0; // 2
-            u16 handle = 0;   // 2
-        };
+        constexpr auto sz16 = sizeof(u16);
+        constexpr auto sz32 = sizeof(u32);
 
-        constexpr auto H_size = 2 + 4 + 4 + 2 + 2;
+        u64 offset = 0;
 
-        class F
-        {
-        public:
-            u16 metadata = 0;  // 2
-            u16 type_code = 0; // 2
-            u32 offset = 0;    // 4
-        };
+        auto const push = [&](u64 n_bytes) { offset += n_bytes; assert(offset <= bytes.length); return bytes.data + offset - n_bytes; };
 
-        constexpr auto F_size = 2 + 2 + 4;
-
-        auto& h = *(H*)(udt_data);
+        auto const get16 = [&]() { return *(u16*)push(sz16); };
+        auto const get32 = [&]() { return *(u16*)push(sz32); };
 
         UdtEntry entry{};
-        entry.udt_id = h.udt_id;
-        entry.udt_size = h.udt_size;
+        entry.udt_id = get16();
+        offset += sz32; // skip description size
+        
+        entry.udt_size = get32();
 
-        entry.fields.reserve(h.n_fields);        
+        auto n_fields = get16();
 
-        int offset = H_size;
+        entry.fields.reserve(n_fields);        
 
-        for (u16 i = 0; i < h.n_fields; ++i)
+        offset = 14;
+
+        for (u16 i = 0; i < n_fields; ++i)
         {
-            auto& f = *(F*)(udt_data + offset);
-
             FieldEntry field{};
-            field.type_code = f.type_code;
-            field.offset = f.offset;
+
+            auto metadata = get16();
+            field.type_code = get16();
+            field.offset = get32();
 
             field.elem_count = 1;
-            if (id16::is_array_field(f.type_code))
+            if (id16::is_array_field(field.type_code))
             {
-                field.elem_count = f.metadata;
+                field.elem_count = metadata;
             }
-            else if (id16::is_bit_field(f.type_code))
+            else if (id16::is_bit_field(field.type_code))
             {
-                field.bit_number = (i32)f.metadata;
+                field.bit_number = (i32)metadata;
             }
 
             entry.fields.push_back(field);
-
-            offset += F_size;
         }
 
-        auto string_data = (char*)(udt_data + offset);
-        auto string_len = strlen(string_data);
-        size_t str_offset = 0;
+        auto const push_string = [&](u64 n_bytes) { offset += n_bytes; assert(offset <= bytes.length); return (char*)(bytes.data + offset); };
 
-        u32 name_len = 0;
+        auto string_data = push_string(0);
+        auto string_len = strlen(string_data);
+
+        u64 name_len = 0;
         char end = ';';
         while (string_data[name_len] != end && name_len < string_len)
         {
             ++name_len;
-        }
+        }       
 
-        entry.udt_name = mh::to_string_view_unsafe(string_data, name_len);
+        entry.name_ptr = string_data;
+        entry.name_length = (u32)name_len;
 
-        str_offset = string_len + 1;
+        string_data = push_string(string_len + 1);
+
         for (auto& field : entry.fields)
-        {
-            auto str = string_data + str_offset;
-            field.field_name = mh::to_string_view_unsafe(str);
-            str_offset++;
+        {            
+            name_len = strlen(string_data);
+
+            field.name.char_data = string_data;
+            field.name.length = (u32)name_len;
+
+            auto name = (cstr)string_data;
+
+            string_data = push_string(name_len + 1);
         }
 
         return entry; 
@@ -899,8 +936,8 @@ namespace /* private */
         auto name_str = tag_type_str(type);
         auto desc_str = tag_description_str(type);
 
-        auto name_len = strlen(name_str);
-        auto desc_len = strlen(desc_str);
+        auto name_len = (u32)strlen(name_str);
+        auto desc_len = (u32)strlen(desc_str);
 
         DataType dt{};
         dt.type_id = type_id;
@@ -909,8 +946,8 @@ namespace /* private */
         dt.data_type_name = mh::push_cstr_view(name_data, name_len + 1);
         dt.data_type_description = mh::push_cstr_view(name_data, desc_len + 1);
 
-        mh::copy_unsafe(name_str, dt.data_type_name);
-        mh::copy_unsafe(desc_str, dt.data_type_description);
+        mh::copy_unsafe((char*)name_str, dt.data_type_name, name_len);
+        mh::copy_unsafe((char*)desc_str, dt.data_type_description, desc_len);
 
         types.push_back(dt);
     }
@@ -929,13 +966,13 @@ namespace /* private */
         
         auto desc_str = "User defined type";
 
-        auto name_len = entry.udt_name.length;
+        auto name_len = entry.name_length;
         auto desc_len = (u32)strlen(desc_str);
 
         auto buffer_len = desc_len + name_len + 2; /* zero terminated */
         for (auto const& f : entry.fields)
         {
-            buffer_len += f.field_name.length + 1; /* zero terminated */
+            buffer_len += f.name.length + 1; /* zero terminated */
         }
 
         if (!mb::create_buffer(buffer, buffer_len))
@@ -953,8 +990,8 @@ namespace /* private */
         ut.udt_name = mh::push_cstr_view(buffer, name_len + 1);
         ut.udt_description = mh::push_cstr_view(buffer, desc_len + 1);
         
-        mh::copy(entry.udt_name, ut.udt_name);
-        mh::copy_unsafe(desc_str, ut.udt_description);
+        mh::copy_unsafe(entry.name_ptr, ut.udt_name, entry.name_length);
+        mh::copy_unsafe((char*)desc_str, ut.udt_description, desc_len);
 
         ut.fields.reserve(entry.fields.size());
         for (auto const& f : entry.fields)
@@ -965,8 +1002,8 @@ namespace /* private */
             ft.array_count = f.elem_count;
             ft.bit_number = f.bit_number;
 
-            ft.field_name = mh::push_cstr_view(buffer, f.field_name.length + 1);
-            mh::copy(f.field_name, ft.field_name);
+            ft.field_name = mh::push_cstr_view(buffer, f.name.length + 1);
+            mh::copy(f.name, ft.field_name);
 
             ut.fields.push_back(ft);
         }
@@ -1006,9 +1043,7 @@ namespace /* private */
             return false;
         }
 
-        mb::zero_buffer(mem.type_name_data);
-
-        
+        mb::zero_buffer(mem.type_name_data);        
 
         return true;
     }
@@ -1053,7 +1088,7 @@ namespace
 
     static void init_controller(ControllerAttr& attr)
     {
-        attr.connection_string = mh::to_string_view_unsafe(attr.string_data);
+        attr.connection_string = mh::to_string_view_unsafe(attr.string_data, (u32)sizeof(attr.string_data));
 
         mh::zero_string(attr.connection_string);
     }
@@ -1140,7 +1175,7 @@ namespace
     }
 
 
-    static bool scan_to_buffer(int tag_handle, MemoryBuffer<u8>& dst)
+    static bool scan_to_buffer(int tag_handle, ByteBuffer& dst)
     {
         auto timeout = 100;
 
@@ -1173,7 +1208,7 @@ namespace
     }
 
 
-    static bool scan_to_buffer(ControllerAttr const& attr, cstr tag_name, MemoryBuffer<u8>& dst)
+    static bool scan_to_buffer(ControllerAttr const& attr, cstr tag_name, ByteBuffer& dst)
     {
         set_tag(attr, tag_name);
 
@@ -1191,13 +1226,13 @@ namespace
     }
 
 
-    static bool scan_tag_entry_listing(ControllerAttr const& attr, MemoryBuffer<u8>& dst)
+    static bool scan_tag_entry_listing(ControllerAttr const& attr, ByteBuffer& dst)
     {
         return scan_to_buffer(attr, "@tags", dst);
     }
 
 
-    static bool scan_udt_entry(ControllerAttr const& attr, int udt_id, MemoryBuffer<u8>& dst)
+    static bool scan_udt_entry(ControllerAttr const& attr, int udt_id, ByteBuffer& dst)
     {
         char udt[20];
         qsnprintf(udt, 20, "@udt/%d", udt_id);
@@ -1212,9 +1247,9 @@ namespace
 
 namespace
 {
-    static bool enumerate_tags(ControllerAttr const& attr, TagMemory& tag_mem, DataTypeMemory& dt_mem, PlcTagData data)
+    static bool enumerate_tags(ControllerAttr const& attr, TagMemory& tag_mem, DataTypeMemory& dt_mem, PlcTagData& data)
     {
-        MemoryBuffer<u8> entry_buffer;
+        ByteBuffer entry_buffer;
         
         if (!scan_tag_entry_listing(attr, entry_buffer))
         {
@@ -1241,14 +1276,14 @@ namespace
         {
             auto id = (int)udt_ids[i];
             
-            MemoryBuffer<u8> udt_buffer;
+            ByteBuffer udt_buffer;
 
             if (!scan_udt_entry(attr, id, udt_buffer))
             {
                 continue;
             }
 
-            auto entry = parse_udt_entry(udt_buffer.data_);
+            auto entry = parse_udt_entry(mb::make_view(udt_buffer));
 
             add_udt_type(data.udt_types, dt_mem, entry);
 
@@ -1267,6 +1302,8 @@ namespace
 
     static void connect_tags(ControllerAttr const& attr, TagMemory& mem, List<Tag>& tags)
     {
+        assert(mem.n_tags == (u32)tags.size());
+
         for (u32 i = 0; i < mem.n_tags; ++i)
         {
             auto& conn = mem.connections[i];
@@ -1430,11 +1467,15 @@ namespace plcscan
 
             tmh::delay_current_thread_ms(sw, target_scan_ms);
         }
-    }
-
-
-    
+    }    
 }
+
+
+#ifdef DEVPLCTAG
+
+#include "../dev/devplctag.Cpp"
+
+#endif
 
 /*
 MIT License

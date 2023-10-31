@@ -181,11 +181,8 @@ namespace memory_helper
     }
 
 
-    inline void copy_unsafe(cstr src, StringView const& dst)
+    inline void copy_unsafe(char* src, StringView const& dst, u32 len)
     {
-        auto len = strlen(src);
-        len = len < dst.length ? len : dst.length;
-
         u32 i = 0;
 
         for (; i < len; ++i)
@@ -200,14 +197,20 @@ namespace memory_helper
     }
 
 
-    inline void copy_unsafe(StringView const& src, char* dst)
+    inline void copy_unsafe(StringView const& src, char* dst, u32 len)
     {
-        auto len = strlen(dst);
-        len = len < src.length ? len : src.length;
-
         for (u32 i = 0; i < len; ++i)
         {
             dst[i] = src.char_data[i];
+        }
+    }
+
+
+    inline void copy_unsafe(char* src, char* dst, u32 len)
+    {
+        for (u32 i = 0; i < len; ++i)
+        {
+            dst[i] = src[i];
         }
     }
 
@@ -237,20 +240,20 @@ namespace memory_helper
     }
 
 
-    inline StringView to_string_view_unsafe(cstr str)
+    /*inline StringView to_string_view_unsafe(cstr str)
     {
         StringView view{};
         view.char_data = (char*)str;
         view.length = (u32)strlen(str);
 
         return view;
-    }
+    }*/
 
 
-    inline StringView to_string_view_unsafe(char* str, u32 len)
+    inline StringView to_string_view_unsafe(char* src, u32 len)
     {
         StringView view{};
-        view.char_data = str;
+        view.char_data = src;
         view.length = len;
 
         return view;
@@ -265,6 +268,23 @@ namespace memory_helper
         {
             if (str[i] == c)
             {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+
+    inline bool string_contains(cstr str, char c, u32& pos)
+    {
+        auto len = strlen(str);
+
+        for (u32 i = 0; i < len; ++i)
+        {
+            if (str[i] == c)
+            {
+                pos = i;
                 return true;
             }
         }

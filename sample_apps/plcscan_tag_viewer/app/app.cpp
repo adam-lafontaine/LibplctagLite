@@ -33,9 +33,9 @@ namespace
 		cstr type = 0;
 		u32 size = 0;
 
-		StringView value;
+		StringView value_str;
 
-		char display_buffer[21] = { 0 };
+		MemoryBuffer<char> value_data;
 	};
 
 
@@ -47,6 +47,7 @@ namespace
 		cstr name = 0;
 		cstr type = 0;
 		u32 size = 0;
+		u32 element_size = 0;
 
 		List<StringView> values;
 
@@ -65,9 +66,9 @@ namespace
 
 		// TODO: fields
 		
-		StringView value;
+		StringView value_str;
 
-		char display_buffer[21] = { 0 };
+		MemoryBuffer<char> value_data;
 	};
 
 
@@ -84,8 +85,6 @@ namespace
 		
 		List<StringView> values;
 
-		static constexpr u32 bytes_per_value = 21;
-
 		MemoryBuffer<char> value_data;
 	};
 }
@@ -95,7 +94,7 @@ namespace
 
 namespace
 {
-	static UI_Tag create_ui_tag(plcscan::Tag const& tag, u32 tag_id)
+	static UI_Tag create_ui_tag(plcscan::Tag const& tag, u32 tag_id, u32 bytes_per_value)
 	{
 		UI_Tag ui{};
 
@@ -104,8 +103,10 @@ namespace
 		ui.type = tag.type();
 		ui.size = tag.size();
 
-		ui.value.char_data = ui.display_buffer;
-		ui.value.length = (u32)(sizeof(ui.display_buffer) - 1);
+		if (mb::create_buffer(ui.value_data, bytes_per_value))
+		{
+			ui.value_str = mh::push_cstr_view(ui.value_data, bytes_per_value);
+		}
 
 		return ui;
 	}
@@ -113,7 +114,7 @@ namespace
 
 	static void destroy_ui_tag(UI_Tag& ui_tag)
 	{
-		//...
+		mb::destroy_buffer(ui_tag.value_data);
 	}
 
 
@@ -142,6 +143,7 @@ namespace
 		ui.name = tag.name();
 		ui.type = tag.type();
 		ui.size = tag.size();
+		ui.element_size = tag.size() / tag.array_count;
 
 		create_ui_array_tag_values(tag, ui, bytes_per_value);
 
@@ -163,28 +165,40 @@ namespace
 {
 	static void map_hex(ByteView const& src, StringView const& dst)
 	{
-		auto out_len = dst.length;
-		auto len = src.length;
+		auto dst_len = dst.length - 2;
+		auto src_len = src.length;
 
-		if (len < out_len / 2)
+		if (src_len > dst_len / 2)
 		{
-			len = out_len / 2;
+			src_len = dst_len / 2;
 		}
 
-		for (u32 i = 0; i < len; i++)
+		auto dst_data = dst.char_data;
+
+		qsnprintf(dst_data, 3, "0x");
+		dst_data += 2;
+
+		for (u32 i = 0; i < src_len; i++)
 		{
-			auto s = src.data + i;
-			auto d = dst.char_data + i * 2;
+			auto s = *(int*)(src.data + i);
+			auto d = dst_data + i * 2;
 			qsnprintf(d, 3, "%02x", s);
 		}
 
-		dst.char_data[len] = NULL;
+		dst.char_data[2 * src_len] = NULL;
 	}
 
 
 	static void map_value_hex(plcscan::Tag const& src, UI_Tag& dst, u32 tag_id)
 	{
-		map_hex(src.bytes, dst.value);
+		assert(dst.tag_id == tag_id);
+
+		if (dst.tag_id != tag_id)
+		{
+			return;
+		}
+
+		map_hex(src.value_bytes, dst.value_str);
 	}
 
 
@@ -201,11 +215,11 @@ namespace
 
 		MemoryOffset<u8> offset{};
 		offset.begin = 0;
-		offset.length = src.bytes.length / src.array_count;
+		offset.length = src.value_bytes.length / src.array_count;
 
 		for (u32 i = 0; i < src.array_count; ++i)
 		{
-			auto elem_bytes = mb::sub_view(src.bytes, offset);
+			auto elem_bytes = mb::sub_view(src.value_bytes, offset);
 
 			map_hex(elem_bytes, dst.values[i]);
 
@@ -237,8 +251,8 @@ namespace
 			return;
 		}
 
-		mh::zero_string(dst.value);
-		map_string(src.bytes, dst.value);
+		mh::zero_string(dst.value_str);
+		map_string(src.value_bytes, dst.value_str);
 	}
 
 
@@ -258,11 +272,11 @@ namespace
 
 		MemoryOffset<u8> offset{};
 		offset.begin = 0;
-		offset.length = src.bytes.length / src.array_count;
+		offset.length = src.value_bytes.length / src.array_count;
 
 		for (u32 i = 0; i < src.array_count; ++i)
 		{
-			auto src_bytes = mb::sub_view(src.bytes, offset);
+			auto src_bytes = mb::sub_view(src.value_bytes, offset);
 
 			map_string(src_bytes, dst.values[i]);
 
@@ -332,8 +346,15 @@ namespace
 	
 	static void map_value_number(plcscan::Tag const& src, UI_Tag& dst, u32 tag_id)
 	{
-		mh::zero_string(dst.value);
-		map_number(src.bytes, dst.value, plcscan::get_tag_type(src.type_id));
+		assert(dst.tag_id == tag_id);
+
+		if (dst.tag_id != tag_id)
+		{
+			return;
+		}
+
+		mh::zero_string(dst.value_str);
+		map_number(src.value_bytes, dst.value_str, plcscan::get_tag_type(src.type_id));
 	}
 
 
@@ -352,11 +373,11 @@ namespace
 
 		MemoryOffset<u8> offset{};
 		offset.begin = 0;
-		offset.length = src.bytes.length / src.array_count;
+		offset.length = src.value_bytes.length / src.array_count;
 
 		for (u32 i = 0; i < src.array_count; ++i)
 		{
-			auto elem_bytes = mb::sub_view(src.bytes, offset);
+			auto elem_bytes = mb::sub_view(src.value_bytes, offset);
 
 			map_number(elem_bytes, dst.values[i], type);
 
@@ -370,17 +391,7 @@ namespace
 
 namespace
 {
-	/*static void create_value_udt(UI_UdtTag& ui_tag)
-	{
-		if (!ui_tag.value.data)
-		{
-			ui_tag.value.data = ui_tag.display_buffer;
-			ui_tag.value.length = (u32)(sizeof(ui_tag.display_buffer) - 1);
-		}
-	}*/
-
-
-	static UI_UdtTag create_ui_tag_udt(plcscan::Tag const& tag, u32 tag_id)
+	static UI_UdtTag create_ui_tag_udt(plcscan::Tag const& tag, u32 tag_id, u32 bytes_per_value)
 	{
 		UI_UdtTag ui{};
 
@@ -389,8 +400,10 @@ namespace
 		ui.type = tag.type();
 		ui.size = tag.size();
 
-		ui.value.char_data = ui.display_buffer;
-		ui.value.length = (u32)(sizeof(ui.display_buffer) - 1);
+		if (mb::create_buffer(ui.value_data, bytes_per_value))
+		{
+			ui.value_str = mh::push_cstr_view(ui.value_data, bytes_per_value);
+		}
 
 		return ui;
 	}
@@ -398,13 +411,13 @@ namespace
 
 	static void destroy_ui_tag_udt(UI_UdtTag& ui_tag)
 	{
-		//...
+		mb::destroy_buffer(ui_tag.value_data);
 	}
 
 
-	static void create_ui_array_tag_values_udt(plcscan::Tag const& tag, UI_UdtArrayTag& ui_tag)
+	static void create_ui_array_tag_values_udt(plcscan::Tag const& tag, UI_UdtArrayTag& ui_tag, u32 bytes_per_value)
 	{
-		if (!mb::create_buffer(ui_tag.value_data, tag.array_count * UI_UdtArrayTag::bytes_per_value))
+		if (!mb::create_buffer(ui_tag.value_data, tag.array_count * bytes_per_value))
 		{
 			return;
 		}
@@ -414,12 +427,12 @@ namespace
 		ui_tag.values.reserve(tag.array_count);
 		for (u32 i = 0; i < tag.array_count; ++i)
 		{
-			ui_tag.values.push_back(mh::push_cstr_view(ui_tag.value_data, UI_UdtArrayTag::bytes_per_value));
+			ui_tag.values.push_back(mh::push_cstr_view(ui_tag.value_data, bytes_per_value));
 		}
 	}
 
 
-	UI_UdtArrayTag create_ui_array_tag_udt(plcscan::Tag const& tag, u32 tag_id)
+	UI_UdtArrayTag create_ui_array_tag_udt(plcscan::Tag const& tag, u32 tag_id, u32 bytes_per_value)
 	{
 		UI_UdtArrayTag ui{};
 
@@ -428,7 +441,7 @@ namespace
 		ui.type = tag.type();
 		ui.size = tag.size();
 
-		create_ui_array_tag_values_udt(tag, ui);
+		create_ui_array_tag_values_udt(tag, ui, bytes_per_value);
 
 		return ui;
 	}
@@ -443,7 +456,14 @@ namespace
 
 	static void map_value_udt(plcscan::Tag const& src, UI_UdtTag& dst, u32 tag_id)
 	{
-		map_hex(src.bytes, dst.value);
+		assert(dst.tag_id == tag_id);
+
+		if (dst.tag_id != tag_id)
+		{
+			return;
+		}
+
+		map_hex(src.value_bytes, dst.value_str);
 	}
 
 
@@ -460,11 +480,11 @@ namespace
 
 		MemoryOffset<u8> offset{};
 		offset.begin = 0;
-		offset.length = src.bytes.length / src.array_count;
+		offset.length = src.value_bytes.length / src.array_count;
 
 		for (u32 i = 0; i < src.array_count; ++i)
 		{
-			auto elem_bytes = mb::sub_view(src.bytes, offset);
+			auto elem_bytes = mb::sub_view(src.value_bytes, offset);
 
 			map_hex(elem_bytes, dst.values[i]);
 
@@ -553,6 +573,7 @@ namespace
 	constexpr u32 UI_MISC_BYTES_PER_VALUE = 20 + 1;
 	constexpr u32 UI_STRING_BYTES_PER_VALUE = 20 + 1;
 	constexpr u32 UI_NUMBER_BYTES_PER_VALUE = 20 + 1;
+	constexpr u32 UI_UDT_BYTES_PER_VALUE = 20 + 1;
 
 
 	static void create_ui_input(UI_Input& input)
@@ -569,8 +590,8 @@ namespace
 		input.plc_ip = mh::push_cstr_view(input.string_data, UI_PLC_IP_BYTES);
 		input.plc_path = mh::push_cstr_view(input.string_data, UI_PLC_PATH_BYTES);
 
-		mh::copy_unsafe(DEFAULT_PLC_IP, input.plc_ip);
-		mh::copy_unsafe(DEFAULT_PLC_PATH, input.plc_path);
+		mh::copy_unsafe((char*)DEFAULT_PLC_IP, input.plc_ip, (u32)strlen(DEFAULT_PLC_IP));
+		mh::copy_unsafe((char*)DEFAULT_PLC_PATH, input.plc_path, (u32)strlen(DEFAULT_PLC_PATH));
 	}
 
 
@@ -597,18 +618,18 @@ namespace
 				}
 				else
 				{
-					state.string_tags.push_back(create_ui_tag(tag, tag_id));
+					state.string_tags.push_back(create_ui_tag(tag, tag_id, UI_STRING_BYTES_PER_VALUE));
 				}				
 				break;
 
 			case T::UDT:
 				if (tag.is_array())
 				{
-					state.udt_array_tags.push_back(create_ui_array_tag_udt(tag, tag_id));
+					state.udt_array_tags.push_back(create_ui_array_tag_udt(tag, tag_id, UI_UDT_BYTES_PER_VALUE));
 				}
 				else
 				{
-					state.udt_tags.push_back(create_ui_tag_udt(tag, tag_id));
+					state.udt_tags.push_back(create_ui_tag_udt(tag, tag_id, UI_UDT_BYTES_PER_VALUE));
 				}
 				break;
 
@@ -619,7 +640,7 @@ namespace
 				}
 				else
 				{
-					state.misc_tags.push_back(create_ui_tag(tag, tag_id));
+					state.misc_tags.push_back(create_ui_tag(tag, tag_id, UI_MISC_BYTES_PER_VALUE));
 				}
 				break;
 
@@ -630,7 +651,7 @@ namespace
 				}
 				else
 				{
-					state.number_tags.push_back(create_ui_tag(tag, tag_id));
+					state.number_tags.push_back(create_ui_tag(tag, tag_id, UI_MISC_BYTES_PER_VALUE));
 				}
 				break;
 			}
@@ -788,7 +809,6 @@ namespace render
 		constexpr int col_type = 3;
 		constexpr int n_columns = 4;
 
-
 		auto table_flags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
 		auto table_dims = ImGui::GetContentRegionAvail();
 
@@ -869,7 +889,6 @@ namespace render
 		constexpr int col_value = 3;
 		constexpr int n_columns = 4;
 
-
 		auto table_flags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
 		auto table_dims = ImGui::GetContentRegionAvail();
 		table_dims.y /= 2;
@@ -899,7 +918,7 @@ namespace render
 				ImGui::TextColored(text_color, "%u", tag.size);
 
 				ImGui::TableSetColumnIndex(col_value);
-				ImGui::TextColored(text_color, "%s", tag.value);
+				ImGui::TextColored(text_color, "%s", tag.value_str.data());
 			}
 
 			ImGui::EndTable();
@@ -912,9 +931,8 @@ namespace render
 		constexpr int col_name = 0;
 		constexpr int col_type = 1;
 		constexpr int col_size = 2;
-		constexpr int col_index = 3;
-		constexpr int col_value = 4;
-		constexpr int n_columns = 5;
+		constexpr int col_value = 3;
+		constexpr int n_columns = 4;
 
 		auto table_flags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
 		auto table_dims = ImGui::GetContentRegionAvail();
@@ -927,7 +945,6 @@ namespace render
 			ImGui::TableSetupColumn("Tag", ImGuiTableColumnFlags_WidthStretch);
 			ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed);
 			ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed);
-			ImGui::TableSetupColumn("Index", ImGuiTableColumnFlags_WidthFixed);
 			ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
 			ImGui::TableHeadersRow();
 
@@ -943,9 +960,6 @@ namespace render
 				ImGui::TableSetColumnIndex(col_size);
 				ImGui::TextColored(text_color, "%u", tag.size);
 
-				ImGui::TableSetColumnIndex(col_index);
-				ImGui::TextColored(text_color, "[%u]", array_count);
-
 				ImGui::TableSetColumnIndex(col_value);
 				ImGui::TextDisabled("--");
 
@@ -956,11 +970,14 @@ namespace render
 					{
 						ImGui::TableNextRow();
 
-						ImGui::TableSetColumnIndex(col_index);
-						ImGui::TextColored(text_color, "[%u]", i);
+						ImGui::TableSetColumnIndex(col_name);
+						ImGui::TextColored(text_color, "  %s[%u]", tag.name, i);
+
+						ImGui::TableSetColumnIndex(col_size);
+						ImGui::TextColored(text_color, "%u", tag.element_size);
 
 						ImGui::TableSetColumnIndex(col_value);
-						ImGui::TextColored(text_color, "%s", tag.values[i]);
+						ImGui::TextColored(text_color, "%s", tag.values[i].data());
 					}
 
 					ImGui::TreePop();
@@ -983,7 +1000,7 @@ namespace render
 
 		auto table_flags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
 		auto table_dims = ImGui::GetContentRegionAvail();
-		//table_dims.y /= 2;
+		table_dims.y /= 2;
 
 		auto text_color = WHITE;
 
@@ -1011,7 +1028,7 @@ namespace render
 				ImGui::TextColored(text_color, "%s", tag.name);				
 
 				ImGui::TableSetColumnIndex(col_value);
-				ImGui::TextColored(text_color, "%s", tag.value);
+				ImGui::TextColored(text_color, "%s", tag.value_str.data());
 
 				// TODO
 				//ImGui::TableSetColumnIndex(col_value);
@@ -1036,9 +1053,8 @@ namespace render
 		constexpr int col_name = 0;
 		constexpr int col_type = 1;
 		constexpr int col_size = 2;
-		constexpr int col_index = 3;
-		constexpr int col_value = 4;
-		constexpr int n_columns = 5;
+		constexpr int col_value = 3;
+		constexpr int n_columns = 4;
 
 		auto table_flags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
 		auto table_dims = ImGui::GetContentRegionAvail();
@@ -1051,7 +1067,6 @@ namespace render
 			ImGui::TableSetupColumn("Tag", ImGuiTableColumnFlags_WidthStretch);
 			ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed);
 			ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed);
-			ImGui::TableSetupColumn("Index", ImGuiTableColumnFlags_WidthFixed);
 			ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
 			ImGui::TableHeadersRow();
 
@@ -1062,13 +1077,10 @@ namespace render
 				ImGui::TableNextRow();
 
 				ImGui::TableSetColumnIndex(col_type);
-				ImGui::TextColored(text_color, "%s", tag.type);
+				ImGui::TextColored(text_color, "%s[%u]", tag.type, array_count);
 
 				ImGui::TableSetColumnIndex(col_size);
 				ImGui::TextColored(text_color, "%u", tag.size);
-
-				ImGui::TableSetColumnIndex(col_index);
-				ImGui::TextColored(text_color, "[%u]", array_count);
 
 				ImGui::TableSetColumnIndex(col_value);
 				ImGui::TextDisabled("--");
@@ -1078,14 +1090,15 @@ namespace render
 				{
 					for (u32 i = 0; i < array_count; ++i)
 					{
-						ImGui::TableNextRow();						
+						ImGui::TableNextRow();
 
 						// temp
-						ImGui::TableSetColumnIndex(col_index);
-						ImGui::TextColored(text_color, "[%u]", i);
 						
 						ImGui::TableSetColumnIndex(col_value);
-						ImGui::TextColored(text_color, "%s", tag.values[i]);
+						ImGui::TextColored(text_color, "%s", tag.values[i].data());
+
+						ImGui::TableSetColumnIndex(col_name);
+						ImGui::TextColored(text_color, "  %s[%u]", tag.name, i);
 
 						// TODO:
 						//ImGui::TableSetColumnIndex(col_value);
