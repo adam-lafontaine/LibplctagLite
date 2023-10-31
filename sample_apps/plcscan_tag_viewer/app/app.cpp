@@ -219,7 +219,7 @@ namespace
 
 		ui.fields.reserve(udt_def.fields.size());
 
-		for (int i = (int)udt_def.fields.size(); i >= 0; --i)
+		for (int i = (int)udt_def.fields.size() - 1; i >= 0; --i)
 		{
 			auto& f = udt_def.fields[i];
 
@@ -1013,19 +1013,23 @@ namespace render
 
 				ImGui::TableSetColumnIndex(col_value);
 				ImGui::TextDisabled("--");
-
-				ImGui::TableSetColumnIndex(col_name);
+				
 				if (tag.fields.empty())
 				{
+					ImGui::TableSetColumnIndex(col_name);
 					ImGui::TextColored(text_color, "%s", tag.name);
 				}
 				else
 				{
+					ImGui::TableSetColumnIndex(col_name);
 					if (ImGui::TreeNode(tag.name))
 					{
 						for (auto const& field : tag.fields)
 						{
 							ImGui::TableNextRow();
+
+							ImGui::TableSetColumnIndex(col_name);
+							ImGui::TextColored(text_color, "  %s", field.name);
 
 							ImGui::TableSetColumnIndex(col_type);
 							ImGui::TextColored(text_color, "%s", field.type);
@@ -1036,6 +1040,8 @@ namespace render
 							ImGui::TableSetColumnIndex(col_value);
 							ImGui::TextColored(text_color, "%s", field.value_str.data());
 						}
+
+						ImGui::TreePop();
 					}
 				}
 			}
