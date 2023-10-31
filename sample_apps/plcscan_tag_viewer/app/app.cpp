@@ -55,6 +55,17 @@ namespace
 	};
 
 
+	class UI_UdtField
+	{
+	public:
+		cstr name = 0;
+		cstr type = 0;
+		u32 size = 0;
+
+		StringView value_str;
+	};
+
+
 	class UI_UdtTag
 	{
 	public:
@@ -65,8 +76,7 @@ namespace
 		u32 size = 0;
 
 		// TODO: fields
-		
-		StringView value_str;
+		List<UI_UdtField> fields;
 
 		MemoryBuffer<char> value_data;
 	};
@@ -458,9 +468,19 @@ namespace
 	{
 		assert(dst.tag_id == tag_id);
 
+		using T = plcscan::TagType;
+
 		if (dst.tag_id != tag_id)
 		{
 			return;
+		}
+
+		for (auto& field : dst.fields)
+		{
+			switch (plcscan::get_tag_type(field.type_id))
+			{
+
+			}
 		}
 
 		map_hex(src.value_bytes, dst.value_str);
@@ -825,8 +845,6 @@ namespace render
 
 			for (auto const& udt : udt_types)
 			{
-				auto has_fields = !udt.fields.empty();
-
 				ImGui::TableNextRow();
 
 				ImGui::TableSetColumnIndex(col_offset);
@@ -839,7 +857,11 @@ namespace render
 				ImGui::TextDisabled("--");
 
 				ImGui::TableSetColumnIndex(col_name);
-				if (has_fields)
+				if (udt.fields.empty())
+				{
+					ImGui::TextColored(text_color, udt.name());
+				}
+				else
 				{
 					if (ImGui::TreeNode(udt.name()))
 					{
@@ -869,10 +891,6 @@ namespace render
 
 						ImGui::TreePop();
 					}
-				}
-				else
-				{
-					ImGui::TextColored(text_color, udt.name());
 				}
 			}
 
@@ -1021,26 +1039,35 @@ namespace render
 				ImGui::TextColored(text_color, "%s", tag.type);
 
 				ImGui::TableSetColumnIndex(col_size);
-				ImGui::TextColored(text_color, "%u", tag.size);
-
-				// temp
-				ImGui::TableSetColumnIndex(col_name);
-				ImGui::TextColored(text_color, "%s", tag.name);				
+				ImGui::TextColored(text_color, "%u", tag.size);		
 
 				ImGui::TableSetColumnIndex(col_value);
-				ImGui::TextColored(text_color, "%s", tag.value_str.data());
+				ImGui::TextDisabled("--");
 
-				// TODO
-				//ImGui::TableSetColumnIndex(col_value);
-				//ImGui::TextDisabled("--");
+				ImGui::TableSetColumnIndex(col_name);
+				if (tag.fields.empty())
+				{
+					ImGui::TextColored(text_color, "%s", tag.name);
+				}
+				else
+				{
+					if (ImGui::TreeNode(tag.name))
+					{
+						for (auto const& field : tag.fields)
+						{
+							ImGui::TableNextRow();
 
-				//ImGui::TableSetColumnIndex(col_name);				
-				//if (ImGui::TreeNode(tag.name))
-				//{
-				//	// fields
+							ImGui::TableSetColumnIndex(col_type);
+							ImGui::TextColored(text_color, "%s", field.type);
 
-				//	ImGui::TreePop();
-				//}
+							ImGui::TableSetColumnIndex(col_size);
+							ImGui::TextColored(text_color, "%u", field.size);
+
+							ImGui::TableSetColumnIndex(col_value);
+							ImGui::TextColored(text_color, "%s", field.value_str.data());
+						}
+					}
+				}
 			}
 
 			ImGui::EndTable();
@@ -1091,13 +1118,19 @@ namespace render
 					for (u32 i = 0; i < array_count; ++i)
 					{
 						ImGui::TableNextRow();
-
-						// temp
 						
 						ImGui::TableSetColumnIndex(col_value);
-						ImGui::TextColored(text_color, "%s", tag.values[i].data());
+						ImGui::TextDisabled("--");
 
 						ImGui::TableSetColumnIndex(col_name);
+						/*if (tag.fields.empty())
+						{
+							ImGui::TextColored(text_color, "%s", tag.name);
+						}
+						else
+						{
+
+						}*/
 						ImGui::TextColored(text_color, "  %s[%u]", tag.name, i);
 
 						// TODO:
