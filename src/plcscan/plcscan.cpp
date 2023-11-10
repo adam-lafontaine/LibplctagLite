@@ -1456,11 +1456,13 @@ namespace plcscan
     {
         constexpr int target_scan_ms = 100;
 
+        //f64
+
         Stopwatch sw;
 
         auto const scan = [&]()
         { 
-            scan_tags(g_tag_mem);
+            scan_tags(g_tag_mem);            
             data.network_ms = sw.get_time_milli();
         };
 
@@ -1481,12 +1483,6 @@ namespace plcscan
 
         do
         {
-            // TODO: better parallelism
-            /*std::thread scan_th(scan);
-            copy_tags(g_tag_mem); 
-            scan_cb(data);
-            scan_th.join();*/
-
             execute_parallel(procs);
 
             mb::flip_read_write(g_tag_mem.scan_data);
@@ -1503,7 +1499,7 @@ namespace plcscan
 
 #ifdef DEVPLCTAG
 
-#include "../dev/devplctag.Cpp"
+#include "../dev/devplctag.cpp"
 
 #endif
 

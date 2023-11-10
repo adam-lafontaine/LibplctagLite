@@ -1214,6 +1214,8 @@ namespace render
 
 	static void profile_window(App_State const& state)
 	{
+		constexpr auto fmt = "%5.1f";
+
 		ImGui::Begin("Profile");
 
 		if (ImGui::BeginTable("ProfileTable", 2))
@@ -1223,21 +1225,21 @@ namespace render
 			ImGui::Text("Network time (ms)");			
 
 			ImGui::TableSetColumnIndex(1);
-			ImGui::Text("%.1lf", state.network_ms);
+			ImGui::Text(fmt, state.network_ms);
 
 			ImGui::TableNextRow();
 			ImGui::TableSetColumnIndex(0);
 			ImGui::Text("Processing time (ms)");
 
 			ImGui::TableSetColumnIndex(1);
-			ImGui::Text("%.1lf", state.process_ms);
+			ImGui::Text(fmt, state.process_ms);
 
 			ImGui::TableNextRow();
 			ImGui::TableSetColumnIndex(0);
 			ImGui::Text("Total time (ms)");
 
 			ImGui::TableSetColumnIndex(1);
-			ImGui::Text("%.1lf", state.scan_ms);
+			ImGui::Text(fmt, state.scan_ms);
 
 			ImGui::EndTable();
 		}
