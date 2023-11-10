@@ -1456,21 +1456,42 @@ namespace plcscan
     {
         constexpr int target_scan_ms = 100;
 
-        //f64
+        constexpr u32 SN = 5;
+        f64 acc_network_ms = 0.0;
+        f64 acc_process_ms = 0.0;
+        f64 acc_scan_ms = 0.0;
+        u32 scan_id = 0;
+
+        auto const next_scan = [&]() 
+        { 
+            ++scan_id; 
+            if (scan_id >= SN)
+            { 
+                scan_id = 0;
+
+                data.network_ms = acc_network_ms / SN;
+                data.process_ms = acc_process_ms / SN;
+                data.scan_ms = acc_scan_ms / SN;
+
+                acc_network_ms = 0.0;
+                acc_process_ms = 0.0;
+                acc_scan_ms = 0.0;
+            }
+        };
 
         Stopwatch sw;
 
         auto const scan = [&]()
         { 
             scan_tags(g_tag_mem);            
-            data.network_ms = sw.get_time_milli();
+            acc_network_ms += sw.get_time_milli();
         };
 
         auto const process = [&]() 
         {
             copy_tags(g_tag_mem);
             scan_cb(data);
-            data.process_ms = sw.get_time_milli();
+            acc_process_ms += sw.get_time_milli();
         };
 
         f_array<2> procs = 
@@ -1489,8 +1510,10 @@ namespace plcscan
 
             tmh::delay_current_thread_ms(sw, target_scan_ms);
 
-            data.scan_ms = sw.get_time_milli();
+            acc_scan_ms += sw.get_time_milli();
             sw.start();
+
+            next_scan();
         } 
         while (scan_condition());
     }    

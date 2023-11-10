@@ -1220,6 +1220,9 @@ namespace render
 
 		if (ImGui::BeginTable("ProfileTable", 2))
 		{
+			ImGui::TableSetupColumn("Key", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
+
 			ImGui::TableNextRow();
 			ImGui::TableSetColumnIndex(0);
 			ImGui::Text("Network time (ms)");			
