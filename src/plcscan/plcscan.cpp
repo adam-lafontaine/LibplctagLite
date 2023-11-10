@@ -1,6 +1,6 @@
 /* LICENSE: See end of file for license information. */
 
-//#define DEVPLCTAG
+#define DEVPLCTAG
 
 #ifdef DEVPLCTAG
 
@@ -29,6 +29,9 @@ constexpr auto PLCTAG_STATUS_OK = dev::PLCTAG_STATUS_OK;
 
 #include <array>
 #include <cassert>
+#include <algorithm>
+#include <functional>
+#include <execution>
 
 namespace tmh = time_helper;
 namespace mh = memory_helper;
@@ -62,6 +65,17 @@ static bool vector_contains(std::vector<T> const& vec, T value)
     }
 
     return false;
+}
+
+
+template <size_t N>
+using f_array = std::array<std::function<void()>, N>;
+
+
+template <size_t N>
+inline void execute_parallel(f_array<N> const& f_list)
+{
+    std::for_each(std::execution::par, f_list.begin(), f_list.end(), [](auto const& f) { f(); });
 }
 
 
@@ -1442,28 +1456,47 @@ namespace plcscan
     {
         constexpr int target_scan_ms = 100;
 
+        Stopwatch sw;
+
         auto const scan = [&]()
         { 
             scan_tags(g_tag_mem);
+            data.network_ms = sw.get_time_milli();
         };
 
-        Stopwatch sw;
-
-        while(scan_condition())
+        auto const process = [&]() 
         {
-            sw.start();
+            copy_tags(g_tag_mem);
+            scan_cb(data);
+            data.process_ms = sw.get_time_milli();
+        };
 
+        f_array<2> procs = 
+        {
+            scan,
+            process
+        };
+
+        sw.start();
+
+        do
+        {
             // TODO: better parallelism
-            std::thread scan_th(scan);
+            /*std::thread scan_th(scan);
             copy_tags(g_tag_mem); 
             scan_cb(data);
+            scan_th.join();*/
 
-            scan_th.join();
+            execute_parallel(procs);
 
             mb::flip_read_write(g_tag_mem.scan_data);
 
             tmh::delay_current_thread_ms(sw, target_scan_ms);
-        }
+
+            data.scan_ms = sw.get_time_milli();
+            sw.start();
+        } 
+        while (scan_condition());
     }    
 }
 

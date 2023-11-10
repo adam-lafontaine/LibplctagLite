@@ -547,7 +547,11 @@ namespace
 		List<UI_UdtTag> udt_tags;
 		List<UI_UdtArrayTag> udt_array_tags;
 
-		bool app_running = false;		
+		bool app_running = false;
+
+		f64 network_ms = 0.0;
+		f64 process_ms = 0.0;
+		f64 scan_ms = 0.0;
 	};
 
 
@@ -1162,10 +1166,6 @@ namespace render
 								ImGui::TreePop();
 							}
 						}
-
-						
-
-						
 					}
 
 					ImGui::TreePop();
@@ -1206,6 +1206,40 @@ namespace render
 		if (state.plc.has_error)
 		{
 			ImGui::TextColored(RED, "ERROR");
+		}
+
+		ImGui::End();
+	}
+
+
+	static void profile_window(App_State const& state)
+	{
+		ImGui::Begin("Profile");
+
+		if (ImGui::BeginTable("ProfileTable", 2))
+		{
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			ImGui::Text("Network time (ms)");			
+
+			ImGui::TableSetColumnIndex(1);
+			ImGui::Text("%.1lf", state.network_ms);
+
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			ImGui::Text("Processing time (ms)");
+
+			ImGui::TableSetColumnIndex(1);
+			ImGui::Text("%.1lf", state.process_ms);
+
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			ImGui::Text("Total time (ms)");
+
+			ImGui::TableSetColumnIndex(1);
+			ImGui::Text("%.1lf", state.scan_ms);
+
+			ImGui::EndTable();
 		}
 
 		ImGui::End();
@@ -1324,14 +1358,13 @@ static UI_Input g_user_input;
 
 namespace scan
 {
-	static void map_ui_tag_values(plcscan::PlcTagData& data)
+	static void map_ui_tag_values(plcscan::PlcTagData const& data)
 	{
 		auto& state = g_app_state;
 
 		for (auto const& tag : state.string_tags)
 		{
 			map_tag_value(tag);
-
 		}
 
 		for (auto const& tag : state.string_array_tags)
@@ -1342,7 +1375,6 @@ namespace scan
 		for (auto const& tag : state.number_tags)
 		{
 			map_tag_value(tag);
-
 		}
 
 		for (auto const& tag : state.number_array_tags)
@@ -1353,7 +1385,6 @@ namespace scan
 		for (auto const& tag : state.misc_tags)
 		{
 			map_tag_value(tag);
-
 		}
 
 		for (auto const& tag : state.misc_array_tags)
@@ -1364,13 +1395,16 @@ namespace scan
 		for (auto const& tag : state.udt_tags)
 		{
 			map_tag_value(tag);
-
 		}
 
 		for (auto const& tag : state.udt_array_tags)
 		{
 			map_tag_value(tag);
 		}
+
+		state.network_ms = data.network_ms;
+		state.process_ms = data.process_ms;
+		state.scan_ms = data.scan_ms;
 	}
 
 
@@ -1491,7 +1525,9 @@ namespace app
 			}
 
 			command::process_command(cmd, state);
-		}		
+		}
+
+		render::profile_window(state);
 
 		render::data_types_window(state);
 
