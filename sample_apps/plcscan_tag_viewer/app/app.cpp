@@ -1197,13 +1197,13 @@ namespace render
 		ImGui::SameLine();
 		ImGui::SetNextItemWidth(150);
 
-		ImGui::SetCursorPos(ImVec2(250, 39));
+		ImGui::SetCursorPos(ImVec2(220, 39));
 		if (ImGui::Button("Go", ImVec2(50, 30)))
 		{
 			cmd.start_scanning = true;
 		}
 
-		ImGui::SetCursorPos(ImVec2(320, 57));
+		ImGui::SetCursorPos(ImVec2(290, 57));
 
 		if (state.plc.is_scanning)
 		{
