@@ -984,7 +984,7 @@ namespace render
 				ImGui::TableNextRow();
 
 				ImGui::TableSetColumnIndex(col_type);
-				ImGui::TextColored(text_color, "%s", tag.type);
+				ImGui::TextColored(text_color, "%s[%u]", tag.type, array_count);
 
 				ImGui::TableSetColumnIndex(col_size);
 				ImGui::TextColored(text_color, "%u", tag.size);
@@ -1001,6 +1001,9 @@ namespace render
 
 						ImGui::TableSetColumnIndex(col_name);
 						ImGui::TextColored(text_color, "  %s[%u]", tag.name, i);
+
+						ImGui::TableSetColumnIndex(col_type);
+						ImGui::TextColored(text_color, "%s", tag.type);
 
 						ImGui::TableSetColumnIndex(col_size);
 						ImGui::TextColored(text_color, "%u", tag.element_size);
@@ -1135,6 +1138,9 @@ namespace render
 					for (u32 i = 0; i < array_count; ++i)
 					{
 						ImGui::TableNextRow();
+
+						ImGui::TableSetColumnIndex(col_type);
+						ImGui::TextColored(text_color, "%s", tag.type);
 
 						auto& udt = tag.elements[i];
 						if (udt.fields.empty())
