@@ -375,6 +375,7 @@ namespace
 
 		switch (type)
 		{
+		case T::BOOL:
 		case T::USINT:
 			qsnprintf(dst.char_data, dst.length, "%hhu", mh::cast_numeric_bytes<u8>(src.data, src.length));
 			break;
@@ -438,10 +439,6 @@ namespace
 
 		case T::MISC:
 			map_hex(src, dst);
-			break;
-
-		case T::BOOL:
-			// not supported
 			break;
 
 		default:

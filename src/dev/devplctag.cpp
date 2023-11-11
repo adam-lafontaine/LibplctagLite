@@ -322,8 +322,6 @@ namespace dev
         entries.push_back(to_udt_entry(udt_c, 5, "UDTC_array_tag_A"));
         entries.push_back(to_udt_entry(udt_c, 5, "UDTC_array_tag_B"));
         entries.push_back(to_udt_entry(udt_c, 5, "UDTC_array_tag_C"));
-
-
     }
 
 
@@ -451,15 +449,15 @@ namespace dev
         {
             if (symbol.is_struct || symbol.is_system)
             {
-                return string_byte_dist(gen); // TODO: just random chars for now
+                return (u8)string_byte_dist(gen); // TODO: just random chars for now
             }
 
             switch (symbol.type_code)
             {
-            case TYPE_CODE_BOOL: return bool_byte_dist(gen);
-            case TYPE_CODE_CHAR_STRING: return string_byte_dist(gen);
+            case TYPE_CODE_BOOL: return (u8)bool_byte_dist(gen);
+            case TYPE_CODE_CHAR_STRING: return (u8)string_byte_dist(gen);
 
-            default: return numeric_byte_dist(gen);
+            default: return (u8)numeric_byte_dist(gen);
             }
         }
 
