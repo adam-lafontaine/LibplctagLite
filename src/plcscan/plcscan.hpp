@@ -101,6 +101,10 @@ namespace plcscan
 
         bool is_init = false;
         bool is_connected = false;
+
+        f64 network_ms = 0.0;
+        f64 process_ms = 0.0;
+        f64 scan_ms = 0.0;
     };
 }
 
@@ -131,7 +135,7 @@ namespace plcscan
     };
 
 
-    using data_f = std::function<void(PlcTagData&)>;
+    using data_f = std::function<void(PlcTagData const&)>;
     using bool_f = std::function<bool()>;
 
 

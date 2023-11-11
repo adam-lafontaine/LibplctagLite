@@ -151,16 +151,20 @@ namespace memory_helper
 
 
     template <typename T>
-    static T cast_bytes(u8* src, u32 size)
+    static T cast_numeric_bytes(u8* src, u32 size)
     {
-        u8 b1 = 0;
+        constexpr auto T_sz = (u32)sizeof(T);
+
+        static_assert(T_sz == 1 || T_sz == 2 || T_sz == 4 || T_sz == 8);
+
+        assert(size >= T_sz);        
+
+        /*u8 b1 = 0;
         u16 b2 = 0;
         u32 b4 = 0;
         u64 b8 = 0;
 
-        assert(size >= (u32)sizeof(T));
-
-        switch (size) // sizeof(T) ?
+        switch (size)
         {
         case 1:
             b1 = *src;
@@ -174,10 +178,22 @@ namespace memory_helper
         case 8:
             b8 = *(u64*)src;
             return *(T*)&b8;
+        }*/
+
+        switch (size)
+        {
+        case 1:
+        case 2:
+        case 4:
+        case 8:
+            return *(T*)src;
+
+        default:
+            break;
         }
 
-        assert(false);
-        return (T)(*src);
+        assert(false || "Bad numeric size provided");
+        return (T)0;
     }
 
 
@@ -238,16 +254,6 @@ namespace memory_helper
             str.char_data[i] = 0;
         }
     }
-
-
-    /*inline StringView to_string_view_unsafe(cstr str)
-    {
-        StringView view{};
-        view.char_data = (char*)str;
-        view.length = (u32)strlen(str);
-
-        return view;
-    }*/
 
 
     inline StringView to_string_view_unsafe(char* src, u32 len)

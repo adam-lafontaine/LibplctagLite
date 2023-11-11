@@ -109,8 +109,6 @@ namespace
 		u32 size = 0;
 
 		u32 element_size = 0;
-
-		// TODO: fields
 		
 		List<UI_UdtArrayTagElement> elements;
 
@@ -125,21 +123,21 @@ namespace
 {
 	static UI_Tag create_ui_tag(plcscan::Tag const& tag, u32 bytes_per_value)
 	{
-		UI_Tag ui{};
+		UI_Tag ui_tag{};
 
-		ui.name = tag.name();
-		ui.type = tag.type();
-		ui.size = tag.size();
+		ui_tag.name = tag.name();
+		ui_tag.type = tag.type();
+		ui_tag.size = tag.size();
 
-		ui.type_id = tag.type_id;
-		ui.value_bytes = tag.value_bytes;
+		ui_tag.type_id = tag.type_id;
+		ui_tag.value_bytes = tag.value_bytes;
 
-		if (mb::create_buffer(ui.value_data, bytes_per_value))
+		if (mb::create_buffer(ui_tag.value_data, bytes_per_value))
 		{
-			ui.value_str = mh::push_cstr_view(ui.value_data, bytes_per_value);
+			ui_tag.value_str = mh::push_cstr_view(ui_tag.value_data, bytes_per_value);
 		}
 
-		return ui;
+		return ui_tag;
 	}
 
 
@@ -177,18 +175,18 @@ namespace
 
 	UI_ArrayTag create_ui_array_tag(plcscan::Tag const& tag, u32 bytes_per_value)
 	{
-		UI_ArrayTag ui{};
+		UI_ArrayTag ui_tag{};
 
-		ui.name = tag.name();
-		ui.type = tag.type();
-		ui.size = tag.size();
-		ui.element_size = tag.size() / tag.array_count;
+		ui_tag.name = tag.name();
+		ui_tag.type = tag.type();
+		ui_tag.size = tag.size();
+		ui_tag.element_size = tag.size() / tag.array_count;
 
-		ui.type_id = tag.type_id;
+		ui_tag.type_id = tag.type_id;
 
-		create_ui_array_tag_elements(tag, ui, bytes_per_value);
+		create_ui_array_tag_elements(tag, ui_tag, bytes_per_value);
 
-		return ui;
+		return ui_tag;
 	}
 
 
@@ -312,16 +310,16 @@ namespace
 
 	UI_UdtArrayTag create_ui_array_tag_udt(plcscan::Tag const& tag, plcscan::UdtType const& udt_def, u32 bytes_per_value)
 	{
-		UI_UdtArrayTag ui{};
+		UI_UdtArrayTag ui_tag{};
 
-		ui.name = tag.name();
-		ui.type = tag.type();
-		ui.size = tag.size();
-		ui.element_size = tag.size() / tag.array_count;
+		ui_tag.name = tag.name();
+		ui_tag.type = tag.type();
+		ui_tag.size = tag.size();
+		ui_tag.element_size = tag.size() / tag.array_count;
 
-		create_ui_array_tag_elements_udt(tag, udt_def, ui, bytes_per_value);
+		create_ui_array_tag_elements_udt(tag, udt_def, ui_tag, bytes_per_value);
 
-		return ui;
+		return ui_tag;
 	}
 
 
@@ -379,43 +377,43 @@ namespace
 		{
 		case T::BOOL:
 		case T::USINT:
-			qsnprintf(dst.char_data, dst.length, "%hhu", mh::cast_bytes<u8>(src.data, src.length));
+			qsnprintf(dst.char_data, dst.length, "%hhu", mh::cast_numeric_bytes<u8>(src.data, src.length));
 			break;
 
 		case T::SINT:
-			qsnprintf(dst.char_data, dst.length, "%hhd", mh::cast_bytes<i8>(src.data, src.length));
+			qsnprintf(dst.char_data, dst.length, "%hhd", mh::cast_numeric_bytes<i8>(src.data, src.length));
 			break;
 
 		case T::UINT:
-			qsnprintf(dst.char_data, dst.length, "%hu", mh::cast_bytes<u16>(src.data, src.length));
+			qsnprintf(dst.char_data, dst.length, "%hu", mh::cast_numeric_bytes<u16>(src.data, src.length));
 			break;
 
 		case T::INT:
-			qsnprintf(dst.char_data, dst.length, "%hd", mh::cast_bytes<i16>(src.data, src.length));
+			qsnprintf(dst.char_data, dst.length, "%hd", mh::cast_numeric_bytes<i16>(src.data, src.length));
 			break;
 
 		case T::UDINT:
-			qsnprintf(dst.char_data, dst.length, "%u", mh::cast_bytes<u32>(src.data, src.length));
+			qsnprintf(dst.char_data, dst.length, "%u", mh::cast_numeric_bytes<u32>(src.data, src.length));
 			break;
 
 		case T::DINT:
-			qsnprintf(dst.char_data, dst.length, "%d", mh::cast_bytes<i32>(src.data, src.length));
+			qsnprintf(dst.char_data, dst.length, "%d", mh::cast_numeric_bytes<i32>(src.data, src.length));
 			break;
 
 		case T::ULINT:
-			qsnprintf(dst.char_data, dst.length, "%llu", mh::cast_bytes<u64>(src.data, src.length));
+			qsnprintf(dst.char_data, dst.length, "%llu", mh::cast_numeric_bytes<u64>(src.data, src.length));
 			break;
 
 		case T::LINT:
-			qsnprintf(dst.char_data, dst.length, "%lld", mh::cast_bytes<i64>(src.data, src.length));
+			qsnprintf(dst.char_data, dst.length, "%lld", mh::cast_numeric_bytes<i64>(src.data, src.length));
 			break;
 
 		case T::REAL:
-			qsnprintf(dst.char_data, dst.length, "%f", mh::cast_bytes<f32>(src.data, src.length));
+			qsnprintf(dst.char_data, dst.length, "%f", mh::cast_numeric_bytes<f32>(src.data, src.length));
 			break;
 
 		case T::LREAL:
-			qsnprintf(dst.char_data, dst.length, "%lf", mh::cast_bytes<f64>(src.data, src.length));
+			qsnprintf(dst.char_data, dst.length, "%lf", mh::cast_numeric_bytes<f64>(src.data, src.length));
 			break;
 
 		default:
@@ -441,10 +439,6 @@ namespace
 
 		case T::MISC:
 			map_hex(src, dst);
-			break;
-
-		case T::BOOL:
-			// not supported
 			break;
 
 		default:
@@ -519,13 +513,12 @@ namespace
 	};
 
 
-	class UI_Input
+	class App_Profile
 	{
 	public:
-		StringView plc_ip;
-		StringView plc_path;
-
-		MemoryBuffer<char> string_data;
+		f64 network_ms = 0.0;
+		f64 process_ms = 0.0;
+		f64 scan_ms = 0.0;
 	};
 
 
@@ -547,7 +540,19 @@ namespace
 		List<UI_UdtTag> udt_tags;
 		List<UI_UdtArrayTag> udt_array_tags;
 
-		bool app_running = false;		
+		bool app_running = false;
+
+		App_Profile profile;
+	};
+
+
+	class UI_Input
+	{
+	public:
+		StringView plc_ip;
+		StringView plc_path;
+
+		MemoryBuffer<char> string_data;
 	};
 
 
@@ -561,7 +566,7 @@ namespace
 
 		bool has_command()
 		{
-			return false ||
+			return 
 				stop_app_running ||
 				start_scanning ||
 				stop_scanning;
@@ -574,8 +579,8 @@ namespace
 
 namespace
 {	
-	constexpr u32 UI_PLC_IP_BYTES = (u32)sizeof(DEFAULT_PLC_IP) + 10;
-	constexpr u32 UI_PLC_PATH_BYTES = (u32)sizeof(DEFAULT_PLC_PATH) + 10;
+	constexpr u32 UI_PLC_IP_BYTES = 25;
+	constexpr u32 UI_PLC_PATH_BYTES = 15;
 
 	constexpr u32 UI_MISC_BYTES_PER_VALUE = 20 + 1;
 	constexpr u32 UI_STRING_BYTES_PER_VALUE = 20 + 1;
@@ -976,7 +981,7 @@ namespace render
 				ImGui::TableNextRow();
 
 				ImGui::TableSetColumnIndex(col_type);
-				ImGui::TextColored(text_color, "%s", tag.type);
+				ImGui::TextColored(text_color, "%s[%u]", tag.type, array_count);
 
 				ImGui::TableSetColumnIndex(col_size);
 				ImGui::TextColored(text_color, "%u", tag.size);
@@ -993,6 +998,9 @@ namespace render
 
 						ImGui::TableSetColumnIndex(col_name);
 						ImGui::TextColored(text_color, "  %s[%u]", tag.name, i);
+
+						ImGui::TableSetColumnIndex(col_type);
+						ImGui::TextColored(text_color, "%s", tag.type);
 
 						ImGui::TableSetColumnIndex(col_size);
 						ImGui::TextColored(text_color, "%u", tag.element_size);
@@ -1128,6 +1136,9 @@ namespace render
 					{
 						ImGui::TableNextRow();
 
+						ImGui::TableSetColumnIndex(col_type);
+						ImGui::TextColored(text_color, "%s", tag.type);
+
 						auto& udt = tag.elements[i];
 						if (udt.fields.empty())
 						{
@@ -1162,10 +1173,6 @@ namespace render
 								ImGui::TreePop();
 							}
 						}
-
-						
-
-						
 					}
 
 					ImGui::TreePop();
@@ -1190,13 +1197,13 @@ namespace render
 		ImGui::SameLine();
 		ImGui::SetNextItemWidth(150);
 
-		ImGui::SetCursorPos(ImVec2(250, 39));
+		ImGui::SetCursorPos(ImVec2(220, 39));
 		if (ImGui::Button("Go", ImVec2(50, 30)))
 		{
 			cmd.start_scanning = true;
 		}
 
-		ImGui::SetCursorPos(ImVec2(320, 57));
+		ImGui::SetCursorPos(ImVec2(290, 57));
 
 		if (state.plc.is_scanning)
 		{
@@ -1206,6 +1213,47 @@ namespace render
 		if (state.plc.has_error)
 		{
 			ImGui::TextColored(RED, "ERROR");
+		}
+
+		ImGui::End();
+	}
+
+
+	static void profile_window(App_State const& state)
+	{
+		auto& prof = state.profile;
+
+		constexpr auto fmt = "%5.1f";
+
+		ImGui::Begin("Profile");
+
+		if (ImGui::BeginTable("ProfileTable", 2))
+		{
+			ImGui::TableSetupColumn("Key", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed);
+
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			ImGui::Text("Network time (ms)");			
+
+			ImGui::TableSetColumnIndex(1);
+			ImGui::Text(fmt, prof.network_ms);
+
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			ImGui::Text("Processing time (ms)");
+
+			ImGui::TableSetColumnIndex(1);
+			ImGui::Text(fmt, prof.process_ms);
+
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			ImGui::Text("Total time (ms)");
+
+			ImGui::TableSetColumnIndex(1);
+			ImGui::Text(fmt, prof.scan_ms);
+
+			ImGui::EndTable();
 		}
 
 		ImGui::End();
@@ -1324,14 +1372,14 @@ static UI_Input g_user_input;
 
 namespace scan
 {
-	static void map_ui_tag_values(plcscan::PlcTagData& data)
+	static void map_ui_values(plcscan::PlcTagData const& data)
 	{
 		auto& state = g_app_state;
+		auto& prof = state.profile;
 
 		for (auto const& tag : state.string_tags)
 		{
 			map_tag_value(tag);
-
 		}
 
 		for (auto const& tag : state.string_array_tags)
@@ -1342,7 +1390,6 @@ namespace scan
 		for (auto const& tag : state.number_tags)
 		{
 			map_tag_value(tag);
-
 		}
 
 		for (auto const& tag : state.number_array_tags)
@@ -1353,7 +1400,6 @@ namespace scan
 		for (auto const& tag : state.misc_tags)
 		{
 			map_tag_value(tag);
-
 		}
 
 		for (auto const& tag : state.misc_array_tags)
@@ -1364,13 +1410,16 @@ namespace scan
 		for (auto const& tag : state.udt_tags)
 		{
 			map_tag_value(tag);
-
 		}
 
 		for (auto const& tag : state.udt_array_tags)
 		{
 			map_tag_value(tag);
 		}
+
+		prof.network_ms = data.network_ms;
+		prof.process_ms = data.process_ms;
+		prof.scan_ms = data.scan_ms;
 	}
 
 
@@ -1437,9 +1486,7 @@ namespace scan
 
 		plc.is_scanning = true;
 
-		plcscan::scan(map_ui_tag_values, is_scanning, plc.data);
-
-		// TODO: stop/start
+		plcscan::scan(map_ui_values, is_scanning, plc.data);
 	}
 }
 
@@ -1491,7 +1538,9 @@ namespace app
 			}
 
 			command::process_command(cmd, state);
-		}		
+		}
+
+		render::profile_window(state);
 
 		render::data_types_window(state);
 

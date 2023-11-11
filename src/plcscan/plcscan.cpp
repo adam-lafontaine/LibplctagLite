@@ -1,10 +1,17 @@
 /* LICENSE: See end of file for license information. */
 
-//#define DEVPLCTAG
+#define DEVPLCTAG
+
+#include "../util/qsprintf.hpp"
+#include "../util/time_helper.hpp"
+#include "../util/memory_helper.hpp"
+
+namespace tmh = time_helper;
+namespace mh = memory_helper;
 
 #ifdef DEVPLCTAG
 
-#include "../dev/devplctag.hpp"
+#include "../dev/devplctag.cpp"
 
 constexpr auto PLCTAG_STATUS_OK = dev::PLCTAG_STATUS_OK;
 
@@ -21,17 +28,14 @@ constexpr auto PLCTAG_STATUS_OK = dev::PLCTAG_STATUS_OK;
 #endif
 
 
-
-#include "../util/qsprintf.hpp"
-#include "../util/time_helper.hpp"
-#include "../util/memory_helper.hpp"
 #include "plcscan.hpp"
 
 #include <array>
 #include <cassert>
+#include <algorithm>
+#include <functional>
+#include <execution>
 
-namespace tmh = time_helper;
-namespace mh = memory_helper;
 
 using DataTypeId32 = plcscan::DataTypeId32;
 using Tag = plcscan::Tag;
@@ -62,6 +66,17 @@ static bool vector_contains(std::vector<T> const& vec, T value)
     }
 
     return false;
+}
+
+
+template <size_t N>
+using f_array = std::array<std::function<void()>, N>;
+
+
+template <size_t N>
+inline void execute_parallel(f_array<N> const& f_list)
+{
+    std::for_each(std::execution::par, f_list.begin(), f_list.end(), [](auto const& f) { f(); });
 }
 
 
@@ -1442,37 +1457,69 @@ namespace plcscan
     {
         constexpr int target_scan_ms = 100;
 
-        auto const scan = [&]()
+        constexpr u32 SN = 5;
+        f64 acc_network_ms = 0.0;
+        f64 acc_process_ms = 0.0;
+        f64 acc_scan_ms = 0.0;
+        u32 scan_id = 0;
+
+        auto const next_scan = [&]() 
         { 
-            scan_tags(g_tag_mem);
+            ++scan_id; 
+            if (scan_id >= SN)
+            { 
+                scan_id = 0;
+
+                data.network_ms = acc_network_ms / SN;
+                data.process_ms = acc_process_ms / SN;
+                data.scan_ms = acc_scan_ms / SN;
+
+                acc_network_ms = 0.0;
+                acc_process_ms = 0.0;
+                acc_scan_ms = 0.0;
+            }
         };
 
         Stopwatch sw;
 
-        while(scan_condition())
+        auto const scan = [&]()
+        { 
+            scan_tags(g_tag_mem);            
+            acc_network_ms += sw.get_time_milli();
+        };
+
+        auto const process = [&]() 
         {
-            sw.start();
-
-            // TODO: better parallelism
-            std::thread scan_th(scan);
-            copy_tags(g_tag_mem); 
+            copy_tags(g_tag_mem);
             scan_cb(data);
+            acc_process_ms += sw.get_time_milli();
+        };
 
-            scan_th.join();
+        f_array<2> procs = 
+        {
+            scan,
+            process
+        };
+
+        sw.start();
+
+        do
+        {
+            execute_parallel(procs);
 
             mb::flip_read_write(g_tag_mem.scan_data);
 
             tmh::delay_current_thread_ms(sw, target_scan_ms);
-        }
+
+            acc_scan_ms += sw.get_time_milli();
+            sw.start();
+
+            next_scan();
+        } 
+        while (scan_condition());
     }    
 }
 
-
-#ifdef DEVPLCTAG
-
-#include "../dev/devplctag.Cpp"
-
-#endif
 
 /*
 MIT License

@@ -32,17 +32,23 @@ public:
 		is_on_ = false;
 	}
 
+	double get_time_sec()
+	{
+		std::chrono::duration<double> delay = is_on_ ? now() - start_ : end_ - start_;
+
+		return delay.count();
+	}
+
 	double get_time_milli()
 	{
-
 		std::chrono::duration<double, std::milli> delay = is_on_ ? now() - start_ : end_ - start_;
 
 		return delay.count();
 	}
 
-	double get_time_sec()
+	double get_time_micro()
 	{
-		std::chrono::duration<double> delay = is_on_ ? now() - start_ : end_ - start_;
+		std::chrono::duration<double, std::micro> delay = is_on_ ? now() - start_ : end_ - start_;
 
 		return delay.count();
 	}
@@ -56,11 +62,14 @@ namespace time_helper
 
 	inline void delay_current_thread_ms(Stopwatch& sw, double min_delay_ms = 20.0)
 	{
-		auto ms = sw.get_time_milli();
-		if (ms < min_delay_ms)
+		double min_delay_us = min_delay_ms * 1000;
+		double fudge = 0.85;
+
+		auto us = sw.get_time_micro();
+		if (us < min_delay_us)
 		{
-			auto delay_ms = (unsigned long long)(min_delay_ms - ms);
-			std::this_thread::sleep_for(chr::milliseconds(delay_ms));
+			auto delay_us = (long long)(fudge * (min_delay_us - us));
+			std::this_thread::sleep_for(chr::microseconds(delay_us));
 		}
 	}
 
@@ -71,9 +80,15 @@ namespace time_helper
 	}
 
 
-	inline void delay_current_thread_ms(unsigned long long delay_ms = 20)
+	inline void delay_current_thread_ms(unsigned long long delay_ms)
 	{
 		std::this_thread::sleep_for(chr::milliseconds(delay_ms));
+	}
+
+
+	inline void delay_current_thread_us(unsigned long long delay_us)
+	{
+		std::this_thread::sleep_for(chr::microseconds(delay_us));
 	}
 }
 
