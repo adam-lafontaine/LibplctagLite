@@ -192,7 +192,7 @@ namespace memory_helper
             break;
         }
 
-        assert(false);
+        assert(false || "Bad numeric size provided");
         return (T)0;
     }
 
