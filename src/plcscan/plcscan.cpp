@@ -4,7 +4,7 @@
 
 #ifdef DEVPLCTAG
 
-#include "../dev/devplctag.hpp"
+#include "../dev/devplctag.cpp"
 
 constexpr auto PLCTAG_STATUS_OK = dev::PLCTAG_STATUS_OK;
 
@@ -1519,12 +1519,6 @@ namespace plcscan
     }    
 }
 
-
-#ifdef DEVPLCTAG
-
-#include "../dev/devplctag.cpp"
-
-#endif
 
 /*
 MIT License

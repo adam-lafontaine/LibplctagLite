@@ -377,45 +377,44 @@ namespace
 
 		switch (type)
 		{
-		case T::BOOL:
 		case T::USINT:
-			qsnprintf(dst.char_data, dst.length, "%hhu", mh::cast_bytes<u8>(src.data, src.length));
+			qsnprintf(dst.char_data, dst.length, "%hhu", mh::cast_numeric_bytes<u8>(src.data, src.length));
 			break;
 
 		case T::SINT:
-			qsnprintf(dst.char_data, dst.length, "%hhd", mh::cast_bytes<i8>(src.data, src.length));
+			qsnprintf(dst.char_data, dst.length, "%hhd", mh::cast_numeric_bytes<i8>(src.data, src.length));
 			break;
 
 		case T::UINT:
-			qsnprintf(dst.char_data, dst.length, "%hu", mh::cast_bytes<u16>(src.data, src.length));
+			qsnprintf(dst.char_data, dst.length, "%hu", mh::cast_numeric_bytes<u16>(src.data, src.length));
 			break;
 
 		case T::INT:
-			qsnprintf(dst.char_data, dst.length, "%hd", mh::cast_bytes<i16>(src.data, src.length));
+			qsnprintf(dst.char_data, dst.length, "%hd", mh::cast_numeric_bytes<i16>(src.data, src.length));
 			break;
 
 		case T::UDINT:
-			qsnprintf(dst.char_data, dst.length, "%u", mh::cast_bytes<u32>(src.data, src.length));
+			qsnprintf(dst.char_data, dst.length, "%u", mh::cast_numeric_bytes<u32>(src.data, src.length));
 			break;
 
 		case T::DINT:
-			qsnprintf(dst.char_data, dst.length, "%d", mh::cast_bytes<i32>(src.data, src.length));
+			qsnprintf(dst.char_data, dst.length, "%d", mh::cast_numeric_bytes<i32>(src.data, src.length));
 			break;
 
 		case T::ULINT:
-			qsnprintf(dst.char_data, dst.length, "%llu", mh::cast_bytes<u64>(src.data, src.length));
+			qsnprintf(dst.char_data, dst.length, "%llu", mh::cast_numeric_bytes<u64>(src.data, src.length));
 			break;
 
 		case T::LINT:
-			qsnprintf(dst.char_data, dst.length, "%lld", mh::cast_bytes<i64>(src.data, src.length));
+			qsnprintf(dst.char_data, dst.length, "%lld", mh::cast_numeric_bytes<i64>(src.data, src.length));
 			break;
 
 		case T::REAL:
-			qsnprintf(dst.char_data, dst.length, "%f", mh::cast_bytes<f32>(src.data, src.length));
+			qsnprintf(dst.char_data, dst.length, "%f", mh::cast_numeric_bytes<f32>(src.data, src.length));
 			break;
 
 		case T::LREAL:
-			qsnprintf(dst.char_data, dst.length, "%lf", mh::cast_bytes<f64>(src.data, src.length));
+			qsnprintf(dst.char_data, dst.length, "%lf", mh::cast_numeric_bytes<f64>(src.data, src.length));
 			break;
 
 		default:
@@ -519,13 +518,12 @@ namespace
 	};
 
 
-	class UI_Input
+	class App_Profile
 	{
 	public:
-		StringView plc_ip;
-		StringView plc_path;
-
-		MemoryBuffer<char> string_data;
+		f64 network_ms = 0.0;
+		f64 process_ms = 0.0;
+		f64 scan_ms = 0.0;
 	};
 
 
@@ -549,9 +547,17 @@ namespace
 
 		bool app_running = false;
 
-		f64 network_ms = 0.0;
-		f64 process_ms = 0.0;
-		f64 scan_ms = 0.0;
+		App_Profile profile;
+	};
+
+
+	class UI_Input
+	{
+	public:
+		StringView plc_ip;
+		StringView plc_path;
+
+		MemoryBuffer<char> string_data;
 	};
 
 
@@ -565,7 +571,7 @@ namespace
 
 		bool has_command()
 		{
-			return false ||
+			return 
 				stop_app_running ||
 				start_scanning ||
 				stop_scanning;
@@ -578,8 +584,8 @@ namespace
 
 namespace
 {	
-	constexpr u32 UI_PLC_IP_BYTES = (u32)sizeof(DEFAULT_PLC_IP) + 10;
-	constexpr u32 UI_PLC_PATH_BYTES = (u32)sizeof(DEFAULT_PLC_PATH) + 10;
+	constexpr u32 UI_PLC_IP_BYTES = 25;
+	constexpr u32 UI_PLC_PATH_BYTES = 15;
 
 	constexpr u32 UI_MISC_BYTES_PER_VALUE = 20 + 1;
 	constexpr u32 UI_STRING_BYTES_PER_VALUE = 20 + 1;
@@ -1214,6 +1220,8 @@ namespace render
 
 	static void profile_window(App_State const& state)
 	{
+		auto& prof = state.profile;
+
 		constexpr auto fmt = "%5.1f";
 
 		ImGui::Begin("Profile");
@@ -1228,21 +1236,21 @@ namespace render
 			ImGui::Text("Network time (ms)");			
 
 			ImGui::TableSetColumnIndex(1);
-			ImGui::Text(fmt, state.network_ms);
+			ImGui::Text(fmt, prof.network_ms);
 
 			ImGui::TableNextRow();
 			ImGui::TableSetColumnIndex(0);
 			ImGui::Text("Processing time (ms)");
 
 			ImGui::TableSetColumnIndex(1);
-			ImGui::Text(fmt, state.process_ms);
+			ImGui::Text(fmt, prof.process_ms);
 
 			ImGui::TableNextRow();
 			ImGui::TableSetColumnIndex(0);
 			ImGui::Text("Total time (ms)");
 
 			ImGui::TableSetColumnIndex(1);
-			ImGui::Text(fmt, state.scan_ms);
+			ImGui::Text(fmt, prof.scan_ms);
 
 			ImGui::EndTable();
 		}
@@ -1363,9 +1371,10 @@ static UI_Input g_user_input;
 
 namespace scan
 {
-	static void map_ui_tag_values(plcscan::PlcTagData const& data)
+	static void map_ui_values(plcscan::PlcTagData const& data)
 	{
 		auto& state = g_app_state;
+		auto& prof = state.profile;
 
 		for (auto const& tag : state.string_tags)
 		{
@@ -1407,9 +1416,9 @@ namespace scan
 			map_tag_value(tag);
 		}
 
-		state.network_ms = data.network_ms;
-		state.process_ms = data.process_ms;
-		state.scan_ms = data.scan_ms;
+		prof.network_ms = data.network_ms;
+		prof.process_ms = data.process_ms;
+		prof.scan_ms = data.scan_ms;
 	}
 
 
@@ -1476,9 +1485,7 @@ namespace scan
 
 		plc.is_scanning = true;
 
-		plcscan::scan(map_ui_tag_values, is_scanning, plc.data);
-
-		// TODO: stop/start
+		plcscan::scan(map_ui_values, is_scanning, plc.data);
 	}
 }
 

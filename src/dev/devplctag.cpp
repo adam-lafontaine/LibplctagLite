@@ -2,6 +2,7 @@
 
 #include "devplctag.hpp"
 #include "../util/memory_helper.hpp"
+#include "../util/qsprintf.hpp"
 
 #include <vector>
 #include <array>
