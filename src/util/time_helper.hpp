@@ -71,9 +71,15 @@ namespace time_helper
 	}
 
 
-	inline void delay_current_thread_ms(unsigned long long delay_ms = 20)
+	inline void delay_current_thread_ms(unsigned long long delay_ms)
 	{
 		std::this_thread::sleep_for(chr::milliseconds(delay_ms));
+	}
+
+
+	inline void delay_current_thread_us(unsigned long long delay_us)
+	{
+		std::this_thread::sleep_for(chr::microseconds(delay_us));
 	}
 }
 

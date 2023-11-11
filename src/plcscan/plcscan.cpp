@@ -2,6 +2,13 @@
 
 #define DEVPLCTAG
 
+#include "../util/qsprintf.hpp"
+#include "../util/time_helper.hpp"
+#include "../util/memory_helper.hpp"
+
+namespace tmh = time_helper;
+namespace mh = memory_helper;
+
 #ifdef DEVPLCTAG
 
 #include "../dev/devplctag.cpp"
@@ -21,10 +28,6 @@ constexpr auto PLCTAG_STATUS_OK = dev::PLCTAG_STATUS_OK;
 #endif
 
 
-
-#include "../util/qsprintf.hpp"
-#include "../util/time_helper.hpp"
-#include "../util/memory_helper.hpp"
 #include "plcscan.hpp"
 
 #include <array>
@@ -33,8 +36,6 @@ constexpr auto PLCTAG_STATUS_OK = dev::PLCTAG_STATUS_OK;
 #include <functional>
 #include <execution>
 
-namespace tmh = time_helper;
-namespace mh = memory_helper;
 
 using DataTypeId32 = plcscan::DataTypeId32;
 using Tag = plcscan::Tag;

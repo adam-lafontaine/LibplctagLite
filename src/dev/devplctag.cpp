@@ -1,8 +1,6 @@
 /* LICENSE: See end of file for license information. */
 
 #include "devplctag.hpp"
-#include "../util/memory_helper.hpp"
-#include "../util/qsprintf.hpp"
 
 #include <vector>
 #include <array>
@@ -200,7 +198,6 @@ namespace dev
         cstr field_name = 0;
 
         u8 type_code = 0;
-        //u12 udt_id; // no udt fields
 
         u16 array_count = 0;
         u16 bit_number = 0;
@@ -851,11 +848,20 @@ namespace dev
 
         auto begin = g_tag_db.listing_tag_ids.begin();
         auto end = g_tag_db.listing_tag_ids.end();
+
+        auto is_listing_tag = std::find(begin, end, handle) != end;
         
-        if (std::find(begin, end, handle) != end || !gen.new_tag_value())
+        if (is_listing_tag)
         {
             return PLCTAG_STATUS_OK;
         }
+
+        tmh::delay_current_thread_us(1);
+
+        if (!gen.new_tag_value())
+        {
+            return PLCTAG_STATUS_OK;
+        }        
 
         auto& tag = tags[handle];
         auto& bytes = tag.value_bytes;
