@@ -1863,8 +1863,7 @@ const char* ImStrSkipBlank(const char* str)
 #ifdef IMGUI_STB_SPRINTF_FILENAME
 #include IMGUI_STB_SPRINTF_FILENAME
 #else
-//#include "stb_sprintf.h"
-#include "../util/stb_sprintf.h"
+#include "stb_sprintf.h"
 #endif
 #endif
 
@@ -13376,6 +13375,24 @@ void ImGui::LogButtons()
 // - WindowSettingsHandler_***() [Internal]
 //-----------------------------------------------------------------------------
 
+
+
+static void load_custom_ini()
+{
+#include "./ini_str.h"
+    
+    auto file_data = INI_STR;
+    if (!file_data)
+        return;
+
+    size_t file_data_size = strlen(file_data);
+
+    if (file_data_size > 0)
+        ImGui::LoadIniSettingsFromMemory(file_data, (size_t)file_data_size);
+
+}
+
+
 // Called by NewFrame()
 void ImGui::UpdateSettings()
 {
@@ -13384,8 +13401,19 @@ void ImGui::UpdateSettings()
     if (!g.SettingsLoaded)
     {
         IM_ASSERT(g.SettingsWindows.empty());
+
+#ifdef USE_INI_STR_H
+
+        load_custom_ini();
+
+#else
+
         if (g.IO.IniFilename)
             LoadIniSettingsFromDisk(g.IO.IniFilename);
+
+#endif
+
+        
         g.SettingsLoaded = true;
     }
 
@@ -13538,6 +13566,8 @@ void ImGui::LoadIniSettingsFromMemory(const char* ini_data, size_t ini_size)
 
 void ImGui::SaveIniSettingsToDisk(const char* ini_filename)
 {
+#ifndef USE_INI_STR_H
+
     ImGuiContext& g = *GImGui;
     g.SettingsDirtyTimer = 0.0f;
     if (!ini_filename)
@@ -13550,6 +13580,8 @@ void ImGui::SaveIniSettingsToDisk(const char* ini_filename)
         return;
     ImFileWrite(ini_data, sizeof(char), ini_data_size, f);
     ImFileClose(f);
+
+#endif
 }
 
 // Call registered handlers (e.g. SettingsHandlerWindow_WriteAll() + custom handlers) to write their stuff into a text buffer
