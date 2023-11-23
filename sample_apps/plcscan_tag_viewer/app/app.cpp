@@ -266,17 +266,19 @@ namespace
 
 		mb::zero_buffer(ui_tag.value_data);
 
-		MemoryOffset offset{};
-		offset.begin = 0;
-		offset.length = ui_tag.element_size;
+		MemoryOffset tag_offset{};
+		tag_offset.begin = 0;
+		tag_offset.length = ui_tag.element_size;
 
 		ui_tag.elements.reserve(tag.array_count);
 		for (u32 i = 0; i < tag.array_count; ++i)
 		{
+			tag_offset.begin = i * tag_offset.length;
+
 			UI_UdtArrayTagElement e{};
 
-			auto end = udt_def.size;
-			assert(end = ui_tag.element_size);
+			auto elem_end = udt_def.size;
+			assert(elem_end = ui_tag.element_size);
 
 			e.fields.reserve(n_fields);
 			for (int j = (int)n_fields - 1; j >= 0; --j)
@@ -290,20 +292,18 @@ namespace
 
 				field.value_str = mh::push_cstr_view(ui_tag.value_data, bytes_per_value);
 
-				MemoryOffset m_offset{};
-				m_offset.begin = offset.begin + f.offset;
-				m_offset.length = end - f.offset;
+				MemoryOffset field_offset{};
+				field_offset.begin = tag_offset.begin + f.offset;
+				field_offset.length = elem_end - f.offset;
 
-				end = f.offset;
+				elem_end = f.offset;
 
-				field.value_bytes = mb::sub_view(tag.value_bytes, m_offset);
+				field.value_bytes = mb::sub_view(tag.value_bytes, field_offset);
 
 				e.fields.push_back(field);
 			}
 
 			ui_tag.elements.push_back(e);
-
-			offset.begin += offset.length;
 		}
 	}
 
