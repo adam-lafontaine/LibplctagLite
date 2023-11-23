@@ -483,7 +483,7 @@ namespace /* private */
     }
 
 
-    static int append_tag_entry(TagEntryList& entries, ByteView entry_data)
+    static u64 append_tag_entry(TagEntryList& entries, ByteView entry_data)
     {
         /* each entry looks like this:
         uint32_t instance_id    monotonically increasing but not contiguous
@@ -494,22 +494,9 @@ namespace /* private */
         uint8_t string_data[string_len (or 82?)]   string bytes
         */
 
-        class H
-        {
-        public:
-            u32 instance_id;    // 4
-            u16 symbol_type;    // 2
-            u16 element_length; // 2
-            u32 array_dims[3];  // 3 * 4
-            u16 string_len;     // 2
+        auto& bytes = entry_data;
 
-        };
-
-        constexpr auto H_size = 4 + 2 + 2 + 3 * 4 + 2;
-
-        auto& h = *(H*)(entry_data.data);
-
-        /*constexpr auto sz16 = sizeof(u16);
+        constexpr auto sz16 = sizeof(u16);
         constexpr auto sz32 = sizeof(u32);
 
         u64 offset = 0;
@@ -517,35 +504,35 @@ namespace /* private */
         auto const push = [&](u64 n_bytes) { offset += n_bytes; assert(offset <= bytes.length); return bytes.data + offset - n_bytes; };
 
         auto const get16 = [&]() { return *(u16*)push(sz16); };
-        auto const get32 = [&]() { return *(u16*)push(sz32); };*/
+        auto const get32 = [&]() { return *(u32*)push(sz32); };
         
         TagEntry entry{};
 
-        entry.type_code = h.symbol_type;
+        auto skipped32 = get32();
 
-        entry.elem_size = (u32)h.element_length;
+        entry.type_code = get16();
+
+        entry.elem_size = (u32)get16();
+
+        u32 dims[3] = { 0 };
 
         entry.elem_count = 1;
 
         auto n_dims = id16::get_tag_dimensions(entry.type_code);
 
-        for (u32 i = 0; i < n_dims; ++i)
+        for (u32 i = 0; i < 3; ++i)
         {
-            if (h.array_dims[i])
+            auto dim = get32();
+            if (dim && i < n_dims)
             {
-                entry.elem_count *= h.array_dims[i];
+                entry.elem_count *= dim;
             }
         }
 
-        if (entry.elem_count > 1)
-        {
-            int x = 0;
-        }
-
-        int offset = H_size;
+        auto string_len = (u32)get16();
 
         entry.name_ptr = (char*)(entry_data.data + offset);
-        entry.name_length = (u32)h.string_len;
+        entry.name_length = string_len;
 
         char buffer[MAX_TAG_NAME_LENGTH + 1] = { 0 };
         mh::copy_unsafe(entry.name_ptr, buffer, entry.name_length);
@@ -555,7 +542,7 @@ namespace /* private */
             entries.push_back(std::move(entry));
         }
 
-        offset += h.string_len;
+        offset += string_len;
 
         return offset;
     }
@@ -565,7 +552,7 @@ namespace /* private */
     {
         TagEntryList list;
 
-        int offset = 0;
+        u64 offset = 0;
 
         while ((u32)offset < entry_data.length)
         {
@@ -820,7 +807,7 @@ namespace /* private */
         auto const push = [&](u64 n_bytes) { offset += n_bytes; assert(offset <= bytes.length); return bytes.data + offset - n_bytes; };
 
         auto const get16 = [&]() { return *(u16*)push(sz16); };
-        auto const get32 = [&]() { return *(u16*)push(sz32); };
+        auto const get32 = [&]() { return *(u32*)push(sz32); };
 
         UdtEntry entry{};
         entry.udt_id = get16();
