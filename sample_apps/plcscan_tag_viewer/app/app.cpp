@@ -291,7 +291,7 @@ namespace
 				field.value_str = mh::push_cstr_view(ui_tag.value_data, bytes_per_value);
 
 				MemoryOffset m_offset{};
-				m_offset.begin = f.offset;
+				m_offset.begin = offset.begin + f.offset;
 				m_offset.length = end - f.offset;
 
 				end = f.offset;
