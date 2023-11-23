@@ -62,13 +62,12 @@ namespace time_helper
 
 	inline void delay_current_thread_ms(Stopwatch& sw, double min_delay_ms = 20.0)
 	{
-		double min_delay_us = min_delay_ms * 1000;
-		double fudge = 0.85;
+		const double min_delay_us = min_delay_ms * 1000;
+		constexpr double fudge = 0.85;
 
-		auto us = sw.get_time_micro();
-		if (us < min_delay_us)
+		if (sw.get_time_micro() < min_delay_us)
 		{
-			auto delay_us = (long long)(fudge * (min_delay_us - us));
+			const auto delay_us = (long long)(fudge * (min_delay_us - sw.get_time_micro()));
 			std::this_thread::sleep_for(chr::microseconds(delay_us));
 		}
 	}

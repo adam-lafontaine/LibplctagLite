@@ -1329,6 +1329,9 @@ namespace
     {
         auto timeout = 100;
 
+        Stopwatch sw;
+        sw.start();
+
         for (auto& conn : mem.connections)
         {
             if (!conn.is_connected())
@@ -1339,6 +1342,8 @@ namespace
             auto rc = plc_tag_read(conn.connection_handle, timeout);
             conn.scan_ok = rc == PLCTAG_STATUS_OK;
         }
+
+        tmh::delay_current_thread_ms(10);
 
         for (auto& conn : mem.connections)
         {
@@ -1351,6 +1356,8 @@ namespace
             auto rc = plc_tag_get_raw_bytes(conn.connection_handle, 0, view.data, view.length);
             conn.scan_ok = rc == PLCTAG_STATUS_OK;
         }
+
+        tmh::delay_current_thread_ms(sw, 40);
     }
 
 
