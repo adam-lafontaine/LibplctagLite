@@ -856,8 +856,6 @@ namespace dev
             return PLCTAG_STATUS_OK;
         }
 
-        tmh::delay_current_thread_us(1);
-
         if (!gen.new_tag_value())
         {
             return PLCTAG_STATUS_OK;
