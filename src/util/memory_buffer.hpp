@@ -323,6 +323,20 @@ namespace memory_buffer
 		return sub_view;
 	}
 
+
+	template <typename T>
+	MemoryView<T> sub_view(MemoryView<T> const& view, u32 offset)
+	{
+		assert((view.length) > offset);
+
+		MemoryView<T> sub_view{};
+
+		sub_view.data = view.data + offset;
+		sub_view.length = view.length - offset;
+
+		return sub_view;
+	}
+
 }
 
 

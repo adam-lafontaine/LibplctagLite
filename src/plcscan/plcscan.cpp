@@ -483,7 +483,7 @@ namespace /* private */
     }
 
 
-    static int append_tag_entry(TagEntryList& entries, u8* entry_data)
+    static int append_tag_entry(TagEntryList& entries, ByteView entry_data)
     {
         /* each entry looks like this:
         uint32_t instance_id    monotonically increasing but not contiguous
@@ -507,7 +507,17 @@ namespace /* private */
 
         constexpr auto H_size = 4 + 2 + 2 + 3 * 4 + 2;
 
-        auto& h = *(H*)(entry_data);
+        auto& h = *(H*)(entry_data.data);
+
+        /*constexpr auto sz16 = sizeof(u16);
+        constexpr auto sz32 = sizeof(u32);
+
+        u64 offset = 0;
+
+        auto const push = [&](u64 n_bytes) { offset += n_bytes; assert(offset <= bytes.length); return bytes.data + offset - n_bytes; };
+
+        auto const get16 = [&]() { return *(u16*)push(sz16); };
+        auto const get32 = [&]() { return *(u16*)push(sz32); };*/
         
         TagEntry entry{};
 
@@ -534,7 +544,7 @@ namespace /* private */
 
         int offset = H_size;
 
-        entry.name_ptr = (char*)(entry_data + offset);
+        entry.name_ptr = (char*)(entry_data.data + offset);
         entry.name_length = (u32)h.string_len;
 
         char buffer[MAX_TAG_NAME_LENGTH + 1] = { 0 };
@@ -551,15 +561,15 @@ namespace /* private */
     }
 
 
-    static TagEntryList parse_tag_entries(u8* entry_data, u32 data_size)
+    static TagEntryList parse_tag_entries(ByteView const& entry_data)
     {
         TagEntryList list;
 
         int offset = 0;
 
-        while ((u32)offset < data_size)
+        while ((u32)offset < entry_data.length)
         {
-            offset += append_tag_entry(list, entry_data + offset);
+            offset += append_tag_entry(list, mb::sub_view(entry_data, (u32)offset));
         }
 
         return list;
@@ -1270,7 +1280,7 @@ namespace
 
         auto entry_data = mb::make_view(entry_buffer);
 
-        auto tag_entries = parse_tag_entries(entry_data.data, entry_data.length);
+        auto tag_entries = parse_tag_entries(entry_data);
 
         if (!create_tags(tag_entries, tag_mem, data.tags))
         {
