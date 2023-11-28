@@ -2,7 +2,7 @@
 
 // Enable this for development when no PLC connection is available
 // Simulates a PLC connection with random tag values
-#define DEVPLCTAG
+//#define DEVPLCTAG
 
 #include "../util/qsprintf.hpp"
 #include "../util/time_helper.hpp"
