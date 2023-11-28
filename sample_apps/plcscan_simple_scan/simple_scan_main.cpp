@@ -27,21 +27,25 @@ unsigned name_len = 0; // output formatting
 inline void print_tag_as_hex(plcscan::Tag const& tag)
 {
 	constexpr int out_len = 20;
-	char buffer[out_len + 1] = { 0 };
+	char buffer[out_len + 3] = { 0 };
 
 	auto len = (int)tag.size();
-	if (len < out_len / 2)
+	if (len > out_len / 2)
 	{
 		len = out_len / 2;
 	}
 
+	auto dst = buffer;
+	auto src = tag.data();	
+
+	qsnprintf(dst, 3, "0x");
+	dst += 2;
+
 	for (int i = 0; i < len; i++)
-	{
-		auto src = tag.data() + i;
-		auto dst = buffer + i * 2;
-		qsnprintf(dst, 3, "%02x", src);
+	{		
+		qsnprintf(dst + 2 * i, 3, "%02x", src + i);
 	}
-	buffer[len] = NULL;
+	buffer[len * 2] = NULL;
 
 	printf("%*s: %s\n", (int)name_len, tag.name(), buffer);
 }
@@ -151,7 +155,7 @@ bool still_scanning()
 
 
 // print each tag value based on its data type
-void print_tags(plcscan::PlcTagData& data)
+void print_tags(plcscan::PlcTagData const& data)
 {
 	using T = plcscan::TagType;
 
@@ -166,7 +170,7 @@ void print_tags(plcscan::PlcTagData& data)
 			}
 			else
 			{
-				printf("%*s: %s\n", (int)name_len, tag.name(), (cstr)tag.data());
+				printf("%*s: %.20s\n", (int)name_len, tag.name(), (cstr)tag.data());
 			}			
 			break;
 
