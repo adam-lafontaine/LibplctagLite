@@ -170,7 +170,7 @@ void print_tags(plcscan::PlcTagData const& data)
 			}
 			else
 			{
-				printf("%*s: %s\n", (int)name_len, tag.name(), (cstr)tag.data());
+				printf("%*s: %.20s\n", (int)name_len, tag.name(), (cstr)tag.data());
 			}			
 			break;
 
